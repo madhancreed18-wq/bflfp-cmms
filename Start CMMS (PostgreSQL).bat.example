@@ -1,0 +1,10 @@
+@echo off
+cd /d "%~dp0"
+REM ==== COPY this file to "Start CMMS (PostgreSQL).bat" and put YOUR password ====
+REM ==== The real .bat is git-ignored so passwords never enter the shared repo ====
+set DATABASE_URL=postgresql+psycopg2://postgres:YOUR_PASSWORD_HERE@localhost:5432/cmms
+echo Installing requirements (first run only)...
+pip install -r requirements.txt psycopg2-binary >nul 2>&1
+echo Starting BFLFP CMMS on PostgreSQL...
+python run.py
+pause

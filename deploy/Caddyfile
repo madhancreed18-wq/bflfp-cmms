@@ -1,0 +1,16 @@
+# BFLFP CMMS — LAN HTTPS (no Cloudflare, data stays in the building)
+# Run:  caddy run --config deploy\Caddyfile
+# Phones must install Caddy's root certificate once:
+#   it is created at %AppData%\Caddy\pki\authorities\local\root.crt
+#   send that file to each phone -> open -> install as CA certificate.
+
+https://bflfp.local {
+	tls internal
+	reverse_proxy localhost:8000
+}
+
+# Optional: also answer on the notebook's LAN IP (replace with your IP)
+# https://192.168.1.50 {
+# 	tls internal
+# 	reverse_proxy localhost:8000
+# }

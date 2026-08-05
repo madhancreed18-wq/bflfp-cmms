@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BFLFP Maintenance</title>
+<link rel="icon" type="image/png" href="/icon-192.png">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#F97316">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="BFLFP">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--or:#1B75BC;--ord:#0F3D6E;--navy:#16324A;--bg:#F1F5F9;--bd:#D9E6F2;--red:#DC2626;--green:#43A047;--blue:#1B75BC;--gray:#5C789A;--amber:#D97706;--hbg:#0F3D6E}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Prompt',system-ui,sans-serif;background:var(--bg);color:var(--navy);font-size:15px;-webkit-tap-highlight-color:transparent}
+header{background:var(--hbg);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:5}
+header .logo{background:#fff;border-radius:9px;padding:4px 7px;display:flex;align-items:center;flex:none}
+header .logo img{height:24px;display:block}
+header h1{font-size:16px;font-weight:600;letter-spacing:.3px}
+header h1 small{display:block;font-size:10px;font-weight:400;color:#CBD5E1;letter-spacing:1px}
+header .who{margin-left:auto;font-size:12px;color:#CBD5E1;text-align:right;line-height:1.3}
+header .btn{background:rgba(255,255,255,.12);color:#fff;border-color:transparent}
+main{max-width:900px;margin:0 auto;padding:14px}
+.card{background:#fff;border:1px solid var(--bd);border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+.card h2{display:flex;align-items:center;gap:8px}
+.btn{display:inline-block;border:none;border-radius:8px;padding:10px 16px;font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;background:#fff;border:1px solid var(--bd)}
+.btn.primary{background:var(--or);color:#fff;border-color:var(--or)}
+.btn.dark{background:var(--navy);color:#fff;border-color:var(--navy)}
+.btn.danger{background:var(--red);color:#fff;border-color:var(--red)}
+.btn.ghost{background:transparent}
+.btn.sm{padding:6px 10px;font-size:13px}
+input,select,textarea{font-family:inherit;font-size:14px;padding:9px 10px;border:1px solid var(--bd);border-radius:8px;width:100%;background:#fff}
+label{font-size:12px;color:var(--gray);display:block;margin:8px 0 3px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row>*{flex:1;min-width:120px}
+.tag{display:inline-block;font-size:11px;font-weight:500;padding:2px 9px;border-radius:999px}
+.s-Reported{background:#FEF3C7;color:#92400E}.s-Assigned{background:#E0E7FF;color:#3730A3}
+.s-Released{background:#DBEAFE;color:#1E40AF}.s-InProgress{background:#DCFCE7;color:#166534}
+.s-Paused{background:#FFEDD5;color:#9A3412}.s-ServiceCompleted{background:#D1FAE5;color:#065F46}
+.s-Done{background:#334155;color:#fff}.s-Hold{background:#FEE2E2;color:#991B1B}
+.s-WaitingApproval{background:#FEF3C7;color:#92400E}.s-WaitingAssignment{background:#EDE9FE;color:#5B21B6}
+.s-Rework{background:#FCE7F3;color:#9D174D}.s-Rejected{background:#FEE2E2;color:#991B1B}
+.pcard{background:#fff;border:1px solid var(--bd);border-radius:14px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(15,23,42,.05)}
+.pcard .top{display:flex;align-items:flex-start;gap:8px}
+.pcard .ttl{font-weight:600;font-size:15px}
+.pcard .prd{font-size:11px;color:#94A3B8;text-align:right;white-space:nowrap}
+.pcard .info{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;margin:8px 0 6px;font-size:12px}
+.pcard .info b{font-weight:500}
+.pill{display:inline-block;font-size:11px;font-weight:500;padding:3px 12px;border-radius:999px}
+.pill.lo{background:#DCFCE7;color:#166534}.pill.md{background:#FEF3C7;color:#92400E}.pill.hi{background:#FEE2E2;color:#991B1B}
+.pill.src{background:#F1F5F9;color:#475569}
+.foot{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--bd);padding:8px 16px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--gray);z-index:5}
+.switch{margin-left:auto;display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+.switch .trk{width:38px;height:20px;border-radius:999px;background:#CBD5E1;position:relative;transition:.15s}
+.switch .trk::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.15s}
+.switch.on .trk{background:var(--or)}.switch.on .trk::after{left:20px}
+/* ---- v2.2 login (Bluefalo navy) ---- */
+body.lgbg{background:linear-gradient(180deg,#0F3D6E 0%,#16324A 100%)}
+.lgwrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:44px 20px 24px}
+.lgchip{background:#fff;border-radius:18px;padding:12px 20px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.lgchip img{height:52px;display:block}
+.lgwrap h2{color:#fff;font-size:24px;font-weight:700;margin-top:22px;letter-spacing:.3px}
+.lgwrap .lgsub{color:#9DBBD9;font-size:12.5px;margin-top:3px}
+.lgcard{background:#EDF2F7;border-radius:22px;padding:24px 22px;width:100%;max-width:370px;margin-top:26px;box-shadow:0 18px 44px rgba(0,0,0,.3)}
+.lgcard h3{color:#1B75BC;text-align:center;font-size:21px;font-weight:700;margin-bottom:6px}
+.lgfield{display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid #D9E6F2;border-radius:12px;padding:12px 13px;margin-top:13px}
+.lgfield span{color:#9DB6CC;font-size:15px}
+.lgfield input{border:none;outline:none;flex:1;font-family:inherit;font-size:14.5px;background:transparent;padding:0;width:auto}
+.lgfield select{border:none;outline:none;flex:1;font-family:inherit;font-size:14.5px;background:transparent;padding:0;color:var(--navy);margin:0;width:auto}
+.lgfacs{display:flex;gap:10px;margin-top:4px}
+.lgfac{flex:1;background:#fff;border:2px solid #D9E6F2;border-radius:14px;padding:10px 4px 8px;text-align:center;cursor:pointer;transition:border-color .15s}
+.lgfac img{height:42px;max-width:100%;object-fit:contain;display:block;margin:0 auto}
+.lgfac .c{font-size:11.5px;font-weight:700;color:var(--navy);margin-top:5px;letter-spacing:.3px}
+.lgfac.on{border-color:#1B75BC;background:#EAF3FB;box-shadow:0 3px 10px rgba(27,117,188,.2)}
+.lgfac.on .c{color:#1B75BC}
+.lglang{display:flex;gap:8px;margin:12px 0 0}
+.lglang button{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:999px;padding:4px 16px;font-family:inherit;font-size:12.5px;cursor:pointer}
+.lglang button.on{background:#fff;color:#0F3D6E;font-weight:700;border-color:#fff}
+.lgfield .eye{cursor:pointer;margin-left:auto}
+.lgrm{display:flex;align-items:center;gap:9px;margin-top:14px;font-size:13.5px;color:#41608A;cursor:pointer;user-select:none}
+.lgrm input{width:17px;height:17px;accent-color:#1B75BC}
+.lgbtn{width:100%;background:#43A047;color:#fff;border:none;border-radius:12px;padding:14px;font-family:inherit;font-size:15.5px;font-weight:700;margin-top:18px;cursor:pointer;box-shadow:0 6px 16px rgba(67,160,71,.35)}
+.lgbtn:active{transform:scale(.99)}
+.lgfoot{color:#7FA0C2;font-size:11px;margin-top:auto;padding-top:26px;text-align:center}
+.lgerr{color:#FCA5A5;background:rgba(224,49,49,.15);border:1px solid rgba(224,49,49,.35);border-radius:10px;padding:8px 12px;font-size:12.5px;margin-top:12px;display:none}
+.lgcap{background:#fff;border:1.5px solid #F3C4C4;border-radius:12px;padding:12px;margin-top:14px}
+.lgcap .t{font-size:12px;font-weight:700;color:var(--red);margin-bottom:8px}
+/* ---- bottom navigation ---- */
+.bnav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--bd);display:flex;z-index:6;box-shadow:0 -4px 16px rgba(15,61,110,.08);padding-bottom:env(safe-area-inset-bottom)}
+.bnav button{flex:1;background:none;border:none;font-family:inherit;padding:8px 2px 9px;cursor:pointer;color:var(--gray);font-size:10.5px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:2px}
+.bnav button .ic{font-size:20px;line-height:1}
+.bnav button.on{color:var(--blue)}
+.bnav button.on .ic{transform:translateY(-1px)}
+.bnav button.on::before{content:'';position:absolute;top:0;width:34px;height:3px;border-radius:0 0 3px 3px;background:var(--blue)}
+.bnav button{position:relative}
+.p3{color:var(--red);font-weight:600}.p2{color:var(--amber);font-weight:500}
+.jobline{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--bd)}
+.jobline:first-child{border-top:none}
+.grow{flex:1;min-width:0}
+.muted{color:var(--gray);font-size:12px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px}
+.kpi{background:#fff;border:1px solid var(--bd);border-radius:12px;padding:12px;text-align:center}
+.kpi .v{font-size:26px;font-weight:600}
+.kpi .l{font-size:12px;color:var(--gray)}
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.tabs .btn.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+#gantt{overflow-x:auto}
+.grow .d{font-weight:500;font-size:14px}
+.banner{background:var(--navy);color:#fff;border-radius:12px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px}
+.banner .t{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums;margin-left:auto}
+.hidden{display:none}
+.legend{display:flex;gap:12px;font-size:12px;color:var(--gray);flex-wrap:wrap;margin-top:8px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+dialog{border:none;border-radius:14px;padding:18px;width:min(420px,92vw)}
+dialog::backdrop{background:rgba(15,23,42,.5)}
+.d2col{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:12px;align-items:start}
+.d2side{position:sticky;top:64px}
+.d2side .card{max-height:calc(100vh - 150px);display:flex;flex-direction:column;overflow:hidden}
+.d2side .chatscroll{overflow-y:auto;flex:1;min-height:120px}
+@media(max-width:900px){.d2col{grid-template-columns:1fr}.d2side{position:static}.d2side .card{max-height:none;overflow:visible}}
+@media(min-width:1150px){main:has(.d2col){max-width:1240px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><img src="/logo.png" alt="Bluefalo"></div>
+  <h1>BFLFP CMMS<small id="hsub">BLUEFALO GROUP</small></h1>
+  <div class="who" id="who"></div>
+  <button class="btn sm hidden" id="chatBtn" onclick="renderChat()">💬</button>
+  <button class="btn sm hidden" id="helpBtn" onclick="showHelp()">❓</button>
+  <button class="btn sm hidden" id="logoutBtn" onclick="logout()">ออก</button>
+</header>
+<main id="app" style="padding-bottom:92px"></main>
+<nav id="bnav" class="bnav hidden"></nav>
+
+<div class="foot hidden" id="foot">
+  <span id="footUser"></span>
+  <span id="footVer" class="muted" style="font-size:11px"></span>
+  <span class="switch" id="langSw" onclick="toggleLang()"><b style="color:var(--navy)">TH</b><span class="trk"></span></span>
+</div>
+
+<dialog id="dlg"></dialog>
+
+<script>
+const $=s=>document.querySelector(s);
+let ME=null, BOOT=null, TIMER=null, LANG=localStorage.getItem('bflfp_lang')||'TH', PTAB='Recent', PDATE=null, PQ='';
+const I18N={
+ tab_Recent:['Recent','ล่าสุด'],tab_OverDue:['OverDue','เกินกำหนด'],tab_DueToday:['DueToday','ครบวันนี้'],
+ tab_Assigned:['Assigned','มอบหมายแล้ว'],tab_History:['History','ประวัติ'],
+ planned_date:['Planned Date','วันที่วางแผน'],due_date:['Due Date','กำหนดเสร็จ'],
+ assigned_to:['Assigned To','มอบหมายให้'],search:['Search items','ค้นหารายการ'],
+ plan:['Plan','วางแผน'],approve:['Approve','อนุมัติ'],rework:['Rework','ส่งกลับแก้ไข'],
+ create_job:['+ Create job','+ สร้างงาน'],dashboard:['Dashboard →','แดชบอร์ด →'],
+ user:['User','ผู้ใช้'],lo:['Low','ปกติ'],md:['Medium','เร่ง'],hi:['High!','ด่วน!'],
+ back:['← Back','← กลับ'],close:['Close','ปิด'],cancel:['Cancel','ยกเลิก'],save:['Save','บันทึก'],
+ send:['Send','ส่ง'],edit:['Edit','แก้ไข'],open:['Open ›','เปิด ›'],none:['— none yet —','ยังไม่มี'],
+ refresh:['↻ Refresh','↻ รีเฟรช'],target:['target','เป้า'],mach:['Machine','เครื่องจักร'],
+ prio:['Priority','ความเร่งด่วน'],p1:['Normal','ปกติ'],p2:['Urgent','เร่ง'],p3:['Critical! (machine stopped)','ด่วน! (เครื่องหยุด)'],
+ lg_welcome:['Welcome Back','ยินดีต้อนรับกลับ'],lg_user:['Username','ชื่อผู้ใช้'],lg_pass:['Password','รหัสผ่าน'],
+ lg_rm:['Remember me (30 days)','จดจำฉันไว้ (30 วัน)'],lg_btn:['Login','เข้าสู่ระบบ'],
+ lg_foot:['self-hosted in the plant · your data never leaves','self-hosted ในโรงงาน · ข้อมูลไม่ออกไปไหน'],
+ lg_fac:['Loading factories…','กำลังโหลดโรงงาน…'],
+ lg_cap:['🛡 Verify you are human — type the code from the image','🛡 ยืนยันว่าไม่ใช่หุ่นยนต์ — พิมพ์รหัสจากภาพ'],
+ lg_cap_ph:['code from image','รหัสจากภาพ'],
+ nv_report:['Report','แจ้งซ่อม'],nv_mine:['My reports','ของฉัน'],nv_out:['Output','ผลผลิต'],
+ nv_chat:['Chat','แชท'],nv_more:['More','อื่นๆ'],nv_jobs:['My jobs','งานของฉัน'],
+ nv_plan:['Planning','แผนงาน'],nv_dash:['Dashboard','Dashboard'],nv_mach:['Machines','เครื่องจักร'],nv_adm:['Manage','จัดการ'],
+ mr_help:['❓ How to use / Help','❓ วิธีใช้งาน / Help'],mr_lang:['🌐 Language / ภาษา','🌐 ภาษา / Language'],
+ mr_out:['🚪 Logout','🚪 ออกจากระบบ'],gotit:['Got it','เข้าใจแล้ว'],
+ op_t:['📢 Report issue','📢 แจ้งปัญหา (Report issue)'],op_desc:['Symptom / details','อาการ / รายละเอียด'],
+ op_ph:['e.g. abnormal noise, oil leak...','เช่น มีเสียงดังผิดปกติ, น้ำมันรั่ว...'],
+ op_na:['Needs approval (job has cost)','ต้องขออนุมัติ (NeedApproval — งานมีค่าใช้จ่าย)'],
+ op_send:['Submit report','ส่งแจ้งซ่อม'],op_track:['Track the status of your reports in the 📋 tab below','ติดตามสถานะงานที่แจ้งได้ที่แท็บ 📋 ของฉัน ด้านล่าง'],
+ mine_t:['📋 My reports','📋 รายการที่ฉันแจ้ง'],mine_e:['Nothing yet — report an issue in the 📢 tab','ยังไม่มีรายการ — แจ้งซ่อมได้ที่แท็บ 📢'],
+ sl_t:['📊 End-of-shift output (Shift log)','📊 บันทึกผลผลิตท้ายกะ (Shift log)'],
+ sl_h:['Fill in every machine that ran this shift — used to compute OEE','กรอกทุกเครื่องที่เดินในกะ — ใช้คำนวณ OEE อัตโนมัติ'],
+ sl_shift:['Shift','กะ'],sh_m:['Morning','เช้า'],sh_a:['Afternoon','บ่าย'],sh_n:['Night','ดึก'],
+ sl_plan:['Planned run time (min)','เวลาแผนเดินเครื่อง (นาที)'],sl_out:['Total produced (pcs)','ผลิตทั้งหมด (ชิ้น)'],
+ sl_good:['Good (pcs)','ของดี (ชิ้น)'],w_plan:['plan','แผน'],w_out:['out','ผลิต'],w_good:['good','ดี'],w_rej:['rej','เสีย'],w_min:['min','นาที'],w_shift:['shift ','กะ'],
+ tc_doing:['Working on','กำลังทำ'],tc_since:['started','เริ่ม'],
+ tc_routine:['🧰 Routine / standby','🧰 งาน routine / standby'],tc_pause:['⏸ Pause / switch','⏸ พัก/สลับงาน'],
+ tc_fin:['✅ Finish','✅ จบงาน'],tc_stopact:['Stop activity','หยุดกิจกรรม'],
+ tc_my:['My jobs today','งานของฉันวันนี้'],tc_none:['No jobs today','ไม่มีงานวันนี้'],
+ tc_cont:['Resume','ทำต่อ'],tc_start:['Start','เริ่ม'],
+ pz_t:['Pause — reason','พักงาน — เหตุผล'],reason:['Reason','เหตุผล'],progress:['Progress (%)','ความคืบหน้า (%)'],
+ pr1:['Breakdown interrupt','Breakdown แทรก'],pr2:['Waiting parts','รออะไหล่ (Waiting parts)'],
+ pr3:['Waiting production','รอฝ่ายผลิต (Production)'],pr4:['Break','พักเบรก'],pr5:['Shift ended','หมดกะ'],
+ fin_t:['Finish — report','จบงาน — รายงาน'],f_p:['Problem','Problem (ปัญหา)'],f_r:['Root cause','Root cause (สาเหตุ)'],
+ f_s:['Solution','Solution (การแก้ไข)'],f_fc:['Fault category','ประเภทความเสีย (fault code)'],
+ f_fp:['Failed component','ชิ้นส่วนที่เสีย'],f_fa:['Action taken','การดำเนินการ (action)'],fin_send:['Send report ✓','ส่งรายงาน ✓'],
+ rt_t:['Routine / standby activity','กิจกรรม routine / standby'],type:['Type','ประเภท'],rt_go:['Start ▶','เริ่ม ▶'],
+ ro1:['Plant inspection round','Inspection รอบโรงงาน'],ro3:['Paperwork','งานเอกสาร'],ro5:['Waiting for machine','รอเครื่องว่าง'],ro6:['Meeting / training','ประชุม/อบรม'],
+ dt_pdf:['🖨 Repair form PDF','🖨 ใบแจ้งซ่อม PDF'],dt_insp:['Inspect & approve','ตรวจรับงาน'],
+ dt_reissue:['Re-issue work order','ออกใบแจ้งซ่อมใหม่'],dt_rep:['Reporter','ผู้แจ้ง'],
+ dt_techrep:['Technician report','รายงานช่าง'],dt_photos:['Before / after photos','รูปก่อน/หลังซ่อม'],
+ before:['Before','ก่อน (Before)'],after:['After','หลัง (After)'],dt_take:['📷 Take / choose photo','📷 ถ่าย/เลือกรูป'],
+ dt_sigs:['Signatures','ลายเซ็น'],sig_req:['Requester','ผู้แจ้ง (Requester)'],sig_ins:['Inspector','ผู้ตรวจรับงาน (Inspector)'],
+ sig_clear:['Clear','ล้าง'],sig_save:['Save signature','บันทึกลายเซ็น'],doing:['running','กำลังทำ'],stop_r:['stop','หยุด'],
+ dt_newissue:['↪ Re-issued as','↪ ออกใบใหม่'],
+ ch_msg:['💬 Messages','💬 ข้อความ'],ch_note:['📝 Notes','📝 โน้ต'],ch_act:['📌 Activity','📌 กิจกรรม'],
+ ch_note_ph:['Internal note (silent)...','โน้ตภายใน (เงียบ)...'],ch_msg_ph:['Type... (@username to notify)','พิมพ์... (@username แจ้งเตือน)'],
+ ch_note_i:['📝 internal note','📝 โน้ตภายใน'],
+ ch_empty:['Nothing yet — ask the team, keep notes, or schedule activities here','ยังไม่มี — ถามทีม บันทึกโน้ต หรือวางกิจกรรมได้ที่นี่'],
+ ap_q1:['Was the problem properly fixed?','ทีมงานแก้ปัญหาเรียบร้อยแล้วใช่ไหม?'],
+ ap_q2:['Was the worksite cleared?','ทีมงานเคลียร์พื้นที่ทำงานเรียบร้อยไหม?'],
+ ap_ok:['Confirm','ยืนยัน'],ap_fail:['Fail','ไม่ผ่าน'],new_wo:['New work order: ','ออกใบใหม่: '],
+ no_items:['— no items —','— ไม่มีรายการ —'],as_lead:['Lead technician','ช่างหลัก (Lead)'],
+ as_help:['Helpers','ผู้ช่วย (Helpers)'],as_date:['Date','วันที่'],as_start:['Start','เริ่ม'],as_end:['End','เสร็จ'],
+ as_draft:['Save (Draft)','บันทึก (Draft)'],as_rel:['Release ▶','ปล่อยงาน (Release)'],
+ nw_t:['Create new job','สร้างงานใหม่'],nw_cm:['CM (repair)','CM (แก้ไข)'],nw_make:['Create','สร้าง'],
+ chn_t:['💬 Channels','💬 ช่องสนทนา (Channels)'],my_act:['📌 My activities','📌 กิจกรรมของฉัน'],
+ msgs:['messages','ข้อความ'],last:['last','ล่าสุด'],
+ ch_hint:['Type @username to notify someone · job chat lives inside the job detail page','พิมพ์ @username เพื่อแจ้งเตือนถึงคน · แชทติดใบงานอยู่ในหน้ารายละเอียดงาน'],
+ ch_ph:['Type a message... (@username to mention)','พิมพ์ข้อความ... (@username เพื่อ mention)'],
+ th_t:['🧵 Thread','🧵 หัวข้อสนทนา (Thread)'],th_none:['No replies yet','ยังไม่มีคำตอบ'],
+ th_ph:['Reply in this thread...','ตอบกลับในหัวข้อนี้...'],th_reply:['replies','ตอบกลับ'],
+ no_msgs:['No messages yet — start the conversation','ยังไม่มีข้อความ — เริ่มคุยเลย'],
+ open_job:['🔧 Open job','🔧 เปิดใบงาน'],open_j:['Open','เปิดงาน'],act_from:['from','จาก'],act_by:['by','ภายใน'],
+ ac_t:['📌 Schedule activity','📌 วางกิจกรรม (Schedule activity)'],ac_sum:['Details','รายละเอียด'],
+ ac_ph:['e.g. call supplier about the seal','เช่น โทรถาม supplier เรื่องซีล'],
+ ac_who:['Assign to','มอบหมายให้'],ac_due:['Due date','ภายในวันที่'],ac_put:['Schedule','วางกิจกรรม'],
+ ad_m:['⚙️ Machines','⚙️ เครื่องจักร'],ad_u:['👤 Users','👤 ผู้ใช้งาน'],in_use:['active','ใช้งาน'],
+ ad_off:['Disabled','ปิดใช้งาน'],ad_addm:['+ Add machine','+ เพิ่มเครื่องจักร'],ad_addu:['+ Add user','+ เพิ่มผู้ใช้'],
+ m_code:['Machine code','รหัสเครื่อง (Code)'],m_name:['Machine name','ชื่อเครื่อง'],
+ m_rate:['Ideal rate (pcs/min, 0=off)','Ideal rate (ชิ้น/นาที, 0=ไม่ใช้)'],m_cr:['Criticality','ความสำคัญ'],
+ m_line:['Line / area','ไลน์/พื้นที่'],m_pm:['PM cycle (days, 0=off)','รอบ PM (วัน, 0=ปิด)'],enable:['Active','เปิดใช้งาน'],
+ u_disp:['Display name','ชื่อที่แสดง'],role:['Role','บทบาท'],
+ u_pw_r:['Reset password (blank = unchanged)','รีเซ็ตรหัสผ่าน (เว้นว่าง = ไม่เปลี่ยน)'],u_pw:['Password','รหัสผ่าน'],
+ kpi7:['KPI — last 7 days','KPI 7 วันล่าสุด'],bd_w:['BD','เสีย (ครั้ง)'],
+ hs_t:['Repair / PM history','ประวัติงานซ่อม/PM'],hs_fix:['fix','แก้'],hs_sl:['Shift output','ผลผลิตรายกะ'],
+ hs_none_sl:['no shift logs yet','ยังไม่มี shift log'],
+ db_pdf:['🖨 Daily report PDF','🖨 รายงานประจำวัน PDF'],plant7:['Plant OEE (7 d)','Plant OEE (7 วัน)'],
+ lg_planjob:['Planned work','งานตามแผน'],lg_stand:['Standby / wait','Standby/รอ'],lg_planbar:['Plan (top bar)','แผน (แถบบน)'],
+ pend_t:['Pending jobs','งานค้าง (Pending)'],all_t:['All jobs today','งานทั้งหมดวันนี้'],
+ no_tl:['no time logs today yet','ยังไม่มี time log วันนี้'],none_party:['None 🎉','ไม่มี 🎉'],
+ unassigned:['unassigned','ยังไม่มอบหมาย'],planned_div:['planned÷total hrs','planned÷total ชม.']};
+const t=k=>{const e=I18N[k];return e?(LANG==='TH'?e[1]:e[0]):k};
+const STTH={Reported:'แจ้งแล้ว',WaitingApproval:'รออนุมัติ',WaitingAssignment:'รอมอบหมาย',Assigned:'มอบหมายแล้ว',
+ Released:'ปล่อยงานแล้ว',InProgress:'กำลังทำ',Paused:'พักงาน',Rework:'แก้ไขใหม่',ServiceCompleted:'รอตรวจรับ',
+ Done:'เสร็จสิ้น',Rejected:'ไม่ผ่าน',Hold:'พัก/รอ',Cancelled:'ยกเลิก'};
+const sT=s=>LANG==='TH'?(STTH[s]||s):s;
+function setLang(l){LANG=l;localStorage.setItem('bflfp_lang',l);
+  if(!ME){renderLogin();return}
+  buildNav();navGo(NAVI);}
+function toggleLang(){setLang(LANG==='EN'?'TH':'EN')}
+const HELP_TH={
+ operator:`<h3>🙋 หน้าจอ Operator</h3><p style="font-size:14px;line-height:1.7">พนักงานหน้างานแจ้งปัญหาเครื่องจักรจากมือถือ เลือกเครื่อง อธิบายอาการ เลือกความเร่งด่วน<br>
+ • <b>ด่วน! (เครื่องหยุด)</b> = Breakdown — ระบบส่งแจ้งเตือนถึงช่างทุกคนทันที<br>
+ • <b>ต้องขออนุมัติ</b> = งานมีค่าใช้จ่าย เข้าคิว WaitingApproval ให้ Planner อนุมัติก่อน<br>
+ แทนการเดินไปบอกปากเปล่า/เขียนกระดาษ — ทุกการแจ้งมีเลขที่ PRD ติดตามได้`,
+ planner:`<h3>🗓 หน้าจอ Planner</h3><p style="font-size:14px;line-height:1.7">ศูนย์กลางการวางแผน เหมือน Power Apps เดิมแต่เร็วกว่า:<br>
+ • แท็บ <b>Recent</b> = งานเข้าใหม่ รอวางแผน · <b>OverDue</b> = เกินกำหนด · <b>History</b> = งานปิดแล้ว (เลือกวันย้อนหลังได้)<br>
+ • กด <b>Plan</b> ในการ์ด → กำหนดวัน เวลา ช่างหลัก ผู้ช่วย → <b>ปล่อยงาน (Release)</b> — ช่างได้รับแจ้งเตือนทันที<br>
+ • งานที่ช่างทำเสร็จ (ServiceCompleted) → กด <b>ตรวจรับงาน</b> อนุมัติ/Rework<br>
+ • เฉพาะงานที่ Release แล้วเท่านั้นที่นับใน % ความสำเร็จของแผน`,
+ technician:`<h3>🔧 หน้าจอช่าง</h3><p style="font-size:14px;line-height:1.7">งานของฉันวันนี้ พร้อมตัวจับเวลาจริง:<br>
+ • <b>▶ เริ่ม</b> = เปิด time segment · <b>⏸ พัก</b> = ปิด segment พร้อมเหตุผล (Breakdown แทรก/รออะไหล่/พักเบรก) + % ความคืบหน้า<br>
+ • เริ่มงานใหม่จะปิดงานเดิมอัตโนมัติ — เวลาไม่มีทางซ้อนกัน<br>
+ • <b>✅ จบงาน</b> = รายงาน Problem / Root cause / Solution<br>
+ • กดที่การ์ดงาน → หน้ารายละเอียด: ถ่ายรูปก่อน-หลัง เซ็นชื่อ พิมพ์ใบแจ้งซ่อม PDF<br>
+ • งาน routine / standby / รอเครื่อง ก็บันทึกเวลาได้ — เวลาทำงานทุกนาทีถูกเก็บ`,
+ admin:`<h3>⚙️ หน้าจอ Admin</h3><p style="font-size:14px;line-height:1.7">จัดการระบบโดยไม่ต้องแก้โค้ด:<br>
+ • <b>เครื่องจักร</b>: เพิ่ม/แก้ไข/ปิดใช้งาน — เครื่องที่ปิดจะไม่ขึ้นให้ operator เลือก<br>
+ • <b>ผู้ใช้</b>: เพิ่มพนักงาน กำหนดบทบาท รีเซ็ตรหัสผ่าน ปิดบัญชีคนที่ลาออก<br>
+ รหัสผ่านเก็บแบบ hash (PBKDF2) — ไม่มีใครอ่านรหัสจริงได้แม้เปิดฐานข้อมูล`,
+ manager:`<h3>📊 Dashboard ผู้บริหาร</h3><p style="font-size:14px;line-height:1.7">ตอบ 3 คำถามในหน้าเดียว:<br>
+ • <b>3 เปอร์เซ็นต์</b>: แผนสำเร็จเท่าไหร่ / Breakdown ปิดได้เท่าไหร่ / รวมทั้งวัน<br>
+ • <b>Gantt</b>: ช่างแต่ละคนใช้เวลากับอะไร — น้ำเงิน=งานแผน แดง=Breakdown เทา=Routine ส้ม=รอ/Standby แถบบน=แผน<br>
+ • <b>งานค้าง</b> พร้อมเหตุผล — ไม่ต้องถามไล่ทีละคน<br>
+ • ปุ่ม 🖨 พิมพ์รายงานประจำวัน PDF อัตโนมัติ — เก็บเข้าโฟลเดอร์ Report เหมือนระบบเดิม`};
+const HELP_EN={
+ operator:`<h3>🙋 Operator screen</h3><p style="font-size:14px;line-height:1.7">Report machine problems from your phone: pick the machine, describe the symptom, choose urgency.<br>
+ • <b>Critical! (machine stopped)</b> = Breakdown — every technician is push-notified instantly<br>
+ • <b>Needs approval</b> = job has cost, queued as WaitingApproval for the Planner<br>
+ Replaces verbal reports and paper — every report gets a trackable PRD number`,
+ planner:`<h3>🗓 Planner screen</h3><p style="font-size:14px;line-height:1.7">The planning hub — like the old Power Apps but faster:<br>
+ • <b>Recent</b> = new jobs waiting to plan · <b>OverDue</b> = past due · <b>History</b> = closed jobs (any past date)<br>
+ • Press <b>Plan</b> on a card → set date, time, lead tech, helpers → <b>Release</b> — techs get notified instantly<br>
+ • Jobs finished by techs (ServiceCompleted) → <b>Inspect & approve</b> or send to Rework<br>
+ • Only Released jobs count in the daily plan-completion %`,
+ technician:`<h3>🔧 Technician screen</h3><p style="font-size:14px;line-height:1.7">Your jobs today, with a real timer:<br>
+ • <b>▶ Start</b> opens a time segment · <b>⏸ Pause</b> closes it with a reason (breakdown interrupt / waiting parts / break) + progress %<br>
+ • Starting a new job auto-closes the old one — times can never overlap<br>
+ • <b>✅ Finish</b> = report Problem / Root cause / Solution<br>
+ • Tap a job card → detail page: before-after photos, signatures, repair-form PDF<br>
+ • Routine / standby / waiting time is logged too — every working minute is captured`,
+ admin:`<h3>⚙️ Admin screen</h3><p style="font-size:14px;line-height:1.7">Manage the system without touching code:<br>
+ • <b>Machines</b>: add / edit / disable — disabled machines disappear from operator screens<br>
+ • <b>Users</b>: add staff, set roles, reset passwords, disable leavers<br>
+ Passwords are stored hashed (PBKDF2) — nobody can read them, even with the database open`,
+ manager:`<h3>📊 Manager dashboard</h3><p style="font-size:14px;line-height:1.7">Answers three questions on one page:<br>
+ • <b>3 percentages</b>: plan completion / breakdown completion / total for the day<br>
+ • <b>Gantt</b>: what each technician spent time on — blue=planned, red=breakdown, grey=routine, amber=standby, top bar=plan<br>
+ • <b>Pending jobs</b> with reasons — no need to chase people one by one<br>
+ • 🖨 prints the daily report PDF automatically — filed to the Report folder like the old system`};
+function showHelp(){
+  const H=LANG==='TH'?HELP_TH:HELP_EN;
+  const foot=LANG==='TH'?'ระบบนี้สร้างด้วย open source ทั้งหมด — ไม่มีค่า license ไม่จำกัดผู้ใช้'
+    :'Built entirely with open source — no license fees, unlimited users';
+  $('#dlg').innerHTML=(H[ME?.role]||'')+`<p class="muted" style="margin-top:10px">${foot}</p>
+  <button class="btn primary" style="margin-top:12px" onclick="dlg.close()">${t('gotit')}</button>`;
+  dlg.showModal();
+}
+const api=async(url,opt={})=>{
+  const r=await fetch(url,{headers:{'Content-Type':'application/json'},...opt});
+  if(r.status===401){renderLogin();throw new Error('login')}
+  if(!r.ok){alert((await r.json()).detail||'error');throw new Error('api')}
+  return r.json();
+};
+const post=(u,b)=>api(u,{method:'POST',body:JSON.stringify(b)});
+const patch=(u,b)=>api(u,{method:'PATCH',body:JSON.stringify(b)});
+const esc=s=>(s||'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+const P=['','ปกติ','เร่ง','ด่วน!'];
+
+async function start(){
+  try{const h=await (await fetch('/api/health')).json();
+    if(h.version)$('#footVer').textContent='v'+h.version;}catch(e){}
+  try{ME=await api('/api/me');afterLogin()}catch(e){}
+}
+function renderLogin(){
+  clearInterval(TIMER);
+  $('#who').textContent='';$('#logoutBtn').classList.add('hidden');
+  $('#helpBtn').classList.add('hidden');$('#chatBtn').classList.add('hidden');
+  $('#foot').classList.add('hidden');
+  $('#bnav').classList.add('hidden');
+  document.querySelector('header').classList.add('hidden');
+  document.body.classList.add('lgbg');
+  const savedUser=localStorage.getItem('bflfp_user')||'';
+  $('#app').innerHTML=`<div class="lgwrap">
+    <h2 style="margin-top:10px">${t('lg_welcome')}</h2>
+    <div class="lgsub">CMMS · Bluefalo Group</div>
+    <div class="lglang">
+      <button class="${LANG==='TH'?'on':''}" onclick="setLang('TH')">ไทย</button>
+      <button class="${LANG==='EN'?'on':''}" onclick="setLang('EN')">English</button></div>
+    <div class="lgcard">
+      <h3>CMMS Login</h3>
+      <div class="lgfacs">
+        <div class="lgfac ${FACSEL===1?'on':''}" onclick="pickFac(1)"><img src="/logo.png" alt="BFL"><div class="c">BFL</div></div>
+        <div class="lgfac ${FACSEL===2?'on':''}" onclick="pickFac(2)"><img src="/fac_fp.png" alt="BFLFP"><div class="c">BFLFP</div></div>
+        <div class="lgfac ${FACSEL===3?'on':''}" onclick="pickFac(3)"><img src="/fac_pc.png" alt="BFLPC"><div class="c">BFLPC</div></div>
+      </div>
+      <div class="lgfield"><span>👤</span>
+        <input id="u" placeholder="${t('lg_user')}" value="${esc(savedUser)}" autocomplete="username"></div>
+      <div class="lgfield"><span>🔒</span>
+        <input id="p" type="password" placeholder="${t('lg_pass')}" autocomplete="current-password"
+          onkeydown="if(event.key==='Enter')doLogin()">
+        <span class="eye" onclick="togglePw()">👁</span></div>
+      <div id="lgErr" class="lgerr"></div>
+      <div id="capBox" class="lgcap hidden">
+        <div class="t">${t('lg_cap')}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <img id="capImg" alt="captcha" style="border-radius:8px;border:1px solid var(--bd);flex:1;max-width:200px">
+          <button class="btn sm" onclick="loadCaptcha()">↻</button></div>
+        <div class="lgfield" style="margin-top:10px"><span>🔤</span>
+          <input id="cap_in" autocomplete="off" placeholder="${t('lg_cap_ph')}" style="letter-spacing:5px;font-weight:700"
+            onkeydown="if(event.key==='Enter')doLogin()"></div>
+        <div id="capMsg" class="muted" style="margin-top:5px;color:var(--red);font-size:11.5px"></div>
+      </div>
+      <label class="lgrm"><input type="checkbox" id="rm" ${savedUser?'checked':''}> ${t('lg_rm')}</label>
+      <button class="lgbtn" onclick="doLogin()">${t('lg_btn')}</button>
+    </div>
+    <div class="lgfoot" id="lgVer">${t('lg_foot')}</div>
+  </div>`;
+  fetch('/api/health').then(r=>r.json()).then(h=>{
+    if(h.version)$('#lgVer').textContent='v'+h.version+' · '+t('lg_foot');
+  }).catch(()=>{});
+}
+let FACSEL=+(localStorage.getItem('bflfp_factory')||2);
+function pickFac(id){FACSEL=id;
+  document.querySelectorAll('.lgfac').forEach((el,i)=>el.classList.toggle('on',i+1===id));}
+function togglePw(){const p=$('#p');p.type=p.type==='password'?'text':'password'}
+function lgError(msg){const e=$('#lgErr');if(e){e.textContent=msg;e.style.display='block'}}
+async function loadCaptcha(){
+  const c=await (await fetch('/api/captcha')).json();
+  window._capTok=c.token;
+  const b=$('#capBox');if(b){b.classList.remove('hidden');$('#capImg').src=c.image;$('#cap_in').value='';}
+}
+async function doLogin(){
+  const remember=$('#rm')?$('#rm').checked:false;
+  const body={username:$('#u').value.trim(),password:$('#p').value,remember,factory_id:FACSEL};
+  if(window._capTok&&$('#cap_in')){body.captcha_token=window._capTok;body.captcha_answer=$('#cap_in').value;window._capTok=null;}
+  const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(r.ok){
+    ME=await r.json();
+    if(remember)localStorage.setItem('bflfp_user',body.username);
+    else localStorage.removeItem('bflfp_user');
+    localStorage.setItem('bflfp_factory',String(FACSEL));
+    afterLogin();return;
+  }
+  let d={};try{d=(await r.json()).detail||{}}catch(e){}
+  if(r.status===429){lgError(typeof d==='string'?d:(d.msg||'พยายามหลายครั้งเกินไป กรุณารอสักครู่'));return;}
+  if(d&&d.captcha_required){await loadCaptcha();$('#capMsg').textContent=d.msg||'';lgError(d.msg||'กรุณากรอกรหัสจากภาพ');return;}
+  lgError(typeof d==='string'?d:(d.msg||'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'));
+}
+async function logout(){await post('/api/logout',{});ME=null;renderLogin()}
+
+async function afterLogin(){
+  document.body.classList.remove('lgbg');
+  document.querySelector('header').classList.remove('hidden');
+  BOOT=await api('/api/bootstrap');
+  PDATE=BOOT.today;
+  $('#who').innerHTML=`${esc(ME.name)}<br><span style="color:#7FB3DC">${ME.role}${ME.factory_code?' · '+ME.factory_code:''}</span>`;
+  if(ME.factory_name)$('#hsub').textContent='BLUEFALO GROUP · '+ME.factory_name.toUpperCase();
+  $('#logoutBtn').classList.remove('hidden');
+  $('#helpBtn').classList.remove('hidden');
+  $('#chatBtn').classList.remove('hidden');
+  setupPush();
+  buildNav();navGo(0);
+}
+/* ---------------- BOTTOM NAVIGATION ---------------- */
+let NAV=[],NAVI=0;
+function buildNav(){
+  const M={
+    operator:[['📢',t('nv_report'),renderOpReport],['📋',t('nv_mine'),renderOpMine],['📊',t('nv_out'),renderShiftlog],['💬',t('nv_chat'),()=>renderChat()],['⋯',t('nv_more'),renderMore]],
+    technician:[['🔧',t('nv_jobs'),renderTech],['💬',t('nv_chat'),()=>renderChat()],['⋯',t('nv_more'),renderMore]],
+    planner:[['🗓',t('nv_plan'),renderPlanner],['📈',t('nv_dash'),renderDash],['💬',t('nv_chat'),()=>renderChat()],['⋯',t('nv_more'),renderMore]],
+    manager:[['📈',t('nv_dash'),renderDash],['🏭',t('nv_mach'),renderMachines],['💬',t('nv_chat'),()=>renderChat()],['⋯',t('nv_more'),renderMore]],
+    admin:[['⚙️',t('nv_adm'),renderAdmin],['📈',t('nv_dash'),renderDash],['💬',t('nv_chat'),()=>renderChat()],['⋯',t('nv_more'),renderMore]]};
+  NAV=M[ME.role]||[];
+  $('#bnav').innerHTML=NAV.map((n,i)=>`<button id="bn${i}" onclick="navGo(${i})"><span class="ic">${n[0]}</span>${n[1]}</button>`).join('');
+  $('#bnav').classList.remove('hidden');
+}
+function navGo(i){
+  NAVI=i;try{stopPoll()}catch(e){}
+  NAV.forEach((_,j)=>{const b=$('#bn'+j);if(b)b.classList.toggle('on',j===i)});
+  NAV[i][2]();
+}
+function renderMore(){
+  $('#app').innerHTML=`<div style="max-width:520px;margin:0 auto">
+    <div class="card"><h2 style="font-size:16px">👤 ${esc(ME.name)}</h2>
+      <p class="muted">${ME.role} · ${esc(ME.factory_name||'')} ${ME.factory_code?'('+ME.factory_code+')':''}</p></div>
+    <div class="card">
+      <div class="jobline" style="cursor:pointer" onclick="showHelp()"><div class="grow"><div class="d">${t('mr_help')}</div></div><span class="muted">›</span></div>
+      <div class="jobline" style="cursor:pointer" onclick="toggleLang()"><div class="grow"><div class="d">${t('mr_lang')}: <b>${LANG==='TH'?'ไทย':'English'}</b></div></div><span class="muted">›</span></div>
+      <div class="jobline" style="cursor:pointer" onclick="logout()"><div class="grow"><div class="d" style="color:var(--red)">${t('mr_out')}</div></div><span class="muted">›</span></div>
+    </div>
+    <p class="muted" style="text-align:center;font-size:11px" id="moreVer">BFLFP CMMS · Bluefalo Group</p></div>`;
+  fetch('/api/health').then(r=>r.json()).then(h=>{
+    const e=$('#moreVer');if(e&&h.version)e.textContent='BFLFP CMMS v'+h.version+' · Bluefalo Group · self-hosted';}).catch(()=>{});
+}
+function urlB64(s){const p='='.repeat((4-s.length%4)%4);const r=atob((s+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from([...r].map(c=>c.charCodeAt(0)))}
+async function setupPush(){
+  try{
+    if(!('serviceWorker' in navigator)||!('PushManager' in window))return;
+    if(!(location.protocol==='https:'||location.hostname==='localhost'))return;
+    const {enabled,key}=await api('/api/push/key');
+    if(!enabled||!key)return;
+    const reg=await navigator.serviceWorker.ready;
+    if(Notification.permission==='denied')return;
+    if(Notification.permission!=='granted'&&await Notification.requestPermission()!=='granted')return;
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64(key)});
+    await post('/api/push/subscribe',{subscription:sub.toJSON()});
+  }catch(e){console.warn('push setup:',e)}
+}
+
+/* ---------------- OPERATOR (3 tabs) ---------------- */
+async function renderOpReport(){
+  $('#app').innerHTML=`
+  <div class="card">
+    <h2 style="font-size:16px;margin-bottom:6px">${t('op_t')}</h2>
+    <label>${t('mach')}</label>
+    <select id="m">${BOOT.machines.map(m=>`<option value="${m.id}">${m.code} — ${esc(m.name)}</option>`).join('')}</select>
+    <label>${t('op_desc')}</label>
+    <textarea id="d" rows="3" placeholder="${t('op_ph')}"></textarea>
+    <label>${t('prio')}</label>
+    <select id="pr"><option value="1">${t('p1')}</option><option value="2">${t('p2')}</option><option value="3">${t('p3')}</option></select>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;color:var(--navy)">
+      <input type="checkbox" id="na" style="width:auto"> ${t('op_na')}</label>
+    <button class="btn primary" style="margin-top:12px;width:100%" onclick="opSubmit()">${t('op_send')}</button>
+    <p class="muted" style="margin-top:8px;font-size:12px">${t('op_track')}</p>
+  </div>`;
+}
+async function renderShiftlog(){
+  const slogs=await api('/api/shiftlogs');
+  window._slogs=slogs;
+  $('#app').innerHTML=`
+  <div class="card"><h2 style="font-size:16px;margin-bottom:6px">${t('sl_t')}</h2>
+    <p class="muted" style="margin-bottom:6px">${t('sl_h')}</p>
+    <div class="row">
+      <div><label>${t('mach')}</label><select id="sl_m">${BOOT.machines.map(m=>`<option value="${m.id}">${m.code}</option>`).join('')}</select></div>
+      <div><label>${t('sl_shift')}</label><select id="sl_s">
+        <option value="เช้า">${t('sh_m')}</option><option value="บ่าย">${t('sh_a')}</option><option value="ดึก">${t('sh_n')}</option></select></div>
+    </div>
+    <div class="row">
+      <div><label>${t('sl_plan')}</label><input id="sl_p" type="number" value="480"></div>
+      <div><label>${t('sl_out')}</label><input id="sl_o" type="number" value="0"></div>
+      <div><label>${t('sl_good')}</label><input id="sl_g" type="number" value="0"></div>
+    </div>
+    <button class="btn primary" style="margin-top:10px" onclick="saveShiftlog()">${t('save')}</button>
+    ${(window._slogs||[]).length?`<div style="margin-top:10px">${window._slogs.map(s=>`
+      <div class="jobline"><div class="grow"><div class="d">${s.mcode} · ${t('w_shift')}${s.shift}</div>
+      <div class="muted">${t('w_plan')} ${s.planned_min} ${t('w_min')} · ${t('w_out')} ${s.output} · ${t('w_good')} ${s.good} · ${t('w_rej')} ${s.reject}</div></div></div>`).join('')}</div>`:''}
+  </div>`;
+}
+async function renderOpMine(){
+  const {jobs}=await api('/api/jobs?view=mine');
+  $('#app').innerHTML=`
+  <div class="card"><h2 style="font-size:16px;margin-bottom:6px">${t('mine_t')}</h2>
+    ${jobs.map(j=>`<div class="jobline"><div class="grow" style="cursor:pointer" onclick="renderDetail(${j.id})">
+      <div class="d">${j.jobid} · ${j.mcode||''}</div>
+      <div class="muted">${esc(j.descr)}</div></div>
+      <span class="tag s-${j.status}">${sT(j.status)}</span></div>`).join('')||`<p class="muted">${t('mine_e')}</p>`}
+  </div>`;
+}
+async function saveShiftlog(){
+  await post('/api/shiftlogs',{machine_id:+$('#sl_m').value,shift:$('#sl_s').value,
+    planned_min:+$('#sl_p').value,output:+$('#sl_o').value,good:+$('#sl_g').value});
+  renderShiftlog();
+}
+async function opSubmit(){
+  const pr=+$('#pr').value;
+  await post('/api/jobs',{jobtype:pr===3?'BD':'CM',machine_id:+$('#m').value,descr:$('#d').value,
+    priority:pr,need_approval:$('#na').checked});
+  navGo(1);
+}
+
+/* ---------------- PLANNER (Power Apps style gallery) ---------------- */
+function prioPill(p){return `<span class="pill ${p===3?'hi':p===2?'md':'lo'}">${t(p===3?'hi':p===2?'md':'lo')}</span>`}
+function fdate(s){if(!s)return '—';const d=new Date(s+'T00:00');return d.toLocaleDateString(LANG==='TH'?'th-TH':'en-US',{month:'long',day:'numeric',year:'numeric'})}
+function pcard(j){
+  const who=[j.lead_name,j.helper_names].filter(Boolean).join(', ');
+  const btns=
+    j.status==='ServiceCompleted'
+      ?`<button class="btn sm primary" onclick="approve(${j.id},'Done')">✓ ${t('approve')}</button>
+        <button class="btn sm" onclick="approve(${j.id},'Rework')">↩ ${t('rework')}</button>`
+      :['Reported','WaitingApproval','WaitingAssignment','Assigned','Hold','Released','Paused'].includes(j.status)
+      ?`<button class="btn sm primary" onclick="assignDlg(${j.id})">${t('plan')} ›</button>`:'';
+  return `<div class="pcard">
+    <div class="top"><div class="grow" style="cursor:pointer" onclick="renderDetail(${j.id})">
+      <div class="ttl">${j.mcode||''} ${esc((j.mname||'').split('(')[0])} ›</div>
+      <div class="muted">${esc(j.descr)}</div></div>
+      <div><span class="tag s-${j.status}">${sT(j.status)}</span>
+      <div class="prd">${j.jobid}</div></div></div>
+    <div class="info">
+      <span>📅 <b>${t('planned_date')}</b><br>${fdate(j.planned_date)}</span>
+      <span>👥 <b>${t('assigned_to')}</b><br>${esc(who)||'—'}</span>
+      <span>⏰ <b>${t('due_date')}</b><br>${fdate(j.due_date)}</span>
+      <span style="align-self:end">${prioPill(j.priority)} <span class="pill src">${j.jobsource||''}</span></span>
+    </div>
+    <div style="text-align:right">${btns}</div></div>`;
+}
+async function renderPlanner(){
+  const viewMap={Recent:'recent',OverDue:'overdue',DueToday:'duetoday',Assigned:'assigned',History:'history'};
+  const {jobs}=await api(`/api/jobs?view=${viewMap[PTAB]}&d=${PDATE}&q_text=${encodeURIComponent(PQ)}`);
+  $('#app').innerHTML=`
+  <div class="card" style="padding:10px 12px">
+    <input placeholder="🔍 ${t('search')}" value="${esc(PQ)}" style="border:none;background:var(--bg)"
+      onchange="PQ=this.value;renderPlanner()">
+    <div class="tabs" style="margin:10px 0 0">
+      ${Object.keys(viewMap).map(k=>`<button class="btn sm ${PTAB===k?'on':''}" onclick="PTAB='${k}';renderPlanner()">${t('tab_'+k)}</button>`).join('')}
+      <button class="btn sm" onclick="plannerNew()">${t('create_job')}</button>
+      <button class="btn sm dark" onclick="renderDash()">${t('dashboard')}</button>
+    </div>
+    ${PTAB==='History'?`<input type="date" value="${PDATE}" style="margin-top:8px" onchange="PDATE=this.value;renderPlanner()">`:''}
+  </div>
+  ${jobs.map(pcard).join('')||`<p class="muted" style="text-align:center;padding:20px">${t('no_items')}</p>`}`;
+  window._pool=jobs;
+}
+async function approve(id,status){await patch('/api/jobs/'+id,{status});renderPlanner()}
+function assignDlg(id){
+  const j=window._pool.find(x=>x.id===id);
+  $('#dlg').innerHTML=`<h3 style="margin-bottom:8px">${j.jobid} · ${j.mcode||''}</h3>
+  <p class="muted" style="margin-bottom:8px">${esc(j.descr)}</p>
+  <label>${t('planned_date')}</label><input type="date" id="a_d" value="${j.planned_date||BOOT.today}">
+  <div class="row"><div><label>${t('as_start')}</label><input type="time" id="a_s" value="${j.planned_start||'08:00'}"></div>
+  <div><label>${t('as_end')}</label><input type="time" id="a_e" value="${j.planned_end||'10:00'}"></div></div>
+  <label>${t('due_date')}</label><input type="date" id="a_dd" value="${j.due_date||BOOT.today}">
+  <label>${t('as_lead')}</label>
+  <select id="a_t">${BOOT.techs.map(t=>`<option value="${t.id}" ${j.lead_tech===t.id?'selected':''}>${esc(t.name)}</option>`).join('')}</select>
+  <label>${t('as_help')}</label>
+  <select id="a_h" multiple size="2">${BOOT.techs.map(t=>`<option value="${t.id}" ${(','+j.helpers+',').includes(','+t.id+',')?'selected':''}>${esc(t.name)}</option>`).join('')}</select>
+  <div class="row" style="margin-top:14px">
+    <button class="btn" onclick="saveAssign(${id},'Assigned')">${t('as_draft')}</button>
+    <button class="btn primary" onclick="saveAssign(${id},'Released')">${t('as_rel')}</button>
+  </div>
+  <button class="btn ghost sm" style="margin-top:8px" onclick="dlg.close()">${t('close')}</button>`;
+  dlg.showModal();
+}
+async function saveAssign(id,status){
+  const helpers=[...$('#a_h').selectedOptions].map(o=>o.value).join(',');
+  await patch('/api/jobs/'+id,{planned_date:$('#a_d').value,planned_start:$('#a_s').value,
+    planned_end:$('#a_e').value,due_date:$('#a_dd').value,lead_tech:+$('#a_t').value,helpers,status});
+  dlg.close();renderPlanner();
+}
+function plannerNew(){
+  $('#dlg').innerHTML=`<h3 style="margin-bottom:8px">${t('nw_t')}</h3>
+  <label>${t('type')}</label><select id="n_t"><option value="PM">PM</option><option value="CM">${t('nw_cm')}</option><option value="IMP">Improvement</option></select>
+  <label>${t('mach')}</label><select id="n_m">${BOOT.machines.map(m=>`<option value="${m.id}">${m.code} — ${esc(m.name)}</option>`).join('')}</select>
+  <label>${t('ac_sum')}</label><textarea id="n_d" rows="2"></textarea>
+  <label>${t('prio')}</label><select id="n_p"><option value="1">${t('p1')}</option><option value="2">${t('p2')}</option><option value="3">${t('hi')}</option></select>
+  <div class="row" style="margin-top:14px"><button class="btn primary" onclick="createJob()">${t('nw_make')}</button>
+  <button class="btn ghost" onclick="dlg.close()">${t('cancel')}</button></div>`;
+  dlg.showModal();
+}
+async function createJob(){
+  await post('/api/jobs',{jobtype:$('#n_t').value,machine_id:+$('#n_m').value,descr:$('#n_d').value,priority:+$('#n_p').value});
+  dlg.close();renderPlanner();
+}
+
+/* ---------------- TECHNICIAN ---------------- */
+async function renderTech(){
+  const {jobs,open_segment}=await api('/api/jobs?view=myday');
+  clearInterval(TIMER);
+  let banner='';
+  if(open_segment){
+    const j=jobs.find(x=>x.id===open_segment.job_id);
+    banner=`<div class="banner"><div>⏱ ${t('tc_doing')}: <b>${j?j.jobid:esc(open_segment.seg_type+' '+(open_segment.activity||''))}</b><br>
+      <span class="muted" style="color:#CBD5E1">${t('tc_since')} ${open_segment.start.slice(11,16)}</span></div>
+      <div class="t" id="tick"></div></div>`;
+  }
+  $('#app').innerHTML=banner+`
+  <div class="tabs">
+    <button class="btn ${open_segment?'':'on'}" onclick="routineDlg()">${t('tc_routine')}</button>
+    ${open_segment?`<button class="btn danger" onclick="pauseDlg()">${t('tc_pause')}</button>
+    ${open_segment.job_id?`<button class="btn primary" onclick="finishDlg()">${t('tc_fin')}</button>`:`<button class="btn primary" onclick="post('/api/segments/stop',{action:'pause',reason:'จบกิจกรรม'}).then(renderTech)">${t('tc_stopact')}</button>`}`:''}
+  </div>
+  <div class="card"><h2 style="font-size:16px;margin-bottom:6px">${t('tc_my')} (${jobs.length})</h2>
+    ${jobs.map(j=>`<div class="jobline"><div class="grow" onclick="renderDetail(${j.id})" style="cursor:pointer">
+      <div class="d"><span class="p${j.priority}">${'!'.repeat(j.priority>1?j.priority-1:0)}</span> ${j.planned_start||''}–${j.planned_end||''} · ${j.jobid} · ${j.mcode||''} ›</div>
+      <div class="muted">${esc(j.descr)}</div>
+      <div class="muted">progress ${j.progress}% ${j.pending_reason?'· ⚠ '+esc(j.pending_reason):''}</div></div>
+      <div style="text-align:right">
+        <span class="tag s-${j.status}">${sT(j.status)}</span><br>
+        ${['Released','Paused','InProgress','Rework'].includes(j.status)&&(!open_segment||open_segment.job_id!==j.id)?
+          `<button class="btn sm primary" style="margin-top:6px" onclick="startJob(${j.id})">▶ ${j.status==='Paused'?t('tc_cont'):t('tc_start')}</button>`:''}
+      </div></div>`).join('')||`<p class="muted">${t('tc_none')}</p>`}
+  </div>`;
+  if(open_segment){
+    const t0=new Date(open_segment.start.replace(' ','T'));
+    const tick=()=>{const s=Math.floor((Date.now()-t0)/1000);
+      $('#tick').textContent=`${String(Math.floor(s/3600)).padStart(2,'0')}:${String(Math.floor(s%3600/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`};
+    tick();TIMER=setInterval(tick,1000);
+  }
+}
+async function startJob(id){await post('/api/segments/start',{job_id:id,seg_type:'work'});renderTech()}
+function pauseDlg(){
+  $('#dlg').innerHTML=`<h3 style="margin-bottom:8px">${t('pz_t')}</h3>
+  <label>${t('reason')}</label><select id="pz_r">
+    ${['pr1','pr2','pr3','pr4','pr5'].map(k=>`<option>${t(k)}</option>`).join('')}</select>
+  <label>${t('progress')}</label><select id="pz_p">${[0,10,25,50,75,90].map(p=>`<option>${p}</option>`).join('')}</select>
+  <div class="row" style="margin-top:14px"><button class="btn primary" onclick="doPause()">${t('save')}</button>
+  <button class="btn ghost" onclick="dlg.close()">${t('cancel')}</button></div>`;
+  dlg.showModal();
+}
+async function doPause(){await post('/api/segments/stop',{action:'pause',reason:$('#pz_r').value,progress:+$('#pz_p').value});dlg.close();renderTech()}
+const FAULT_CATS=['','เครื่องกล (Mechanical)','ไฟฟ้า (Electrical)','เซนเซอร์/เครื่องมือวัด (Instrument)','กระบวนการ (Process)','การใช้งานผิด (Operator)','ภายนอก (External)','ตรวจไม่พบปัญหา (No fault found)'];
+const FAULT_COMPS=['','Bearing ลูกปืน','Seal/ปะเก็น','สายพาน/โซ่','มอเตอร์','ปั๊ม','วาล์ว','เซนเซอร์','ฮีตเตอร์','นิวเมติกส์','PLC/คอนโทรล','สายไฟ/ขั้วต่อ','หล่อลื่น','อื่นๆ'];
+const MAINT_ACTS=['','ปรับตั้ง (Adjust)','สอบเทียบ (Calibrate)','หล่อลื่น (Lubricate)','ทำความสะอาด (Clean)','เปลี่ยนอะไหล่ (Replace)','ซ่อม (Repair)',' overhaul (Rebuild)','ตรวจสอบ (Inspect)','ดัดแปลง (Modify)'];
+function finishDlg(){
+  const sel=(id,opts,lbl)=>`<label>${lbl}</label><select id="${id}">${opts.map(o=>`<option>${o}</option>`).join('')}</select>`;
+  $('#dlg').innerHTML=`<h3 style="margin-bottom:8px">${t('fin_t')}</h3>
+  <label>${t('f_p')}</label><input id="f_p">
+  <label>${t('f_r')}</label><input id="f_r">
+  <label>${t('f_s')}</label><input id="f_s">
+  <div class="row">
+    <div>${sel('f_fc',FAULT_CATS,t('f_fc'))}</div>
+    <div>${sel('f_fp',FAULT_COMPS,t('f_fp'))}</div>
+  </div>
+  ${sel('f_fa',MAINT_ACTS,t('f_fa'))}
+  <div class="row" style="margin-top:14px"><button class="btn primary" onclick="doFinish()">${t('fin_send')}</button>
+  <button class="btn ghost" onclick="dlg.close()">${t('cancel')}</button></div>`;
+  dlg.showModal();
+}
+async function doFinish(){await post('/api/segments/stop',{action:'finish',problem:$('#f_p').value,root_cause:$('#f_r').value,solution:$('#f_s').value,fault_category:$('#f_fc').value,fault_component:$('#f_fp').value,maint_action:$('#f_fa').value});dlg.close();renderTech()}
+function routineDlg(){
+  $('#dlg').innerHTML=`<h3 style="margin-bottom:8px">${t('rt_t')}</h3>
+  <label>${t('type')}</label><select id="r_t">
+    <option value="routine">${t('ro1')}</option><option value="routine">Lubrication</option>
+    <option value="routine">${t('ro3')}</option><option value="standby">Standby</option>
+    <option value="waiting">${t('ro5')}</option><option value="meeting">${t('ro6')}</option></select>
+  <div class="row" style="margin-top:14px"><button class="btn primary" onclick="doRoutine()">${t('rt_go')}</button>
+  <button class="btn ghost" onclick="dlg.close()">${t('cancel')}</button></div>`;
+  dlg.showModal();
+}
+async function doRoutine(){
+  const o=$('#r_t');await post('/api/segments/start',{seg_type:o.value,activity:o.selectedOptions[0].text});
+  dlg.close();renderTech();
+}
+
+/* ---------------- JOB DETAIL ---------------- */
+let _jmode='message';
+async function renderDetail(id){
+  stopPoll();
+  const [{job:j,segments},jchat,jact]=await Promise.all([
+    api(`/api/jobs/${id}/detail`), api(`/api/chat/messages?job_id=${id}`),
+    api(`/api/chat/activities?job_id=${id}`)]);
+  const photo=(kind,path)=>`
+    <div style="flex:1;min-width:140px;text-align:center">
+      <div class="muted" style="margin-bottom:4px">${kind==='before'?t('before'):t('after')}</div>
+      ${path?`<img src="${path}" style="width:100%;max-height:160px;object-fit:cover;border-radius:8px;border:1px solid var(--bd)">`:'<div style="height:80px;background:var(--bg);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--gray)">—</div>'}
+      <label class="btn sm" style="margin-top:6px;display:inline-block">${t('dt_take')}
+        <input type="file" accept="image/*" capture="environment" style="display:none" onchange="uploadPhoto(${id},'${kind}',this)"></label>
+    </div>`;
+  const sig=(kind,path,label)=>`
+    <div style="flex:1;min-width:200px">
+      <div class="muted">${label}</div>
+      ${path?`<img src="${path}" style="height:60px;border:1px dashed var(--bd);border-radius:8px;background:#fff">`
+        :`<canvas id="sig_${kind}" width="300" height="90" style="width:100%;height:90px;border:1px dashed var(--bd);border-radius:8px;background:#fff;touch-action:none"></canvas>
+      <div style="margin-top:4px"><button class="btn sm" onclick="clearSig('${kind}')">${t('sig_clear')}</button>
+      <button class="btn sm primary" onclick="saveSig(${id},'${kind}')">${t('sig_save')}</button></div>`}
+    </div>`;
+  const canApprove=(ME.role==='planner'||ME.role==='manager')&&j.status==='ServiceCompleted';
+  $('#app').innerHTML=`
+  <div class="tabs"><button class="btn" onclick="${ME.role==='technician'?'renderTech()':ME.role==='operator'?'renderOpMine()':'renderPlanner()'}">${t('back')}</button>
+    <a class="btn dark" href="/api/jobs/${id}/pdf" target="_blank">${t('dt_pdf')}</a>
+    ${canApprove?`<button class="btn primary" onclick="approveDlg(${id})">${t('dt_insp')}</button>`:''}
+    ${j.status==='Rejected'&&!j.new_issue_id?`<button class="btn danger" onclick="reissue(${id})">${t('dt_reissue')}</button>`:''}</div>
+  <div class="d2col"><div class="d2main">
+  <div class="pcard">
+    <div class="top"><div class="grow">
+      <div class="ttl">${j.jobid} · ${j.mcode||''}</div>
+      <div class="muted">${esc(j.mname||'')}</div></div>
+      <span class="tag s-${j.status}">${sT(j.status)}</span></div>
+    <div class="info">
+      <span>📅 <b>${t('planned_date')}</b><br>${fdate(j.planned_date)} ${j.planned_start||''}-${j.planned_end||''}</span>
+      <span>⏰ <b>${t('due_date')}</b><br>${fdate(j.due_date)}</span>
+      <span>👥 <b>${t('assigned_to')}</b><br>${esc([j.lead_name,j.helper_names].filter(Boolean).join(', ')||'—')}</span>
+      <span>🙋 <b>${t('dt_rep')}</b><br>${esc(j.creator_name||'')} · ${j.jobsource||''}</span></div>
+    <p style="font-size:14px;margin:4px 0">${esc(j.descr)}</p>
+    ${j.new_issue_id?`<p class="muted">${t('dt_newissue')}: <b>${j.new_issue_id}</b></p>`:''}</div>
+  <div class="card"><h2 style="font-size:15px;margin-bottom:6px">${t('dt_techrep')}</h2>
+    <div class="info" style="display:block">
+      <p style="font-size:13px"><b>Problem:</b> ${esc(j.problem)||'—'}</p>
+      <p style="font-size:13px"><b>Root cause:</b> ${esc(j.root_cause)||'—'}</p>
+      <p style="font-size:13px"><b>Solution:</b> ${esc(j.solution)||'—'}</p>
+      ${j.fault_category||j.fault_component?`<p style="font-size:12px;margin-top:4px">
+        ${j.fault_category?`<span class="pill src">${esc(j.fault_category)}</span>`:''}
+        ${j.fault_component?`<span class="pill src">${esc(j.fault_component)}</span>`:''}
+        ${j.maint_action?`<span class="pill src">${esc(j.maint_action)}</span>`:''}</p>`:''}</div></div>
+  <div class="card"><h2 style="font-size:15px;margin-bottom:6px">${t('dt_photos')}</h2>
+    <div class="row">${photo('before',j.img_before)}${photo('after',j.img_after)}</div></div>
+  <div class="card"><h2 style="font-size:15px;margin-bottom:6px">${t('dt_sigs')}</h2>
+    <div class="row">${sig('sign_requester',j.sign_requester,t('sig_req'))}${sig('sign_inspector',j.sign_inspector,t('sig_ins'))}</div></div>
+  <div class="card"><h2 style="font-size:15px;margin-bottom:6px">Time log</h2>
+    ${segments.map(s=>`<div class="jobline"><div class="grow">
+      <div class="d">${s.start.slice(11,16)} – ${(s.end||t('doing')).slice(11,16)} · ${esc(s.tech_name)}</div>
+      <div class="muted">${s.seg_type}${s.pause_reason?' · '+t('stop_r')+': '+esc(s.pause_reason):''}</div></div></div>`).join('')||`<p class="muted">${t('none')}</p>`}
+  </div>
+  </div>
+  <div class="d2side"><div class="card">
+    <div class="tabs" style="margin-bottom:8px">
+      <button class="btn sm ${(_jmode!=='note')?'on':''}" onclick="_jmode='message';renderDetail(${id})">${t('ch_msg')}</button>
+      <button class="btn sm ${_jmode==='note'?'on':''}" onclick="_jmode='note';renderDetail(${id})">${t('ch_note')}</button>
+      <button class="btn sm" onclick="activityDlg(${id})">${t('ch_act')}</button>
+    </div>
+    ${jact.length?`<div style="background:var(--bg);border-radius:10px;padding:6px 10px;margin-bottom:8px">
+      ${jact.map(a=>`<div style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:12px">
+        <span>📌</span><div class="grow"><b>${esc(a.act_type)}</b>: ${esc(a.summary)}
+        <span class="muted">· ${esc(a.assignee_name||'')} · <span style="color:${a.due_date&&a.due_date<BOOT.today?'var(--red)':'inherit'}">${a.due_date||'—'}</span></span></div>
+        <button class="btn sm" onclick="doneActivity(${a.id},${id})">✓</button></div>`).join('')}
+    </div>`:''}
+    <div class="chatscroll" id="jchatbox">${jchat.messages.map(m=>msgHtml(m,false,0)).join('')||`<p class="muted">${t('ch_empty')}</p>`}</div>
+    <div class="row" style="margin-top:8px;align-items:center">
+      <input id="jmtxt" placeholder="${_jmode==='note'?t('ch_note_ph'):t('ch_msg_ph')}" style="flex:3;${_jmode==='note'?'background:#FEF9C3;':''}"
+        onkeydown="if(event.key==='Enter')sendJobMsg(${id})">
+      <label class="btn sm">📷<input type="file" accept="image/*" style="display:none" onchange="window._jmimg=this.files[0]"></label>
+      <button class="btn primary sm" onclick="sendJobMsg(${id})">${_jmode==='note'?t('save'):t('send')}</button></div>
+  </div></div></div>`;
+  const jb=$('#jchatbox');if(jb)jb.scrollTop=jb.scrollHeight;
+  ['sign_requester','sign_inspector'].forEach(k=>{const cv=$('#sig_'+k);if(cv)initSig(cv)});
+}
+function initSig(cv){
+  const ctx=cv.getContext('2d');ctx.lineWidth=2;ctx.lineCap='round';ctx.strokeStyle='#1E293B';
+  let draw=false;
+  const pos=e=>{const r=cv.getBoundingClientRect();const p=e.touches?e.touches[0]:e;
+    return[(p.clientX-r.left)*cv.width/r.width,(p.clientY-r.top)*cv.height/r.height]};
+  const dn=e=>{draw=true;const[x,y]=pos(e);ctx.beginPath();ctx.moveTo(x,y);e.preventDefault()};
+  const mv=e=>{if(!draw)return;const[x,y]=pos(e);ctx.lineTo(x,y);ctx.stroke();e.preventDefault()};
+  cv.addEventListener('pointerdown',dn);cv.addEventListener('pointermove',mv);
+  addEventListener('pointerup',()=>draw=false);
+  cv._used=()=>cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data.some(v=>v>0&&v<255);
+}
+function clearSig(k){const cv=$('#sig_'+k);cv.getContext('2d').clearRect(0,0,cv.width,cv.height)}
+async function saveSig(id,k){
+  const cv=$('#sig_'+k);
+  await post(`/api/jobs/${id}/media`,{kind:k,data:cv.toDataURL('image/png')});
+  renderDetail(id);
+}
+async function uploadPhoto(id,kind,inp){
+  const f=inp.files[0];if(!f)return;
+  const img=new Image();img.src=URL.createObjectURL(f);
+  await img.decode();
+  const max=1024,sc=Math.min(1,max/Math.max(img.width,img.height));
+  const cv=document.createElement('canvas');cv.width=img.width*sc;cv.height=img.height*sc;
+  cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+  await post(`/api/jobs/${id}/media`,{kind,data:cv.toDataURL('image/jpeg',0.85)});
+  renderDetail(id);
+}
+function approveDlg(id){
+  $('#dlg').innerHTML=`<h3 style="margin-bottom:8px">${t('dt_insp')}</h3>
+  <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="q1" style="width:auto" checked> ${t('ap_q1')}</label>
+  <label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-top:8px"><input type="checkbox" id="q2" style="width:auto" checked> ${t('ap_q2')}</label>
+  <div class="row" style="margin-top:14px">
+    <button class="btn primary" onclick="doApprove(${id})">${t('ap_ok')}</button>
+    <button class="btn" onclick="patch('/api/jobs/${id}',{status:'Rework'}).then(()=>{dlg.close();renderDetail(${id})})">↩ Rework</button>
+    <button class="btn danger" onclick="patch('/api/jobs/${id}',{status:'Rejected',cleared_worksite:0}).then(()=>{dlg.close();renderDetail(${id})})">${t('ap_fail')}</button>
+    <button class="btn ghost" onclick="dlg.close()">${t('close')}</button></div>`;
+  dlg.showModal();
+}
+async function doApprove(id){
+  const ok=$('#q1').checked&&$('#q2').checked;
+  await patch('/api/jobs/'+id,ok?{status:'Done',cleared_worksite:1}:{status:'Rework',cleared_worksite:0});
+  dlg.close();renderDetail(id);
+}
+async function reissue(id){
+  const r=await post(`/api/jobs/${id}/reissue`,{});
+  alert(t('new_wo')+r.new_jobid);renderDetail(id);
+}
+
+/* ---------------- CHAT ---------------- */
+let CHATPOLL=null;
+function goHome(){navGo(0)}
+function stopPoll(){if(CHATPOLL){clearInterval(CHATPOLL);CHATPOLL=null}}
+function msgHtml(m,showThread,cid){
+  const txt=esc(m.text).replace(/@([A-Za-z0-9_]+)/g,'<span style="color:var(--or);font-weight:500">@$1</span>');
+  if(m.kind==='system')return `<div style="padding:5px 0;text-align:center">
+    <span class="muted" style="font-size:12px;font-style:italic">${txt} · ${(m.created_at||'').slice(5,16)}</span></div>`;
+  const noteStyle=m.kind==='note'?'background:#FEF9C3;border-radius:10px;padding:8px 12px;margin:4px 0;':'padding:8px 0;border-top:1px solid var(--bd);';
+  return `<div style="${noteStyle}">
+    <div style="font-size:13px"><b>${esc(m.author_name)}</b>
+      ${m.kind==='note'?`<span class="muted" style="margin-left:4px">${t('ch_note_i')}</span>`:''}
+      <span class="muted" style="margin-left:6px">${(m.created_at||'').slice(5,16)}</span></div>
+    <div style="font-size:14px;margin-top:2px">${txt}</div>
+    ${m.img?`<img src="${m.img}" style="max-width:220px;border-radius:8px;margin-top:6px;border:1px solid var(--bd)">`:''}
+    ${m.job_id?`<button class="btn sm" style="margin-top:6px" onclick="stopPoll();renderDetail(${m.job_id})">${t('open_job')}</button>`:''}
+    ${showThread?`<button class="btn sm ghost" style="margin-top:6px" onclick="renderThread(${cid},${m.id})">💬 ${m.replies||0} ${t('th_reply')}</button>`:''}
+  </div>`;
+}
+async function renderChat(){
+  stopPoll();
+  const [chs,myact]=await Promise.all([api('/api/chat/channels'),api('/api/chat/activities?mine=1')]);
+  $('#app').innerHTML=`
+  <div class="tabs"><button class="btn" onclick="stopPoll();goHome()">${t('back')}</button></div>
+  ${myact.length?`<div class="card"><h2 style="font-size:15px">${t('my_act')} (${myact.length})</h2>
+    ${myact.map(a=>`<div class="jobline"><div class="grow">
+      <div class="d">${esc(a.act_type)}: ${esc(a.summary)}</div>
+      <div class="muted">${a.jobid?a.jobid+' · ':''}${t('act_by')} <span style="color:${a.due_date&&a.due_date<BOOT.today?'var(--red)':'inherit'}">${a.due_date||'—'}</span> · ${t('act_from')} ${esc(a.creator_name||'')}</div></div>
+      ${a.job_id?`<button class="btn sm" onclick="stopPoll();renderDetail(${a.job_id})">${t('open_j')}</button>`:''}
+      <button class="btn sm primary" onclick="doneActivity(${a.id},0)">✓</button></div>`).join('')}
+  </div>`:''}
+  <div class="card"><h2 style="font-size:16px">${t('chn_t')}</h2>
+    ${chs.map(ch=>`<div class="jobline" style="cursor:pointer" onclick="renderChannel(${ch.id},'${esc(ch.name)}')">
+      <div class="grow"><div class="d"># ${esc(ch.name)}</div>
+      <div class="muted">${ch.cnt} ${t('msgs')}${ch.last?' · '+t('last')+' '+ch.last.slice(5,16):''}</div></div>
+      <span class="btn sm">${t('open')}</span></div>`).join('')}
+  </div>
+  <p class="muted" style="text-align:center">${t('ch_hint')}</p>`;
+}
+async function loadCh(cid){
+  const {messages}=await api(`/api/chat/messages?channel_id=${cid}`);
+  const el=$('#chmsgs');if(!el){stopPoll();return}
+  el.innerHTML=messages.map(m=>msgHtml(m,true,cid)).join('')||`<p class="muted">${t('no_msgs')}</p>`;
+}
+async function renderChannel(cid,name){
+  stopPoll();
+  $('#app').innerHTML=`
+  <div class="tabs"><button class="btn" onclick="renderChat()">← Channels</button></div>
+  <div class="card"><h2 style="font-size:16px"># ${name}</h2>
+    <div id="chmsgs" style="max-height:55vh;overflow-y:auto"></div>
+    <div class="row" style="margin-top:10px;align-items:center">
+      <input id="chtxt" placeholder="${t('ch_ph')}" style="flex:3"
+        onkeydown="if(event.key==='Enter')sendCh(${cid})">
+      <label class="btn sm">📷<input type="file" accept="image/*" style="display:none" onchange="window._chimg=this.files[0]"></label>
+      <button class="btn primary sm" onclick="sendCh(${cid})">${t('send')}</button></div></div>`;
+  await loadCh(cid);
+  const box=$('#chmsgs');box.scrollTop=box.scrollHeight;
+  CHATPOLL=setInterval(()=>loadCh(cid),5000);
+}
+async function toDataURL(f){
+  if(!f)return '';
+  const img=new Image();img.src=URL.createObjectURL(f);await img.decode();
+  const sc=Math.min(1,1024/Math.max(img.width,img.height));
+  const cv=document.createElement('canvas');cv.width=img.width*sc;cv.height=img.height*sc;
+  cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+  return cv.toDataURL('image/jpeg',0.85);
+}
+async function sendCh(cid){
+  const txt=$('#chtxt').value.trim();const img=await toDataURL(window._chimg);
+  if(!txt&&!img)return;
+  $('#chtxt').value='';window._chimg=null;
+  await post('/api/chat/messages',{channel_id:cid,text:txt,img});
+  await loadCh(cid);const box=$('#chmsgs');box.scrollTop=box.scrollHeight;
+}
+async function renderThread(cid,mid){
+  stopPoll();
+  const d=await api(`/api/chat/messages?parent_id=${mid}`);
+  $('#app').innerHTML=`
+  <div class="tabs"><button class="btn" onclick="renderChannel(${cid},'')">${t('back')}</button></div>
+  <div class="card"><h2 style="font-size:15px">${t('th_t')}</h2>
+    <div style="background:var(--bg);border-radius:10px;padding:4px 12px">${d.parent?msgHtml(d.parent,false,cid):''}</div>
+    <div id="thmsgs">${d.messages.map(m=>msgHtml(m,false,cid)).join('')||`<p class="muted">${t('th_none')}</p>`}</div>
+    <div class="row" style="margin-top:10px">
+      <input id="thtxt" placeholder="${t('th_ph')}" style="flex:3"
+        onkeydown="if(event.key==='Enter')sendTh(${cid},${mid})">
+      <button class="btn primary sm" onclick="sendTh(${cid},${mid})">${t('send')}</button></div></div>`;
+}
+async function sendTh(cid,mid){
+  const txt=$('#thtxt').value.trim();if(!txt)return;
+  $('#thtxt').value='';
+  await post('/api/chat/messages',{channel_id:cid,parent_id:mid,text:txt});
+  renderThread(cid,mid);
+}
+async function sendJobMsg(jid){
+  const txt=$('#jmtxt').value.trim();const img=await toDataURL(window._jmimg);
+  if(!txt&&!img)return;
+  await post('/api/chat/messages',{job_id:jid,text:txt,img,kind:_jmode});
+  window._jmimg=null;renderDetail(jid);
+}
+function activityDlg(jid){
+  $('#dlg').innerHTML=`<h3 style="margin-bottom:8px">${t('ac_t')}</h3>
+  <label>${t('type')}</label><select id="a_type">
+    <option value="ทำ (To-do)">To-do</option><option value="โทร (Call)">Call</option>
+    <option value="สั่งซื้ออะไหล่">${LANG==='TH'?'สั่งซื้ออะไหล่':'Order parts'}</option>
+    <option value="ตรวจติดตาม">${LANG==='TH'?'ตรวจติดตาม':'Follow up'}</option>
+    <option value="ประชุม">${LANG==='TH'?'ประชุม':'Meeting'}</option></select>
+  <label>${t('ac_sum')}</label><input id="a_sum" placeholder="${t('ac_ph')}">
+  <label>${t('ac_who')}</label><select id="a_who">${(BOOT.users||[]).map(u=>`<option value="${u.id}">${esc(u.name)}</option>`).join('')}</select>
+  <label>${t('ac_due')}</label><input type="date" id="a_due" value="${BOOT.today}">
+  <div class="row" style="margin-top:14px"><button class="btn primary" onclick="saveActivity(${jid})">${t('ac_put')}</button>
+  <button class="btn ghost" onclick="dlg.close()">${t('cancel')}</button></div>`;
+  dlg.showModal();
+}
+async function saveActivity(jid){
+  await post('/api/chat/activities',{job_id:jid,act_type:$('#a_type').value,
+    summary:$('#a_sum').value,assignee:+$('#a_who').value,due_date:$('#a_due').value});
+  dlg.close();renderDetail(jid);
+}
+async function doneActivity(aid,jid){
+  await patch('/api/chat/activities/'+aid,{done:1});
+  jid?renderDetail(jid):renderChat();
+}
+
+/* ---------------- ADMIN ---------------- */
+async function renderAdmin(){
+  const [machines,users]=await Promise.all([api('/api/admin/machines'),api('/api/admin/users')]);
+  $('#app').innerHTML=`
+  <div class="card"><h2 style="font-size:16px">${t('ad_m')} (${machines.filter(m=>m.active).length} ${t('in_use')})</h2>
+    ${machines.map(m=>`<div class="jobline"><div class="grow">
+      <div class="d">${m.code} ${m.active?'':`<span class="tag s-Hold">${t('ad_off')}</span>`}</div>
+      <div class="muted">${esc(m.name)}</div></div>
+      <button class="btn sm" onclick="machineDlg(${m.id})">${t('edit')}</button></div>`).join('')}
+    <button class="btn primary" style="margin-top:10px" onclick="machineDlg(0)">${t('ad_addm')}</button>
+  </div>
+  <div class="card"><h2 style="font-size:16px">${t('ad_u')} (${users.filter(u=>u.active).length})</h2>
+    ${users.map(u=>`<div class="jobline"><div class="grow">
+      <div class="d">${esc(u.name)} ${u.active?'':`<span class="tag s-Hold">${t('ad_off')}</span>`}</div>
+      <div class="muted">${u.username} · ${u.role}</div></div>
+      <button class="btn sm" onclick="userDlg(${u.id})">${t('edit')}</button></div>`).join('')}
+    <button class="btn primary" style="margin-top:10px" onclick="userDlg(0)">${t('ad_addu')}</button>
+  </div>`;
+  window._adm={machines,users};
+}
+function machineDlg(id){
+  const m=id?window._adm.machines.find(x=>x.id===id):{code:'',name:'',active:1};
+  $('#dlg').innerHTML=`<h3 style="margin-bottom:8px">${t('edit')} — ${t('mach')}</h3>
+  <label>${t('m_code')}</label><input id="m_c" value="${esc(m.code)}" ${id?'disabled':''}>
+  <label>${t('m_name')}</label><input id="m_n" value="${esc(m.name)}">
+  <div class="row">
+    <div><label>${t('m_rate')}</label><input id="m_r" type="number" value="${m.ideal_rate||0}"></div>
+    <div><label>${t('m_cr')}</label><select id="m_cr">${['A','B','C'].map(x=>`<option ${m.criticality===x?'selected':''}>${x}</option>`).join('')}</select></div>
+  </div>
+  <div class="row">
+    <div><label>${t('m_line')}</label><input id="m_l" value="${esc(m.line||'Line 1')}"></div>
+    <div><label>${t('m_pm')}</label><input id="m_f" type="number" value="${m.pm_freq_days||0}"></div>
+  </div>
+  ${id?`<label style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="m_a" style="width:auto" ${m.active?'checked':''}> ${t('enable')}</label>`:''}
+  <div class="row" style="margin-top:14px"><button class="btn primary" onclick="saveMachine(${id})">${t('save')}</button>
+  <button class="btn ghost" onclick="dlg.close()">${t('cancel')}</button></div>`;
+  dlg.showModal();
+}
+async function saveMachine(id){
+  const extra={ideal_rate:+$('#m_r').value,criticality:$('#m_cr').value,
+    line:$('#m_l').value,pm_freq_days:+$('#m_f').value};
+  if(id)await patch('/api/admin/machines/'+id,{name:$('#m_n').value,active:$('#m_a').checked?1:0,...extra});
+  else{const m=await post('/api/admin/machines',{code:$('#m_c').value,name:$('#m_n').value});
+    await patch('/api/admin/machines/'+m.id,extra);}
+  dlg.close();renderAdmin();
+}
+function userDlg(id){
+  const u=id?window._adm.users.find(x=>x.id===id):{username:'',name:'',role:'technician',active:1};
+  $('#dlg').innerHTML=`<h3 style="margin-bottom:8px">${t('edit')} — ${t('user')}</h3>
+  <label>${t('lg_user')}</label><input id="u_u" value="${esc(u.username)}" ${id?'disabled':''}>
+  <label>${t('u_disp')}</label><input id="u_n" value="${esc(u.name)}">
+  <label>${t('role')}</label><select id="u_r">${['operator','technician','planner','manager','admin'].map(r=>`<option ${u.role===r?'selected':''}>${r}</option>`).join('')}</select>
+  <label>${id?t('u_pw_r'):t('u_pw')}</label><input id="u_p" type="password">
+  ${id?`<label style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="u_a" style="width:auto" ${u.active?'checked':''}> ${t('enable')}</label>`:''}
+  <div class="row" style="margin-top:14px"><button class="btn primary" onclick="saveUser(${id})">${t('save')}</button>
+  <button class="btn ghost" onclick="dlg.close()">${t('cancel')}</button></div>`;
+  dlg.showModal();
+}
+async function saveUser(id){
+  if(id)await patch('/api/admin/users/'+id,{name:$('#u_n').value,role:$('#u_r').value,
+    active:$('#u_a').checked?1:0,password:$('#u_p').value||undefined});
+  else await post('/api/admin/users',{username:$('#u_u').value,name:$('#u_n').value,
+    role:$('#u_r').value,password:$('#u_p').value});
+  dlg.close();renderAdmin();
+}
+
+/* ---------------- MACHINES KPI + HISTORY ---------------- */
+const fmin=v=>{if(v==null)return '—';const h=LANG==='TH'?'ชม ':'h ',mn=LANG==='TH'?'น':'m';
+  return v>=60?Math.floor(v/60)+h+Math.round(v%60)+mn:Math.round(v)+' '+mn};
+const fpct=v=>v==null?'—':v+'%';
+const pctColor=v=>v==null?'var(--gray)':v>=80?'var(--green)':v>=50?'var(--amber)':'var(--red)';
+async function renderMachines(){
+  stopPoll();
+  const k=await api('/api/kpi');
+  $('#app').innerHTML=`
+  <div class="tabs"><button class="btn" onclick="renderDash()">← Dashboard</button>
+    <span class="muted" style="align-self:center">${t('kpi7')} (${k.from} → ${k.to})</span></div>
+  ${k.machines.map(m=>`<div class="pcard">
+    <div class="top"><div class="grow" style="cursor:pointer" onclick="renderMachine(${m.machine_id})">
+      <div class="ttl">${m.code} <span class="muted" style="font-weight:400">· ${m.line} · ${m.criticality}</span> ›</div>
+      <div class="muted">${esc((m.name||'').split('(')[0])}</div></div>
+      <div style="text-align:right"><span style="font-size:22px;font-weight:600;color:${pctColor(m.oee)}">${fpct(m.oee)}</span>
+      <div class="muted" style="font-size:11px">OEE</div></div></div>
+    <div class="info" style="grid-template-columns:repeat(4,1fr)">
+      <span>A <b style="color:${pctColor(m.availability)}">${fpct(m.availability)}</b></span>
+      <span>P <b style="color:${pctColor(m.performance)}">${fpct(m.performance)}</b></span>
+      <span>Q <b style="color:${pctColor(m.quality)}">${fpct(m.quality)}</b></span>
+      <span>PM <b>${m.pm_done}/${m.pm_total||0}</b></span>
+      <span>${t('bd_w')} <b>${m.bd_count}</b></span>
+      <span>MTBF <b>${fmin(m.mtbf_min)}</b></span>
+      <span>MTTR <b>${fmin(m.mttr_min)}</b></span>
+      <span>Downtime <b>${fmin(m.downtime_min)}</b></span>
+    </div></div>`).join('')}`;
+}
+async function renderMachine(mid){
+  stopPoll();
+  const h=await api(`/api/machines/${mid}/history`);
+  const m=h.machine;
+  $('#app').innerHTML=`
+  <div class="tabs"><button class="btn" onclick="renderMachines()">${t('back')}</button></div>
+  <div class="card"><h2 style="font-size:17px">${m.code} — ${esc(m.name)}</h2>
+    <p class="muted">${m.line} · ${t('m_cr')} ${m.criticality} · Ideal ${m.ideal_rate||'—'} · PM ${LANG==='TH'?'ทุก':'every'} ${m.pm_freq_days||'—'} ${LANG==='TH'?'วัน':'days'}</p></div>
+  <div class="card"><h2 style="font-size:15px">${t('hs_t')} (${h.jobs.length})</h2>
+    ${h.jobs.map(j=>`<div class="jobline"><div class="grow" style="cursor:pointer" onclick="renderDetail(${j.id})">
+      <div class="d">${j.jobtype==='BD'?'🔴':j.jobtype==='PM'?'🗓':'🔧'} ${j.jobid} · ${(j.created_at||'').slice(0,10)} ›</div>
+      <div class="muted">${esc(j.descr).slice(0,80)} ${j.solution?'· '+t('hs_fix')+': '+esc(j.solution).slice(0,40):''}</div></div>
+      <span class="tag s-${j.status}">${sT(j.status)}</span></div>`).join('')||`<p class="muted">${t('none')}</p>`}
+  </div>
+  <div class="card"><h2 style="font-size:15px">${t('hs_sl')} (${h.shiftlogs.length})</h2>
+    ${h.shiftlogs.map(s=>`<div class="jobline"><div class="grow">
+      <div class="d">${s.log_date} ${t('w_shift')}${s.shift}</div>
+      <div class="muted">${t('w_plan')} ${s.planned_min} ${t('w_min')} · ${t('w_out')} ${s.output} · ${t('w_good')} ${s.good} · ${t('w_rej')} ${s.reject}</div></div></div>`).join('')||`<p class="muted">${t('hs_none_sl')}</p>`}
+  </div>`;
+}
+
+/* ---------------- DASHBOARD (manager + planner) ---------------- */
+function spark(series,key){
+  const vals=series.map(s=>s[key]).map(v=>v==null?0:v);
+  const mx=Math.max(...vals,1);
+  const pts=vals.map((v,i)=>`${(i/(vals.length-1)*100).toFixed(1)},${(28-v/mx*24).toFixed(1)}`).join(' ');
+  return `<svg viewBox="0 0 100 30" style="width:100%;height:26px;margin-top:4px"><polyline points="${pts}" fill="none" stroke="var(--or)" stroke-width="2"/></svg>`;
+}
+function tcard(v,label,target,sub,less){
+  const ok=v==null?null:(less?v<=target:v>=target);
+  const col=v==null?'var(--gray)':ok?'var(--green)':'var(--red)';
+  return `<div class="kpi"><div class="v" style="color:${col}">${typeof v==='number'?(label.includes('MTTR')?fmin(v):v+'%'):(v==null?'—':v)}</div>
+    <div class="l">${label}</div><div class="muted">${t('target')} ${less?'≤':'≥'} ${label.includes('MTTR')?fmin(target):target+'%'}${sub?' · '+sub:''}</div></div>`;
+}
+async function renderDash(){
+  stopPoll();
+  const [d,k,tr]=await Promise.all([api('/api/dashboard'),api('/api/kpi'),api('/api/kpi/trend?days=14')]);
+  const pk=k.plant,tg=k.targets;
+  const segColor=s=>s.jobtype==='BD'?'var(--red)':s.seg_type==='work'?'var(--blue)':s.seg_type==='routine'?'var(--gray)':'var(--amber)';
+  const H0=7,H1=20,W=60;
+  const x=t=>{const[h,m]=t.slice(11,16).split(':').map(Number);return (h-H0+m/60)*W}
+  const techs={};
+  d.segments.forEach(s=>{(techs[s.tech_name]=techs[s.tech_name]||[]).push(s)});
+  const planned={};
+  d.planned.forEach(j=>{if(j.lead_name&&j.planned_start){(planned[j.lead_name]=planned[j.lead_name]||[]).push(j)}});
+  Object.keys(planned).forEach(k=>{techs[k]=techs[k]||[]});
+  const names=[...new Set([...Object.keys(techs),...Object.keys(planned)])];
+  const axis=Array.from({length:H1-H0+1},(_,i)=>`<div style="position:absolute;left:${i*W}px;top:0;bottom:0;border-left:1px dashed #EEF2F7"><span style="font-size:10px;color:var(--gray)">${String(H0+i).padStart(2,'0')}</span></div>`).join('');
+  const rows=names.map(n=>{
+    const plan=(planned[n]||[]).map(j=>`<div title="${j.jobid} plan" style="position:absolute;top:2px;height:8px;border-radius:4px;background:#CBD5E1;left:${(+j.planned_start.slice(0,2)-H0+ +j.planned_start.slice(3)/60)*W}px;width:${((+j.planned_end.slice(0,2)+ +j.planned_end.slice(3)/60)-(+j.planned_start.slice(0,2)+ +j.planned_start.slice(3)/60))*W}px"></div>`).join('');
+    const act=(techs[n]||[]).map(s=>{
+      const end=s.end||new Date().toISOString().slice(0,19).replace('T',' ');
+      const l=x(s.start),w=Math.max(4,x(end)-l);
+      return `<div title="${s.jobid||s.seg_type} ${s.start.slice(11,16)}–${(s.end||'now').slice(11,16)}" style="position:absolute;top:12px;height:18px;border-radius:4px;background:${segColor(s)};left:${l}px;width:${w}px"></div>`;
+    }).join('');
+    return `<div style="display:flex;align-items:center;border-top:1px solid var(--bd)">
+      <div style="width:110px;flex:none;font-size:12px;padding:8px 4px">${esc(n)}</div>
+      <div style="position:relative;height:36px;flex:1;min-width:${(H1-H0)*W}px">${axis}${plan}${act}</div></div>`;
+  }).join('');
+  const pctCard=(v,l,sub)=>`<div class="kpi"><div class="v" style="color:${v===null?'var(--gray)':v>=80?'var(--green)':v>=50?'var(--amber)':'var(--red)'}">${v===null?'—':v+'%'}</div><div class="l">${l}</div><div class="muted">${sub}</div></div>`;
+  $('#app').innerHTML=`
+  <div class="tabs">
+    <button class="btn" onclick="renderDash()">${t('refresh')}</button>
+    <button class="btn" onclick="renderMachines()">📈 ${t('nv_mach')}/OEE</button>
+    <a class="btn dark" href="/api/reports/daily?d=${d.date}" target="_blank">${t('db_pdf')}</a></div>
+  <div class="kpis">
+    <div class="kpi"><div class="v" style="color:${pk.oee==null?'var(--gray)':pk.oee>=tg.oee?'var(--green)':'var(--red)'}">${fpct(pk.oee)}</div>
+      <div class="l">${t('plant7')}</div><div class="muted">${t('target')} ≥ ${tg.oee}% (batch)</div>${spark(tr.series,'oee')}</div>
+    ${tcard(pk.availability,'Availability',tg.availability)}
+    ${tcard(pk.pm_compliance,'PM compliance',tg.pm_compliance,'EN 15341')}
+    ${tcard(pk.planned_ratio,'Planned ratio',tg.planned_ratio,t('planned_div'))}
+    ${tcard(pk.ftfr,'FTFR',tg.ftfr,'first-time fix')}
+    ${tcard(pk.fleet_mttr_min,'Fleet MTTR',tg.mttr_min,pk.bd_count+' BD',true)}
+    <div class="kpi"><div class="v">${fmin(pk.fleet_mtbf_min)}</div><div class="l">Fleet MTBF</div><div class="muted">downtime ${fmin(pk.downtime_min)}</div><div style="margin-top:4px">${spark(tr.series,'bd')}</div></div>
+    <div class="kpi"><div class="v" style="color:${(pk.backlog.b30||0)>0||(pk.backlog.p1_late||0)>0?'var(--red)':'var(--green)'}">${(pk.backlog.b0||0)+(pk.backlog.b7||0)+(pk.backlog.b30||0)}</div>
+      <div class="l">Backlog (งานเปิด)</div><div class="muted">0-7วัน:${pk.backlog.b0||0} · 8-30:${pk.backlog.b7||0} · 30+:<b>${pk.backlog.b30||0}</b>${(pk.backlog.p1_late||0)?` · ⚠ด่วนค้าง ${pk.backlog.p1_late}`:''}</div></div>
+  </div>
+  ${pk.top_failures&&pk.top_failures.length?`<div class="card"><h2 style="font-size:15px">🔩 ${LANG==='TH'?'ชิ้นส่วนที่เสียบ่อย':'Top failure components'}</h2>
+    ${pk.top_failures.map(f=>`<div class="jobline"><div class="grow"><div class="d">${esc(f.comp)}</div></div><b>${f.n}${LANG==='TH'?' ครั้ง':'×'}</b></div>`).join('')}</div>`:''}
+  <div class="kpis">
+    ${pctCard(d.planned_pct,'Planned completion',`${d.planned_done}/${d.planned_total} released`)}
+    ${pctCard(d.bd_pct,'Breakdown completion',`${d.bd_done}/${d.bd_total} received`)}
+    ${pctCard(d.total_pct,'Total completion',`${d.planned_done+d.bd_done}/${d.planned_total+d.bd_total} jobs`)}
+  </div>
+  <div class="card"><h2 style="font-size:16px;margin-bottom:8px">Gantt — ${d.date}</h2>
+    <div id="gantt">${rows||`<p class="muted">${t('no_tl')}</p>`}</div>
+    <div class="legend"><span><i style="background:var(--blue)"></i>${t('lg_planjob')}</span>
+      <span><i style="background:var(--red)"></i>Breakdown</span>
+      <span><i style="background:var(--gray)"></i>Routine</span>
+      <span><i style="background:var(--amber)"></i>${t('lg_stand')}</span>
+      <span><i style="background:#CBD5E1"></i>${t('lg_planbar')}</span></div>
+  </div>
+  <div class="card"><h2 style="font-size:16px;margin-bottom:6px">${t('pend_t')} (${d.pending.length})</h2>
+    ${d.pending.map(j=>`<div class="jobline"><div class="grow">
+      <div class="d">${j.jobid} · ${j.mcode||''} · ${j.progress}%</div>
+      <div class="muted">${esc(j.pending_reason||j.status)} · ${esc(j.lead_name||'')}</div></div>
+      <span class="tag s-${j.status}">${sT(j.status)}</span></div>`).join('')||`<p class="muted">${t('none_party')}</p>`}
+  </div>
+  <div class="card"><h2 style="font-size:16px;margin-bottom:6px">${t('all_t')}</h2>
+    ${[...d.planned,...d.breakdowns].map(j=>`<div class="jobline"><div class="grow">
+      <div class="d">${j.jobtype==='BD'?'🔴':''} ${j.jobid} · ${j.mcode||''}</div>
+      <div class="muted">${esc(j.descr)} · ${esc(j.lead_name||t('unassigned'))}</div></div>
+      <span class="tag s-${j.status}">${sT(j.status)}</span></div>`).join('')}
+  </div>`;
+}
+if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost'))
+  navigator.serviceWorker.register('/sw.js').catch(()=>{});
+start();renderLogin();
+</script>
+</body>
+</html>

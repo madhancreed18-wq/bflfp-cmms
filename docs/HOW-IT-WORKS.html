@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BFLFP CMMS — ระบบทำงานอย่างไร</title>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--or:#F97316;--navy:#1E293B;--bg:#F8FAFC;--bd:#E2E8F0;--gray:#64748B;
+--red:#DC2626;--green:#16A34A;--blue:#2563EB;--amber:#D97706}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Prompt',sans-serif;background:var(--bg);color:var(--navy);font-size:15px;line-height:1.55}
+.page{max-width:980px;margin:0 auto;padding:28px 20px}
+h1{font-size:26px;font-weight:600}
+h1 small{display:block;font-size:14px;color:var(--gray);font-weight:400}
+.flow{display:flex;gap:6px;margin:22px 0;flex-wrap:wrap}
+.step{flex:1;min-width:130px;background:#fff;border:1px solid var(--bd);border-radius:14px;padding:12px;text-align:center;position:relative}
+.step .n{width:26px;height:26px;border-radius:50%;background:var(--or);color:#fff;font-weight:600;display:inline-flex;align-items:center;justify-content:center;margin-bottom:6px}
+.step b{display:block;font-size:14px}
+.step span{font-size:12px;color:var(--gray)}
+.role{background:#fff;border:1px solid var(--bd);border-radius:16px;padding:18px 20px;margin:14px 0;page-break-inside:avoid}
+.role h2{font-size:18px;display:flex;align-items:center;gap:10px}
+.role h2 .tag{font-size:11px;background:#FFF7ED;color:#C2410C;border:1px solid #FED7AA;padding:2px 10px;border-radius:999px;font-weight:500}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin-top:10px}
+@media(max-width:640px){.cols{grid-template-columns:1fr}}
+.cols ol{padding-left:20px;font-size:14px}
+.cols ol li{margin:5px 0}
+.get{background:var(--bg);border-radius:10px;padding:10px 14px;font-size:13px}
+.get b{color:var(--or)}
+.rules{background:var(--navy);color:#fff;border-radius:16px;padding:18px 20px;margin:18px 0}
+.rules h2{font-size:17px;margin-bottom:8px}
+.rules li{margin:6px 0 6px 20px;font-size:14px}
+.muted{color:var(--gray);font-size:13px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;margin-top:8px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+footer{margin:26px 0 8px;text-align:center;font-size:12px;color:var(--gray)}
+@media print{body{background:#fff}.page{padding:0}}
+</style>
+</head>
+<body>
+<div class="page">
+<h1>🔧 BFLFP Maintenance — ระบบทำงานอย่างไร
+<small>Daily maintenance system — working concept for every user · สร้างเอง ไม่มีค่า license · ใช้ได้ทุกมือถือ</small></h1>
+
+<div class="flow">
+  <div class="step"><span class="n">1</span><b>แจ้ง</b><span>Operator แจ้งปัญหา<br>จากมือถือ ทันทีที่เจอ</span></div>
+  <div class="step"><span class="n">2</span><b>วางแผน</b><span>Planner จัดตาราง<br>มอบหมายช่าง → ปล่อยงาน</span></div>
+  <div class="step"><span class="n">3</span><b>ทำ + จับเวลา</b><span>ช่างกด ▶ ⏸ ✅<br>เวลาเก็บเองอัตโนมัติ</span></div>
+  <div class="step"><span class="n">4</span><b>ปิดงาน + หลักฐาน</b><span>สาเหตุ รหัสชิ้นส่วน<br>รูปก่อน-หลัง ลายเซ็น</span></div>
+  <div class="step"><span class="n">5</span><b>ตรวจรับ</b><span>Planner อนุมัติ /<br>ส่งกลับแก้ (Rework)</span></div>
+  <div class="step"><span class="n">6</span><b>รายงานอัตโนมัติ</b><span>PDF + Gantt + OEE<br>ไม่ต้องพิมพ์เอง</span></div>
+</div>
+<p class="muted" style="text-align:center">ทุกขั้นตอนมีแจ้งเตือนเด้งเข้ามือถือคนที่เกี่ยวข้องทันที (push notification เหมือนแอปทั่วไป)</p>
+
+<div class="role">
+<h2>🙋 Operator / หัวหน้าไลน์ <span class="tag">ใช้เวลา ~5 นาที/วัน</span></h2>
+<div class="cols">
+<div><b>ทำอะไรบ้าง</b><ol>
+<li>เจอปัญหาเครื่อง → เปิดแอป เลือกเครื่อง พิมพ์อาการ เลือกความเร่งด่วน กด<b>ส่ง</b></li>
+<li>เครื่องหยุดกะทันหัน → เลือก <b style="color:var(--red)">ด่วน!</b> — ช่างทุกคนได้แจ้งเตือนทันที ไม่ต้องวิ่งตามหา</li>
+<li>งานมีค่าใช้จ่าย → ติ๊ก "ขออนุมัติ" ระบบส่งเข้าคิวอนุมัติเอง</li>
+<li>ท้ายกะ → กรอกผลผลิต 3 ช่อง/เครื่อง (เวลาแผน, ผลิตได้, ของดี) — 2 นาที</li></ol></div>
+<div class="get"><b>สิ่งที่ได้กลับ:</b> เห็นสถานะงานที่แจ้งตลอดเวลา (ใครรับ ซ่อมถึงไหน เสร็จหรือยัง) ไม่ต้องเดินไปถาม · ทุกใบแจ้งมีเลขที่ PRD ติดตามได้ · ผลผลิตที่กรอกกลายเป็น OEE ของไลน์อัตโนมัติ</div>
+</div></div>
+
+<div class="role">
+<h2>🗓 Planner / ผู้วางแผน <span class="tag">ศูนย์กลางของระบบ</span></h2>
+<div class="cols">
+<div><b>ทำอะไรบ้าง</b><ol>
+<li>เช้า: เปิดแอป — งาน PM ที่ถึงรอบ<b>สร้างตัวเองอัตโนมัติ</b>แล้ว</li>
+<li>ดูแท็บ Recent / OverDue / DueToday → กด <b>Plan</b> ที่การ์ดงาน → เลือกวัน เวลา ช่างหลัก ผู้ช่วย → <b>ปล่อยงาน</b> (ช่างได้แจ้งเตือนทันที)</li>
+<li>งานขออนุมัติ → กดอนุมัติ/ไม่อนุมัติ พร้อมเหตุผล</li>
+<li>งานที่ช่างทำเสร็จ → <b>ตรวจรับ</b>: คำถาม 2 ข้อ (แก้เรียบร้อย? เคลียร์พื้นที่?) → ผ่าน = Done / ไม่ผ่าน = Rework หรือออกใบใหม่</li>
+<li>วางกิจกรรม 📌 (สั่งอะไหล่, โทร supplier) มอบให้ใครก็ได้ พร้อมกำหนดเสร็จ</li></ol></div>
+<div class="get"><b>สิ่งที่ได้กลับ:</b> เห็นงานทั้งโรงงานในจอเดียว ไม่มีงานหลุด (OverDue เตือนเอง) · เฉพาะงานที่<b>ปล่อยแล้ว</b>เท่านั้นที่นับใน % ของแผน — แผนยุติธรรม · ประวัติทุกการตัดสินใจอยู่ในไทม์ไลน์งาน</div>
+</div></div>
+
+<div class="role">
+<h2>🔧 ช่างซ่อมบำรุง <span class="tag">มือถือเครื่องเดียวจบ</span></h2>
+<div class="cols">
+<div><b>ทำอะไรบ้าง</b><ol>
+<li>เปิดแอป → <b>งานของฉันวันนี้</b> เรียงตามเวลา</li>
+<li>เริ่มงาน กด <b>▶</b> — นาฬิกาเดินเอง ไม่ต้องจดเวลา</li>
+<li>โดนเรียกไปงานด่วน → กด <b>⏸</b> เลือกเหตุผล (Breakdown แทรก / รออะไหล่ / รอผลิต) — เวลางานเดิมไม่หาย กลับมากด ▶ ต่อได้</li>
+<li>เสร็จ กด <b>✅</b> → กรอกปัญหา-สาเหตุ-วิธีแก้ + เลือกรหัสชิ้นส่วนที่เสีย (2 dropdown) + ถ่ายรูปก่อน-หลัง + เซ็นชื่อบนจอ</li>
+<li>งาน routine / standby ก็กดบันทึกเวลาได้ — เวลาทั้งวันมีค่า ไม่หาย</li>
+<li>💬 สงสัยอะไร ถามในงานเลย — คำตอบติดอยู่กับใบงานตลอดไป</li></ol></div>
+<div class="get"><b>สิ่งที่ได้กลับ:</b> ไม่ต้องเขียนกระดาษ ไม่ต้องนั่งทำรายงานท้ายวัน — PDF ใบแจ้งซ่อมสร้างเอง · เวลา "รออะไหล่" แยกจากเวลาซ่อมจริง → MTTR ยุติธรรมกับช่าง · ประวัติเครื่องอยู่ในมือ ก่อนไปหน้างานรู้เลยเครื่องนี้เคยเป็นอะไร</div>
+</div></div>
+
+<div class="role">
+<h2>📊 ผู้จัดการ <span class="tag">เปิดดู ไม่ต้องกรอกอะไร</span></h2>
+<div class="cols">
+<div><b>ทำอะไรบ้าง</b><ol>
+<li>เย็น: เปิด Dashboard — <b>3 เปอร์เซ็นต์</b> (แผนสำเร็จ / Breakdown ปิดได้ / รวม)</li>
+<li>ดู <b>Gantt</b>: ช่างแต่ละคนใช้เวลากับอะไรทั้งวัน — สีบอกทุกอย่าง</li>
+<li>ดู OEE / MTBF / MTTR รายเครื่อง เทียบเป้ามาตรฐาน (สีเขียว/แดงตัดสินให้)</li>
+<li>งานค้างพร้อม<b>เหตุผล</b> — ไม่ต้องเรียกประชุมถาม</li>
+<li>กด 🖨 รายงานประจำวัน PDF ส่งต่อผู้บริหารได้เลย</li></ol></div>
+<div class="get"><b>สิ่งที่ได้กลับ:</b> ตอบได้ทุกเช้าว่า "เมื่อวานเสียกี่ครั้ง เสียเวลาไปเท่าไหร่ เพราะชิ้นส่วนอะไร ใครซ่อม นานแค่ไหน" ด้วยข้อมูลจริง ไม่ใช่ความรู้สึก · เห็นแนวโน้ม 14 วันว่าดีขึ้นหรือแย่ลง</div>
+</div></div>
+<div class="legend"><span><i style="background:var(--blue)"></i>งานตามแผน (PM/CM)</span><span><i style="background:var(--red)"></i>Breakdown</span><span><i style="background:#94A3B8"></i>Routine</span><span><i style="background:var(--amber)"></i>Standby/รอ</span></div>
+
+<div class="role">
+<h2>⚙️ Admin <span class="tag">ตั้งค่าครั้งเดียว</span></h2>
+<div class="cols">
+<div><b>ทำอะไรบ้าง</b><ol>
+<li>เพิ่ม/แก้เครื่องจักร: รหัส ชื่อ ไลน์ ความสำคัญ A/B/C อัตราการผลิตมาตรฐาน รอบ PM</li>
+<li>เพิ่มผู้ใช้ กำหนดบทบาท รีเซ็ตรหัสผ่าน ปิดบัญชีคนลาออก</li></ol></div>
+<div class="get"><b>สิ่งที่ได้กลับ:</b> ระบบดูแลตัวเอง — PM สร้างเองตามรอบ ข้อมูลถูกบังคับให้ครบตั้งแต่ต้นทาง ไม่ต้องตามแก้ทีหลัง</div>
+</div></div>
+
+<div class="rules">
+<h2>⚖️ กติกาเหล็ก 3 ข้อ (ทำไมตัวเลขของเราเชื่อถือได้)</h2>
+<li><b>ไม่กดจับเวลา = ปิดงานไม่ได้</b> — เวลาทุกนาทีมาจากการกดจริง ไม่ใช่นั่งนึกย้อนหลัง</li>
+<li><b>ปิดงาน Breakdown ต้องเลือกรหัสชิ้นส่วนที่เสีย</b> — ถึงจะรู้ว่าอะไรเสียบ่อย ซื้ออะไหล่อะไรตุน</li>
+<li><b>ไม่กรอกผลผลิต = เครื่องนั้นขึ้น "ไม่มีข้อมูล"</b> — ไม่มีตัวเลขปลอม 100%</li>
+</div>
+
+<footer>BFLFP Wet Food — Daily Maintenance System · ระบบ self-hosted ในโรงงาน ข้อมูลไม่ออกไปไหน · ผู้ใช้ไม่จำกัด ไม่มีค่ารายเดือน</footer>
+</div>
+</body>
+</html>

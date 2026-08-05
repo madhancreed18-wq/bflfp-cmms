@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+data/
+.venv/
+*.db
+uploads/
+Start CMMS (PostgreSQL).bat
