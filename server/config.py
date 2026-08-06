@@ -1,6 +1,6 @@
 import os
 
-APP_VERSION = "2.3.1"
+APP_VERSION = "3.0.0"
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.environ.get("BFLFP_DATA") or os.path.join(BASE, "data")

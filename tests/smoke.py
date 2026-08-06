@@ -220,6 +220,11 @@ def main():
         st, pk2 = t1.req("GET", "/api/push/key")
         check("push key issued", st == 200 and pk2["enabled"] and len(pk2["key"] or "") > 80)
 
+        print("== v3 schema ==")
+        st, h3 = Client().req("GET", "/api/health")
+        check("26 tables in schema", st == 200 and h3.get("tables") == 26,
+              f"got {h3.get('tables')}")
+
         print("== factory selector (login) ==")
         st, facs = Client().req("GET", "/api/factories")
         check("factories listed (3)", st == 200 and len(facs) == 3)

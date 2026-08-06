@@ -1,6 +1,26 @@
 # Changelog — BFLFP CMMS
 All notable changes. Format: version · date · changes. Newest on top.
 
+## v3.0.0 — 2026-08-05 (MAJOR: production database schema — SCHEMA ONLY)
+Approved table design from the role-based workflow document + external review.
+App logic unchanged — screens/modules will wire to these tables one by one.
+- 13 NEW tables (26 total): checklist_templates, checklist_items,
+  job_checklist (pass/fail/na + measured value + verify), escalations,
+  job_attachments (many photos/videos per job, storage keys, checksums),
+  job_status_history (real audit trail), job_assignments (assignment history),
+  pm_plans (multiple PM cycles per machine, calendar or meter based),
+  meter_readings, machine_downtime (true downtime windows),
+  production_calendar (honest planned time for OEE), machine_part_bom,
+  evidence_rules (photo requirements per job type)
+- jobs: lifecycle timestamps split — released/started/service_completed/
+  downtime_restored/user_confirmed(+wait reason)/prod_release/closed(+by),
+  plus approval_required, estimated/actual_cost, safety_risk, failure_mode
+- machines: mgroup (machine group → which checklists apply)
+- requisitions: full purchase loop fields · shiftlogs: kpi_class-specific fields
+- Auto-migration in create_schema(): adds missing columns on any engine,
+  append-only, idempotent, old data untouched (verified on simulated v2 DB)
+- /api/health reports table count; smoke 54 checks
+
 ## v2.3.1 — 2026-08-05 (login: factory logo tiles)
 - Factory selection is now 3 tappable logo tiles: BFL / BFLFP / BFLPC
   (each factory's own logo, selected tile highlighted in blue)

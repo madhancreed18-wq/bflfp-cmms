@@ -61,7 +61,8 @@ T("machines",
   Column("brand_model", String(120), server_default=text("''")),
   Column("serial_no", String(80), server_default=text("''")),
   Column("year_install", String(10), server_default=text("''")),
-  Column("last_pm_date", String(10), server_default=text("''")))
+  Column("last_pm_date", String(10), server_default=text("''")),
+  Column("mgroup", String(80), server_default=text("''")))          # v3: machine group → checklists
 
 T("jobs",
   Column("id", Integer, primary_key=True),
@@ -98,7 +99,23 @@ T("jobs",
   Column("maint_action", String(60), server_default=text("''")),
   Column("rework_count", Integer, server_default=text("0")),
   Column("production_impact", String(30), server_default=text("''")),  # delta #2
-  Column("accepted_at", String(19)))                    # delta #10
+  Column("accepted_at", String(19)),                    # delta #10
+  # ---- v3: lifecycle timestamps (done_at kept for compatibility) ----
+  Column("released_at", String(19)),
+  Column("started_at", String(19)),
+  Column("service_completed_at", String(19)),           # tech pressed finish
+  Column("downtime_restored_at", String(19)),           # machine back in operation → downtime stops
+  Column("user_confirmed_at", String(19)),              # requester tested + confirmed
+  Column("confirm_wait_reason", String(200), server_default=text("''")),
+  Column("prod_release_at", String(19)),                # production released machine for PM
+  Column("closed_at", String(19)),                      # planner administrative close
+  Column("closed_by", Integer),
+  Column("production_confirmed_by", Integer),
+  Column("approval_required", Integer, server_default=text("0")),
+  Column("estimated_cost", Float, server_default=text("0")),
+  Column("actual_cost", Float, server_default=text("0")),
+  Column("safety_risk", Integer, server_default=text("0")),
+  Column("failure_mode", String(60), server_default=text("''")))
 
 T("timelogs",
   Column("id", Integer, primary_key=True),
@@ -120,7 +137,14 @@ T("shiftlogs",
   Column("good", Integer, server_default=text("0")),
   Column("reject", Integer, server_default=text("0")),
   Column("entered_by", Integer),
-  Column("created_at", String(19)))
+  Column("created_at", String(19)),
+  Column("planned_output", Integer, server_default=text("0")),        # v3 (used per kpi_class)
+  Column("runtime_min", Integer, server_default=text("0")),
+  Column("changeover_min", Integer, server_default=text("0")),
+  Column("planned_stop_min", Integer, server_default=text("0")),
+  Column("unplanned_stop_min", Integer, server_default=text("0")),
+  Column("batch_count", Integer, server_default=text("0")),
+  Column("good_batch_count", Integer, server_default=text("0")))
 
 T("push_subs",
   Column("id", Integer, primary_key=True),
@@ -181,7 +205,166 @@ T("requisitions",
   Column("requester", Integer),
   Column("supplier", String(120), server_default=text("''")),
   Column("job_id", Integer),
+  Column("created_at", String(19)),
+  Column("approved_by", Integer),                                     # v3
+  Column("approved_at", String(19)),
+  Column("ordered_at", String(19)),
+  Column("received_at", String(19)),
+  Column("unit_price", Float, server_default=text("0")),
+  Column("purchase_reference", String(80), server_default=text("''")))
+
+# ================= v3.0.0 — production schema (approved 2026-08-05) =========
+# Schema only for now: tables exist, app wiring arrives module by module.
+
+T("checklist_templates",
+  Column("id", Integer, primary_key=True),
+  Column("mgroup", String(80)),                       # machine group e.g. Sealer
+  Column("discipline", String(20), server_default=text("'Mechanical'")),  # Electrical/Mechanical/General
+  Column("name", String(160)),
+  Column("active", Integer, server_default=text("1")))
+
+T("checklist_items",
+  Column("id", Integer, primary_key=True),
+  Column("template_id", Integer),
+  Column("seq", Integer, server_default=text("0")),
+  Column("text_th", String(300), server_default=text("''")),
+  Column("text_en", String(300), server_default=text("''")),
+  Column("weight", Integer, server_default=text("0")),        # % of progress
+  Column("needs_value", Integer, server_default=text("0")),   # measurement step?
+  Column("unit", String(20), server_default=text("''")),
+  Column("min_val", Float),
+  Column("max_val", Float),
+  Column("attachment_required", Integer, server_default=text("0")))
+
+T("job_checklist",
+  Column("id", Integer, primary_key=True),
+  Column("job_id", Integer),
+  Column("item_id", Integer),
+  Column("status", String(10), server_default=text("'pending'")),  # pending/pass/fail/na
+  Column("value", Float),                                          # measured value
+  Column("is_out_of_range", Integer, server_default=text("0")),
+  Column("remark", String(300), server_default=text("''")),
+  Column("done_by", Integer),
+  Column("done_at", String(19)),
+  Column("verified_by", Integer),
+  Column("verified_at", String(19)))
+
+T("escalations",
+  Column("id", Integer, primary_key=True),
+  Column("job_id", Integer),
+  Column("esc_type", String(30)),          # high_cost/safety/long_downtime/shutdown
+  Column("detail", SAText, server_default=text("''")),
+  Column("requested_by", Integer),
+  Column("status", String(15), server_default=text("'Pending'")),  # Pending/Approved/Rejected
+  Column("decision_note", String(300), server_default=text("''")),
+  Column("decided_by", Integer),
+  Column("decided_at", String(19)),
   Column("created_at", String(19)))
+
+T("job_attachments",
+  Column("id", Integer, primary_key=True),
+  Column("job_id", Integer),
+  Column("checklist_item_id", Integer),                    # nullable: evidence per step
+  Column("attachment_type", String(12), server_default=text("'photo'")),  # photo/video/document/signature
+  Column("stage", String(12), server_default=text("'before'")),  # reported/before/during/after/test/closure
+  Column("discipline", String(20), server_default=text("''")),
+  Column("file_name", String(200), server_default=text("''")),
+  Column("storage_key", String(300)),                      # FP/jobs/PRD-xxx/after/uuid.webp
+  Column("mime_type", String(60), server_default=text("''")),
+  Column("original_size", Integer, server_default=text("0")),
+  Column("compressed_size", Integer, server_default=text("0")),
+  Column("width", Integer, server_default=text("0")),
+  Column("height", Integer, server_default=text("0")),
+  Column("duration_sec", Integer, server_default=text("0")),
+  Column("thumbnail_key", String(300), server_default=text("''")),
+  Column("checksum", String(64), server_default=text("''")),
+  Column("uploaded_by", Integer),
+  Column("uploaded_at", String(19)),
+  Column("active", Integer, server_default=text("1")))
+
+T("job_status_history",
+  Column("id", Integer, primary_key=True),
+  Column("job_id", Integer),
+  Column("old_status", String(24), server_default=text("''")),
+  Column("new_status", String(24)),
+  Column("changed_by", Integer),
+  Column("changed_at", String(19)),
+  Column("reason", String(300), server_default=text("''")))
+
+T("job_assignments",
+  Column("id", Integer, primary_key=True),
+  Column("job_id", Integer),
+  Column("user_id", Integer),
+  Column("assignment_role", String(12), server_default=text("'lead'")),  # lead/helper/inspector
+  Column("assigned_by", Integer),
+  Column("assigned_at", String(19)),
+  Column("released_at", String(19)),
+  Column("accepted_at", String(19)),
+  Column("removed_at", String(19)))
+
+T("pm_plans",
+  Column("id", Integer, primary_key=True),
+  Column("machine_id", Integer),
+  Column("template_id", Integer),                          # checklist to attach
+  Column("name", String(160)),                             # e.g. Monthly electrical inspection
+  Column("frequency_type", String(10), server_default=text("'days'")),  # days/weeks/months/meter
+  Column("frequency_value", Integer, server_default=text("30")),
+  Column("meter_type", String(20), server_default=text("''")),
+  Column("last_completed_at", String(19)),
+  Column("next_due_at", String(10)),
+  Column("lead_days", Integer, server_default=text("3")),
+  Column("priority", Integer, server_default=text("1")),
+  Column("active", Integer, server_default=text("1")))
+
+T("meter_readings",
+  Column("id", Integer, primary_key=True),
+  Column("machine_id", Integer),
+  Column("meter_type", String(20), server_default=text("'runtime_hours'")),  # runtime_hours/odometer/cycles
+  Column("reading", Float),
+  Column("recorded_at", String(19)),
+  Column("recorded_by", Integer),
+  Column("source", String(10), server_default=text("'manual'")))   # manual/PLC/import
+
+T("machine_downtime",
+  Column("id", Integer, primary_key=True),
+  Column("machine_id", Integer),
+  Column("job_id", Integer),
+  Column("start_at", String(19)),
+  Column("end_at", String(19)),
+  Column("downtime_type", String(15), server_default=text("'full_stop'")),  # full_stop/reduced_speed/planned_stop
+  Column("reason", String(200), server_default=text("''")),
+  Column("recorded_by", Integer),
+  Column("confirmed_by", Integer))
+
+T("production_calendar",
+  Column("id", Integer, primary_key=True),
+  Column("factory_id", Integer),
+  Column("line", String(80), server_default=text("''")),
+  Column("work_date", String(10)),
+  Column("shift", String(10)),
+  Column("planned_start", String(5)),
+  Column("planned_end", String(5)),
+  Column("planned_minutes", Integer, server_default=text("0")),
+  Column("planned_shutdown_minutes", Integer, server_default=text("0")),
+  Column("holiday", Integer, server_default=text("0")))
+
+T("machine_part_bom",
+  Column("id", Integer, primary_key=True),
+  Column("machine_id", Integer),
+  Column("part_id", Integer),
+  Column("recommended_qty", Integer, server_default=text("1")),
+  Column("critical_spare", Integer, server_default=text("0")),
+  Column("replacement_frequency", String(40), server_default=text("''")))
+
+T("evidence_rules",
+  Column("id", Integer, primary_key=True),
+  Column("job_type", String(6)),                           # BD/CM/PM/IMP
+  Column("criticality", String(4), server_default=text("''")),   # ''=any, A/B/C
+  Column("stage", String(12), server_default=text("'before'")),
+  Column("min_photos", Integer, server_default=text("1")),
+  Column("max_photos", Integer, server_default=text("4")),
+  Column("video_allowed", Integer, server_default=text("1")),
+  Column("signature_required", Integer, server_default=text("0")))
 
 
 # ---------------- ?-placeholder Conn wrapper ----------------
@@ -276,4 +459,22 @@ def get_conn():
 
 
 def create_schema():
+    """Create new tables, then add any missing columns to existing tables.
+
+    Append-only migration: columns are only ever ADDED, never renamed or
+    dropped — old code keeps working on a new schema (rollback-safe).
+    Works identically on SQLite and PostgreSQL.
+    """
     metadata.create_all(engine)
+    from sqlalchemy import inspect as _inspect
+    insp = _inspect(engine)
+    with engine.begin() as conn:
+        for table in metadata.sorted_tables:
+            have = {c["name"] for c in insp.get_columns(table.name)}
+            for col in table.columns:
+                if col.name in have:
+                    continue
+                ddl = f'ALTER TABLE {table.name} ADD COLUMN {col.name} {col.type.compile(engine.dialect)}'
+                if col.server_default is not None:
+                    ddl += f" DEFAULT {col.server_default.arg.text}"
+                conn.execute(text(ddl))

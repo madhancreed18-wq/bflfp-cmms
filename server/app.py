@@ -18,7 +18,9 @@ def create_app():
             with closing(db()) as c:
                 users = c.execute("SELECT COUNT(*) FROM users WHERE active=1").fetchone()[0]
                 jobs_n = c.execute("SELECT COUNT(*) FROM jobs").fetchone()[0]
-            return {"ok": True, "version": APP_VERSION, "users": users, "jobs": jobs_n}
+            from .database import metadata
+            return {"ok": True, "version": APP_VERSION, "users": users, "jobs": jobs_n,
+                    "tables": len(metadata.tables)}
         except Exception as e:
             return {"ok": False, "version": APP_VERSION, "error": str(e)}
     for m in (auth, push, jobs, reports, admin, chat, kpi):
