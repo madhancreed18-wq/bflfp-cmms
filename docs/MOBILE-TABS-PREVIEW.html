@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mobile tabs — preview</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#CBD5E1;font-family:Sarabun,"Segoe UI",Tahoma,sans-serif;color:#0F172A}
+.note{max-width:1250px;margin:14px auto;background:#FFFBEB;border:1px solid #FDE68A;color:#78350F;border-radius:10px;padding:10px 14px;font-size:13px;line-height:1.55}
+.row{display:flex;gap:28px;justify-content:center;flex-wrap:wrap;margin-bottom:40px}
+.cap{text-align:center;font-weight:700;font-size:13px;margin-top:8px;color:#334155}
+.phone{width:360px;height:720px;border:10px solid #0F172A;border-radius:38px;overflow:hidden;background:#F1F5F9;display:flex;flex-direction:column;box-shadow:0 14px 40px rgba(0,0,0,.3)}
+.top{background:#202020;color:#fff;padding:12px 14px 10px;font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px}
+.top span{color:#EA6A0A}
+
+/* ── the connected tab (the look from the photo) ─────────────────────────── */
+.ctabs{--band:#EA6A0A;--page:#F1F5F9;--r:16px;position:relative;display:flex;background:var(--band);padding:10px 8px 0}
+.ctabs button{flex:1;position:relative;border:none;background:transparent;color:rgba(255,255,255,.88);
+  font:700 13.5px inherit;font-family:inherit;padding:11px 4px 12px;cursor:pointer;z-index:1;display:flex;gap:6px;align-items:center;justify-content:center;
+  -webkit-tap-highlight-color:transparent;transition:color .2s}
+.ctabs button .n{font-size:10.5px;font-weight:800;border-radius:99px;padding:0 6px;background:rgba(255,255,255,.25);color:#fff;min-width:18px}
+.ctabs button.on{color:var(--band)}
+.ctabs button.on .n{background:var(--band);color:#fff}
+.ctabs button:active{transform:scale(.97)}
+/* the white shape that slides under the selected tab */
+.ctabs .pill{position:absolute;bottom:0;height:calc(100% - 10px);background:var(--page);border-radius:var(--r) var(--r) 0 0;
+  transition:left .28s cubic-bezier(.4,.1,.2,1),width .28s cubic-bezier(.4,.1,.2,1)}
+/* concave corners — they make the tab "grow out of" the page like in the photo */
+.ctabs .pill:before,.ctabs .pill:after{content:'';position:absolute;bottom:0;width:var(--r);height:var(--r)}
+.ctabs .pill:before{left:calc(-1 * var(--r));background:radial-gradient(circle at 0 0,transparent calc(var(--r) - .5px),var(--page) var(--r))}
+.ctabs .pill:after{right:calc(-1 * var(--r));background:radial-gradient(circle at 100% 0,transparent calc(var(--r) - .5px),var(--page) var(--r))}
+.ctabs .pill.first:before,.ctabs .pill.last:after{display:none}
+
+.body{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:8px}
+/* the list slides in from the side of the tab you moved to — no sudden jump */
+@keyframes inR{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
+@keyframes inL{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:none}}
+.body.inR{animation:inR .28s cubic-bezier(.4,.1,.2,1)}.body.inL{animation:inL .28s cubic-bezier(.4,.1,.2,1)}
+.card{background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:10px 12px;font-size:12.5px}
+.card b{font-size:13.5px}
+.tag{font-size:10.5px;font-weight:700;border-radius:99px;padding:1px 7px;margin-left:6px}
+.bnav{display:flex;background:#202020;border-top:1px solid #2E2E2E}
+.bnav div{flex:1;text-align:center;color:#9AA0A6;font-size:10.5px;padding:8px 0 10px;font-weight:600}.bnav .on{color:#EA6A0A}
+</style></head><body>
+
+<div class="note"><b>PREVIEW ONLY — not built yet.</b> The "connected tab" from your photo: the tabs sit on a coloured band, and the selected tab is a light shape that <b>grows out of the page below</b> with curved corners, so it reads as the front folder. Tap the tabs — the highlight <b>slides</b> to the new tab (0.28 s) and the list <b>slides in</b> from that side; no sudden jump. Three colour options below, same design. Shown on the planner's phone tabs <b>วันนี้ (Today) · งานทั้งหมด (All jobs) · รอตรวจรับ (To accept)</b>; the same component can be used for the technician's phone tabs.</div>
+
+<div class="row">
+ <div><div class="phone" id="p1"></div><div class="cap">A · Orange band (closest to the photo)</div></div>
+ <div><div class="phone" id="p2"></div><div class="cap">B · Dark band (continues the header)</div></div>
+ <div><div class="phone" id="p3"></div><div class="cap">C · Blue band</div></div>
+</div>
+
+<script>
+const TABS=[['today','วันนี้','Today',6],['all','งานทั้งหมด','All jobs',21],['acc','รอตรวจรับ','To accept',11]];
+const LISTS={
+ today:[['PRD-2609-179','CM','#E2E8F0','#334155','Inverter not working','Mark · 08:00'],['PRM-2609-552','PM','#DBEAFE','#1D4ED8','W01MI01 · Flake machine','Mark'],['BKD-2609-040','BD','#FEE2E2','#B91C1C','B01PU10 · pump line 4','no crew yet']],
+ all:[['PRD-2609-182','CM','#E2E8F0','#334155','A02GD03 · grinder 2','Team A'],['PRD-2609-053','CM','#E2E8F0','#334155','G01SR01 · Tower A','Team A'],['PRM-2609-566','PM','#DBEAFE','#1D4ED8','W01PK17 · TTK #1','Choke'],['PRD-2609-147','CM','#E2E8F0','#334155','G01SS01 · drain pipe','Team A']],
+ acc:[['PRM-2609-446','PM','#DBEAFE','#1D4ED8','W01PK06 · Weekly OK 8/8','finished 15:39'],['BKD-2609-050','BD','#FEE2E2','#B91C1C','W01PK06 · fixed on site','finished 09:22']]};
+function draw(id,band,sel){
+  const el=document.getElementById(id);
+  el.innerHTML=`<div class="top">BFL Group <span>- CMMS</span></div>
+   <div class="ctabs" style="--band:${band}">
+     ${TABS.map(([k,th,en,n])=>`<button data-k="${k}" class="${k===sel?'on':''}" onclick="draw('${id}','${band}','${k}')">${en} <span class="n">${n}</span></button>`).join('')}
+     <span class="pill"></span></div>
+   <div class="body">${LISTS[sel].map(([j,t,bg,fg,d,w])=>`<div class="card"><b>${j}</b><span class="tag" style="background:${bg};color:${fg}">${t}</span><div style="color:#64748B;margin-top:3px">${d}</div><div style="color:#94A3B8;font-size:11.5px;margin-top:2px">${w}</div></div>`).join('')}</div>
+   <div class="bnav"><div class="on">Jobs</div><div>Planning</div><div>Dashboard</div><div>More</div></div>`;
+  place(el,sel,false);
+}
+function place(el,sel,anim){
+  const bar=el.querySelector('.ctabs'),pill=bar.querySelector('.pill'),btns=[...bar.querySelectorAll('button')];
+  const b=bar.querySelector(`button[data-k="${sel}"]`),i=btns.indexOf(b);
+  pill.style.left=b.offsetLeft+'px';pill.style.width=b.offsetWidth+'px';
+  pill.classList.toggle('first',i===0&&false);pill.classList.toggle('last',i===btns.length-1&&false);
+}
+// keep the slide animation: move the pill before redrawing the list
+const _draw=draw;
+window.draw=function(id,band,sel){
+  const el=document.getElementById(id),bar=el.querySelector('.ctabs');
+  if(!bar){_draw(id,band,sel);return;}
+  const ks=TABS.map(t=>t[0]),was=ks.indexOf((bar.querySelector('button.on')||{}).dataset?.k),now=ks.indexOf(sel);
+  bar.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.k===sel));
+  place(el,sel,true);
+  const body=el.querySelector('.body');body.classList.remove('inL','inR');void body.offsetWidth;
+  if(was!==now)body.classList.add(now>was?'inR':'inL');
+  body.innerHTML=LISTS[sel].map(([j,t,bg,fg,d,w])=>`<div class="card"><b>${j}</b><span class="tag" style="background:${bg};color:${fg}">${t}</span><div style="color:#64748B;margin-top:3px">${d}</div><div style="color:#94A3B8;font-size:11.5px;margin-top:2px">${w}</div></div>`).join('');
+  bar.querySelectorAll('button').forEach(b=>b.setAttribute('onclick',`draw('${id}','${band}','${b.dataset.k}')`));
+};
+_draw('p1','#EA6A0A','today');_draw('p2','#202020','all');_draw('p3','#1D4ED8','acc');
+</script>
+</body></html>

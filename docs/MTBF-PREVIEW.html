@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fleet MTBF — preview</title>
+<style>
+  :root{
+    --bg:#f1f4f8; --card:#fff; --line:#e3e8ef; --ink:#16202c; --mute:#64748b;
+    --blue:#1d4ed8; --green:#16a34a; --amber:#d97706; --red:#dc2626;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:14px/1.5 -apple-system,"Segoe UI",Roboto,"Noto Sans Thai",sans-serif;}
+  .wrap{max-width:1080px;margin:0 auto;padding:24px 16px 56px}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--mute);font-size:13px;margin-bottom:20px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-bottom:16px}
+  .grid{display:flex;gap:16px;flex-wrap:wrap}
+  .grid .card{flex:1 1 320px;margin:0}
+  .tag{display:inline-block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+       padding:2px 7px;border-radius:5px;vertical-align:2px;margin-left:8px}
+  .tag.now{background:#fee2e2;color:#b91c1c}
+  .tag.new{background:#dcfce7;color:#15803d}
+  .tag.eng{background:#e0edff;color:#1d4ed8}
+  .ttl{font-weight:600;font-size:14px}
+  .formula{color:var(--blue);font-size:12px;margin-top:2px}
+  .big{font-size:38px;font-weight:700;text-align:center;margin:18px 0 2px;letter-spacing:-.5px}
+  .big.bad{color:var(--red)} .big.good{color:var(--green)}
+  .mid{text-align:center;color:var(--mute);font-size:12.5px}
+  .foot{text-align:center;font-size:12.5px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+  .why{background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px 14px;font-size:13px;margin-top:14px}
+  .why b{color:#92400e}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);font-weight:600}
+  td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+  .code{font-weight:600}
+  .th{color:var(--mute);font-size:12px}
+  .warn{color:var(--red);font-weight:600}
+  .ok{color:var(--green)}
+  pre{background:#0f172a;color:#e2e8f0;padding:14px 16px;border-radius:10px;overflow-x:auto;font-size:12.5px;line-height:1.6}
+  pre .del{color:#fca5a5} pre .add{color:#86efac} pre .c{color:#94a3b8}
+  ul{margin:8px 0 0;padding-left:20px} li{margin:4px 0}
+  .note{color:var(--mute);font-size:12px;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Fleet MTBF — what the card should say</h1>
+  <div class="sub">BFLFP · 12 Aug → 11 Sep 2026 · figures computed from the 10 Sep copy of the live database on raja</div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="ttl">Fleet MTBF <span class="tag now">as it reads now</span></div>
+      <div class="formula">running hours of all 157 machines ÷ breakdowns</div>
+      <div class="big bad">6,576 h</div>
+      <div class="mid">59,182 h running ÷ 9 BD</div>
+      <div class="foot">= 470 working days between failures</div>
+      <div class="why">
+        <b>Why it is wrong:</b> the numerator adds up every machine in the plant, so the
+        unit is <b>machine-hours</b>, not elapsed time. 152 machines that never failed are
+        padding the total. Add more healthy machines and MTBF "improves" without anything
+        changing on the floor.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ttl">Fleet MTBF <span class="tag new">proposed</span> <span class="tag eng">eng kpi</span></div>
+      <div class="formula">running hours of the machines that failed ÷ breakdowns</div>
+      <div class="big good">191 h 46 m</div>
+      <div class="mid">1,726 h running ÷ 9 BD · <b>5 of 157 machines failed</b></div>
+      <div class="foot">≈ 13.7 working days between failures · worst: <b>W01PK06 · 72 h</b></div>
+      <div class="why" style="background:#f0fdf4;border-color:#bbf7d0">
+        <b style="color:#15803d">Why this is the honest number:</b> same ENG formula
+        (running hours ÷ breakdowns), only the population changes — a machine with no
+        breakdown has no "time between failures" to contribute. It moves week to week,
+        and it points at an asset a planner can do something about.
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ttl">The list behind the ring — open the list →</div>
+    <div class="note">Every machine that broke down in the window, worst MTBF first. Sundays and off-days excluded; 14 operating hours a day.</div>
+    <table>
+      <thead>
+        <tr><th>Asset</th><th>Machine</th><th class="n">BD</th><th class="n">Running</th>
+            <th class="n">Down</th><th class="n">MTBF</th><th class="n">Working days</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="code">W01PK06</td>
+          <td>เครื่องบรรจุซองเพ้าช์ Dupex <span class="th">/ duplex pouch filling machine</span></td>
+          <td class="n warn">4</td><td class="n">290 h</td><td class="n">88 h 00 m</td>
+          <td class="n warn">72 h 30 m</td><td class="n">5.2</td>
+        </tr>
+        <tr>
+          <td class="code">W01ST02</td>
+          <td>เครื่อง Retort Steam หม้อฆ่าเชื้อกระป๋อง <span class="th">/ retort steam steriliser</span></td>
+          <td class="n">2</td><td class="n">376 h</td><td class="n">1 h 35 m</td>
+          <td class="n">188 h 12 m</td><td class="n">13.4</td>
+        </tr>
+        <tr>
+          <td class="code">W01MI02</td>
+          <td>เครื่องสับผสม <span class="th">/ mixer chopper</span></td>
+          <td class="n">1</td><td class="n">337 h</td><td class="n">41 h 11 m</td>
+          <td class="n">336 h 48 m</td><td class="n">24.1</td>
+        </tr>
+        <tr>
+          <td class="code">W01PK02</td>
+          <td>เครื่อง Filler บรรจุปลาลงกระป๋อง <span class="th">/ filler, fish into cans</span></td>
+          <td class="n">1</td><td class="n">358 h</td><td class="n">20 h 12 m</td>
+          <td class="n">357 h 48 m</td><td class="n">25.6</td>
+        </tr>
+        <tr>
+          <td class="code">W01DI02</td>
+          <td>เครื่องบด #2 <span class="th">/ grinder #2</span></td>
+          <td class="n">1</td><td class="n">365 h</td><td class="n">13 h 07 m</td>
+          <td class="n">364 h 54 m</td><td class="n">26.1</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="note">Median machine: <b>336 h 49 m</b>. The fleet figure is pulled down by W01PK06,
+      which is correct — it is 4 of the 9 breakdowns.</div>
+  </div>
+
+  <div class="card">
+    <div class="ttl">The change in <code>server/kpi.py</code></div>
+    <pre><span class="c"># plant totals, in the per-machine loop</span>
+        plant["bd"]  += n_bd
+        plant["run"] += run
+<span class="add">+       if n_bd:                       # only a machine that failed has a time between failures</span>
+<span class="add">+           plant["fail_run"] += run</span>
+<span class="add">+           plant["fail_n"]   += 1</span>
+
+<span class="c"># the card</span>
+<span class="del">-   "fleet_mtbf_min": round(plant["run"] / plant["bd"]) if plant["bd"] else None,</span>
+<span class="add">+   "fleet_mtbf_min": round(plant["fail_run"] / plant["bd"]) if plant["bd"] else None,</span>
+<span class="add">+   "fleet_mtbf_machines": plant["fail_n"],        # "5 of 157 machines failed"</span>
+<span class="add">+   "mtbf_worst": sorted([m for m in out if m["bd_count"]], key=lambda m: m["mtbf_min"])[:5],</span></pre>
+    <ul>
+      <li>Per-machine <code>mtbf_min</code> is untouched — it was always right.</li>
+      <li>MTTR is untouched: repair hours ÷ breakdowns is sound as a fleet sum.</li>
+      <li>Machine availability keeps the fleet denominator on purpose, with its
+          "2 machines below 90%" counter — the same pattern this MTBF card now follows.</li>
+      <li>Same treatment on the PDF daily report and the Machines/OEE table.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="ttl">One thing to decide</div>
+    <ul>
+      <li><b>The word on the card.</b> "Fleet MTBF" over a number built only from machines that failed
+        needs its sub-line to say so — proposed: <i>5 of 157 machines failed · 9 breakdowns</i>.</li>
+      <li><b>The window is short.</b> 9 breakdowns over a month is below the 5-breakdown / 28-day
+        stability gate already in the code, so the card should keep its "unstable" note on shorter ranges.</li>
+      <li><b>Your screen shows 12 BD and 4,930 h</b>; this preview shows 9 BD and 6,576 h because it is
+        computed from the 10 Sep database copy on raja. The shape of the fix does not change.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

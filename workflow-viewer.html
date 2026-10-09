@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CMMS Operator Workflow</title>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'default', flowchart: { curve: 'basis' } });
+  </script>
+  <style>
+    body { font-family: Arial, Tahoma, sans-serif; margin: 32px auto; max-width: 1100px; color: #17212B; }
+    h1 { margin-bottom: 6px; } h2 { margin-top: 52px; } p { color: #536573; }
+    .mermaid { border: 1px solid #D6DEE4; border-radius: 12px; padding: 22px; }
+  </style>
+</head>
+<body>
+  <h1>CMMS Operator Workflow</h1>
+  <p>English and Thai versions</p>
+
+  <h2>English</h2>
+  <pre class="mermaid">
+flowchart TD
+    A[Operator finds a machine problem] --> B[Open CMMS on phone]
+    B --> C[Select or scan machine QR]
+    C --> D{Machine stopped?}
+    D -->|Yes - Breakdown| E[Report urgent BD job]
+    D -->|No - Corrective work| F[Report CM job]
+    E --> G[All technicians receive notification]
+    F --> H[Planner assigns technician and schedule]
+    G --> I[Technician starts work]
+    H --> I
+    I --> J[Timer starts automatically]
+    J --> K{Needs to stop or wait?}
+    K -->|Yes| L[Technician pauses: parts / production / break]
+    L --> M[Technician resumes work]
+    M --> J
+    K -->|No| N[Technician completes repair: problem, cause, solution, photos]
+    N --> O[Operator gets completion notification]
+    O --> P{Operator checks machine}
+    P -->|Working correctly| Q[Approve and sign]
+    P -->|Not fixed| R[Reject with reason]
+    R --> S[Job becomes Rework]
+    S --> I
+    Q --> T[Job is Done]
+    T --> U[Repair history, downtime, and KPIs are updated]
+  </pre>
+
+  <h2>ภาษาไทย</h2>
+  <pre class="mermaid">
+flowchart TD
+    A[ผู้ปฏิบัติงานพบปัญหาเครื่องจักร] --> B[เปิด CMMS บนมือถือ]
+    B --> C[เลือกหรือสแกน QR เครื่องจักร]
+    C --> D{เครื่องจักรหยุดหรือไม่?}
+    D -->|ใช่ - Breakdown| E[แจ้งงานด่วน BD]
+    D -->|ไม่ใช่ - งานแก้ไข| F[แจ้งงาน CM]
+    E --> G[ช่างทุกคนได้รับการแจ้งเตือน]
+    F --> H[Planner มอบหมายช่างและกำหนดเวลา]
+    G --> I[ช่างเริ่มทำงาน]
+    H --> I
+    I --> J[ระบบเริ่มจับเวลาอัตโนมัติ]
+    J --> K{ต้องหยุดหรือรอหรือไม่?}
+    K -->|ใช่| L[ช่างพักงาน: รออะไหล่ / รอผลิต / พัก]
+    L --> M[ช่างกลับมาทำงานต่อ]
+    M --> J
+    K -->|ไม่ใช่| N[ช่างบันทึกงานเสร็จ: ปัญหา สาเหตุ วิธีแก้ รูปภาพ]
+    N --> O[ผู้ปฏิบัติงานได้รับแจ้งงานเสร็จ]
+    O --> P{ผู้ปฏิบัติงานตรวจเครื่อง}
+    P -->|ใช้งานได้| Q[อนุมัติและลงชื่อ]
+    P -->|ยังใช้ไม่ได้| R[ปฏิเสธและระบุเหตุผล]
+    R --> S[งานกลับไป Rework]
+    S --> I
+    Q --> T[งานเสร็จสิ้น]
+    T --> U[ประวัติ Downtime และ KPI อัปเดต]
+  </pre>
+</body>
+</html>

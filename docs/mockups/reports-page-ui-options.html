@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reports page — four UI options</title>
+<style>
+  :root{--navy:#1E293B;--hbg:#202020;--bg:#F1F5F9;--bd:#D9E6F2;--or:#1B75BC;
+        --orange:#F97316;--green:#16A34A;--red:#DC2626;--amber:#D97706;--gray:#5C789A}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Prompt',system-ui,-apple-system,'Segoe UI',sans-serif;background:#EEF2F7;
+       color:var(--navy);line-height:1.55;padding:0 0 70px}
+  .wrap{max-width:1280px;margin:0 auto;padding:0 20px}
+  header.top{background:var(--hbg);color:#fff;padding:22px 0 20px;margin-bottom:24px}
+  header.top .wrap{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  header.top h1{font-size:21px;font-weight:600}
+  header.top .tag{font-size:12px;color:#F97316;border:1px solid rgba(249,115,22,.5);
+        border-radius:999px;padding:3px 11px;letter-spacing:.4px}
+  header.top p{font-size:13px;color:#CBD5E1;flex:1 1 100%;margin-top:4px}
+  h2{font-size:18px;margin:36px 0 6px;padding-bottom:7px;border-bottom:2px solid var(--bd)}
+  h2 .num{color:var(--orange)}
+  h3{font-size:14px;margin:16px 0 6px;color:#334155}
+  p,li{font-size:14px}
+  ul{margin:7px 0 7px 20px}
+  li{margin:3px 0}
+  code{background:#E2E8F0;border-radius:4px;padding:1px 5px;font-size:12.5px;
+       font-family:ui-monospace,Menlo,Consolas,monospace}
+  .card{background:#fff;border:1px solid var(--bd);border-radius:12px;padding:15px 18px;margin:12px 0}
+  .lede{font-size:14px;color:#475569;margin:2px 0 10px}
+  .pros{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px}
+  .pros div{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:11px 14px;font-size:13px}
+  .pros b{display:block;margin-bottom:3px;font-size:12.5px;letter-spacing:.3px}
+  .pros .good b{color:#166534}.pros .bad b{color:#9A3412}
+  @media(max-width:820px){.pros{grid-template-columns:1fr}}
+
+  /* ── app shell ───────────────────────────────────────────── */
+  .app{border:1px solid var(--bd);border-radius:12px;overflow:hidden;background:#fff;
+       box-shadow:0 10px 26px rgba(15,42,76,.10);margin:10px 0 4px}
+  .apphd{background:var(--hbg);color:#fff;padding:8px 14px;font-size:13px;font-weight:600;display:flex;gap:8px;align-items:center}
+  .apphd .o{color:var(--orange)}
+  .apphd .sp{flex:1}
+  .apphd .who{font-size:11px;color:#CBD5E1;font-weight:400}
+  .body{padding:14px;background:#F6F9FC}
+  .ttl{font-size:16px;font-weight:600}
+  .sub{font-size:11.5px;color:#94A3B8;margin-bottom:10px}
+  .tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+  .tab{font-size:12px;padding:7px 16px;border-radius:8px;background:#fff;border:1px solid var(--bd);color:#475569}
+  .tab.on{background:var(--or);border-color:var(--or);color:#fff;font-weight:600}
+  .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+  .tile{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:10px 13px}
+  .tile .n{font-size:22px;font-weight:700;line-height:1.1}
+  .tile .l{font-size:10.5px;color:#64748B}
+  .tile .h{font-size:9.5px;color:#94A3B8}
+  .chips{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+  .chip{font-size:11px;border:1px solid var(--bd);background:#fff;border-radius:999px;padding:3px 11px;color:#475569}
+  .chip.on{background:#0F2B4C;border-color:#0F2B4C;color:#fff;font-weight:600}
+  table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--bd);border-radius:10px;overflow:hidden;font-size:12px}
+  th,td{padding:7px 9px;border-bottom:1px solid #EDF2F8;text-align:left;white-space:nowrap}
+  th{background:#0F2B4C;color:#fff;font-size:10.5px;font-weight:600}
+  tr:last-child td{border-bottom:none}
+  tr.sel td{background:#FFF7ED}
+  .mut{color:#94A3B8}
+  .g{color:var(--green);font-weight:700}
+  .a{color:var(--amber);font-weight:700}
+  .r{color:var(--red);font-weight:700}
+  /* status bar */
+  .sbar{display:flex;height:7px;border-radius:4px;overflow:hidden;background:#EDF2F8;min-width:104px}
+  .sbar i{display:block;height:100%}
+  .lg{display:flex;gap:10px;font-size:10px;color:#64748B;align-items:center;flex-wrap:wrap}
+  .lg span{display:flex;gap:4px;align-items:center}
+  .sw{width:9px;height:9px;border-radius:2px;display:inline-block}
+
+  /* two pane */
+  .two{display:grid;grid-template-columns:1.25fr 1fr;gap:12px}
+  .pane{background:#fff;border:1px solid var(--bd);border-radius:10px;overflow:hidden}
+  .pane .ph{padding:8px 11px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600}
+  .pane .ph .sp{flex:1}
+  .mini{font-size:10.5px;border:1px solid var(--bd);border-radius:7px;padding:3px 8px;background:#fff;color:#334155}
+  .mini.pri{background:#0F2B4C;border-color:#0F2B4C;color:#fff}
+  .paper{background:#fff;padding:12px 14px;font-size:10px;color:#334155;height:300px;overflow:hidden;
+         background-image:linear-gradient(#fff 0 0);border-top:1px solid #EDF2F8}
+  .paper h4{font-size:12px;margin-bottom:2px}
+  .paper .meta{color:#94A3B8;font-size:9.5px;margin-bottom:8px}
+  .paper table{font-size:9px}
+  .paper th{background:#EDF2F8;color:#334155}
+  .fade{height:44px;margin-top:-44px;position:relative;
+        background:linear-gradient(rgba(255,255,255,0),#fff)}
+
+  /* calendar */
+  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;background:#fff;border:1px solid var(--bd);
+       border-radius:10px;padding:10px}
+  .dow{font-size:10px;color:#94A3B8;text-align:center;font-weight:600}
+  .day{border:1px solid #EDF2F8;border-radius:8px;padding:6px;min-height:62px;font-size:10px}
+  .day .d{font-weight:700;font-size:11px;color:#334155}
+  .day.none{background:#FDFDFE}
+  .day.none .d{color:#CBD5E1}
+  .day.miss{background:#FEF6F6;border-color:#FADCDC}
+  .day.miss .x{color:#DC2626;font-weight:700;font-size:9.5px}
+  .day.off{background:#F8FAFC}
+  .day .jb{font-size:9.5px;color:#64748B;margin:3px 0 4px}
+
+  /* cards */
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr 1fr}.tiles{grid-template-columns:1fr 1fr}.two{grid-template-columns:1fr}}
+  .rc{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:11px 12px}
+  .rc .dt{font-size:15px;font-weight:700}
+  .rc .sm{font-size:10px;color:#94A3B8}
+  .rc .big{font-size:26px;font-weight:700;line-height:1}
+  .rc .row{display:flex;align-items:flex-end;gap:10px;margin:7px 0 6px}
+  .rc .btns{display:flex;gap:6px;margin-top:9px}
+
+  /* library */
+  .lib{display:grid;grid-template-columns:186px 1fr;gap:12px}
+  .rail{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:10px 11px;font-size:11.5px}
+  .rail h5{font-size:10px;color:#94A3B8;letter-spacing:.5px;margin:10px 0 5px;font-weight:700}
+  .rail h5:first-child{margin-top:0}
+  .rail label{display:flex;gap:6px;align-items:center;padding:3px 0;color:#334155}
+  .bx{width:12px;height:12px;border:1.5px solid #94A3B8;border-radius:3px;display:inline-flex;
+      align-items:center;justify-content:center;font-size:8px;color:#fff;flex:none}
+  .bx.on{background:#EA6A0A;border-color:#EA6A0A}
+  .gap{background:#FFF7ED;border:1px solid #FBD9B4;border-radius:9px;padding:9px 11px;font-size:11.5px;color:#9A3412;margin-bottom:10px}
+  .gap b{color:#7C2D12}
+  .capt{font-size:12.5px;color:var(--gray);margin:4px 0 0}
+  .rec{background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:13px 16px;font-size:13.5px;color:#14532D}
+  footer{margin-top:40px;font-size:12px;color:var(--gray);text-align:center}
+</style>
+</head>
+<body>
+
+<header class="top"><div class="wrap">
+  <h1>Reports page — four UI directions</h1>
+  <span class="tag">PREVIEW — no code changed</span>
+  <p>BFLFP CMMS · drawn from your live screen (BFLFP, 8 daily reports, 101 jobs) · mockups only</p>
+</div></header>
+
+<div class="wrap">
+
+<h2>What the page does not do today</h2>
+<div class="card">
+<ul>
+  <li><b>Two thirds of the screen is empty.</b> Eight rows, then 500px of nothing — on the one page where you would want to actually read a report.</li>
+  <li><b>The Techs column is always 0.</b> It reads <code>people</code>, which only the plan report fills — a daily report never sets it. A column of zeros teaches people to ignore columns.</li>
+  <li><b>The row already knows more than it shows.</b> Every shelf row stores <code>done_n · doing_n · accept_n · open_n · pm_n · cm_n</code>. The table shows two of the six, so "51 jobs, 1 done, 24 not started" leaves 26 jobs unaccounted for on screen.</li>
+  <li><b>The tiles do not say what they are.</b> 101 and 9 are the sums of the Jobs and Done columns below, but nothing says so, and they change when you switch month.</li>
+  <li><b>Two date columns that mostly agree.</b> "For day" and "Issued" differ only when a report went out late — which is interesting, and invisible.</li>
+  <li><b>No coverage answer.</b> "8 days covered" — out of how many working days? Aug 30 and Sept 6 have no report and the page cannot say so.</li>
+</ul>
+</div>
+
+<!-- ══════════════ OPTION A ══════════════ -->
+<h2><span class="num">Option A</span> · Read it here — list plus preview</h2>
+<p class="lede">The list keeps its shape but earns its width: click a row and the document opens on the right instead of in a new tab. The wasted space becomes the reading pane.</p>
+
+<div class="app">
+  <div class="apphd">BFLFP <span class="o">· CMMS</span><span class="sp"></span><span class="who">ผู้ดูแลระบบ (Admin)</span></div>
+  <div class="body">
+    <div class="ttl">Maintenance reports</div>
+    <div class="sub">What was actually finished each day, kept as it went out</div>
+    <div class="tabs"><span class="tab on">Daily report 8</span><span class="tab">Repair forms 25</span>
+      <span class="tab">PM Reports</span><span class="tab">Plan 10</span></div>
+    <div class="tiles">
+      <div class="tile"><div class="n">8</div><div class="l">Reports listed</div><div class="h">all months</div></div>
+      <div class="tile"><div class="n">8 <span style="font-size:13px;color:#94A3B8">/ 10</span></div><div class="l">Working days covered</div><div class="h">2 days with no report</div></div>
+      <div class="tile"><div class="n">101</div><div class="l">Jobs in these reports</div><div class="h">sum of the rows below</div></div>
+      <div class="tile"><div class="n" style="color:#16A34A">9</div><div class="l">Finished</div><div class="h">9% of 101</div></div>
+    </div>
+    <div class="two">
+      <div class="pane">
+        <div class="ph">Reports <span class="mut" style="font-weight:400;font-size:11px">· 8</span><span class="sp"></span>
+          <span class="chip on">All 8</span><span class="chip">Sept 5</span><span class="chip">Aug 3</span></div>
+        <table>
+          <tr><th>For day</th><th>Report</th><th>Jobs</th><th style="width:130px">How it went</th><th>By</th></tr>
+          <tr class="sel"><td><b>Fri 5 Sept</b><div class="mut" style="font-size:10px">issued 17:49 · same day</div></td>
+            <td>0509-1749</td><td><b>51</b></td>
+            <td><div class="sbar"><i style="background:#16A34A;width:2%"></i><i style="background:#F59E0B;width:20%"></i><i style="background:#8B5CF6;width:31%"></i><i style="background:#CBD5E1;width:47%"></i></div>
+              <div class="mut" style="font-size:9.5px;margin-top:2px">1 done · 10 doing · 16 to accept · 24 not started</div></td>
+            <td>techfp1</td></tr>
+          <tr><td><b>Thu 4 Sept</b><div class="r" style="font-size:10px;font-weight:400">issued next morning 08:13</div></td>
+            <td>0509-0813</td><td>26</td>
+            <td><div class="sbar"><i style="background:#16A34A;width:8%"></i><i style="background:#F59E0B;width:15%"></i><i style="background:#8B5CF6;width:23%"></i><i style="background:#CBD5E1;width:54%"></i></div>
+              <div class="mut" style="font-size:9.5px;margin-top:2px">2 done · 4 doing · 6 to accept · 14 not started</div></td>
+            <td>techfp1</td></tr>
+          <tr><td><b>Wed 3 Sept</b><div class="mut" style="font-size:10px">issued 15:14 · same day</div></td>
+            <td>0309-1514</td><td>12</td>
+            <td><div class="sbar"><i style="background:#16A34A;width:25%"></i><i style="background:#CBD5E1;width:75%"></i></div>
+              <div class="mut" style="font-size:9.5px;margin-top:2px">3 done · 9 not started</div></td>
+            <td>techfp2</td></tr>
+          <tr><td><b>Tue 2 Sept</b><div class="mut" style="font-size:10px">issued 11:56 · same day</div></td>
+            <td>0209-1156</td><td>9</td>
+            <td><div class="sbar"><i style="background:#16A34A;width:11%"></i><i style="background:#8B5CF6;width:33%"></i><i style="background:#CBD5E1;width:56%"></i></div>
+              <div class="mut" style="font-size:9.5px;margin-top:2px">1 done · 3 to accept · 5 not started</div></td>
+            <td>techfp1</td></tr>
+          <tr><td><b>Sat 29 Aug</b><div class="mut" style="font-size:10px">issued 13:27</div></td>
+            <td>2908-1327</td><td class="mut">0</td>
+            <td><span class="mut" style="font-size:10px">empty report — no work that day</span></td>
+            <td>dom</td></tr>
+        </table>
+      </div>
+      <div class="pane">
+        <div class="ph">Daily report 0509-1749<span class="sp"></span>
+          <span class="mini">⤓ PDF</span><span class="mini">🖨 Print</span><span class="mini pri">Open full</span></div>
+        <div class="paper">
+          <h4>รายงานการซ่อมบำรุงประจำวัน / Daily maintenance report</h4>
+          <div class="meta">F-SP-ENG02-06 Rev.01 · BFLFP · วันศุกร์ที่ 5 กันยายน 2569 · issued 17:49 by techfp1</div>
+          <table>
+            <tr><th>#</th><th>Job</th><th>Machine</th><th>Technician</th><th>Status</th></tr>
+            <tr><td>1</td><td>PRM-2609-031</td><td>W01MX01 เครื่องผสม</td><td>สมชาย</td><td>เสร็จ</td></tr>
+            <tr><td>2</td><td>PRM-2609-032</td><td>W01LP01 เครื่องบรรจุซอง</td><td>ประยุทธ</td><td>รอตรวจรับ</td></tr>
+            <tr><td>3</td><td>BKD-2609-006</td><td>W01SM01 เครื่องปิดฝา</td><td>สมศักดิ์</td><td>กำลังทำ</td></tr>
+            <tr><td>4</td><td>PRD-2609-014</td><td>W01LB01 เครื่องติดฉลาก</td><td>—</td><td>ยังไม่เริ่ม</td></tr>
+            <tr><td>5</td><td>PRM-2609-033</td><td>W01CH01 ตู้แช่</td><td>วิชัย</td><td>ยังไม่เริ่ม</td></tr>
+          </table>
+        </div>
+        <div class="fade"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="pros">
+  <div class="good"><b>WHY IT WORKS</b>The empty half becomes the document. The status bar spends data the row already stores, so "51 jobs, 1 done" stops being a puzzle. Late reports become visible in the one place they matter. Nothing a person already knows moves.</div>
+  <div class="bad"><b>THE COST</b>The preview pane needs the PDF rendered inline (you already ship <code>pdf.min.js</code>, so this is wiring, not a new dependency). Below about 1100px it falls back to today's full-width list.</div>
+</div>
+
+<!-- ══════════════ OPTION B ══════════════ -->
+<h2><span class="num">Option B</span> · Did we report every day? — coverage calendar</h2>
+<p class="lede">A month grid instead of a list. Every day says whether a report went out and how the day went. The missing days are the point.</p>
+
+<div class="app">
+  <div class="apphd">BFLFP <span class="o">· CMMS</span><span class="sp"></span><span class="who">ผู้ดูแลระบบ (Admin)</span></div>
+  <div class="body">
+    <div class="ttl">Maintenance reports · September 2026</div>
+    <div class="sub">‹ August · September › &nbsp;·&nbsp; 5 issued · 2 working days missed · 3 days to come</div>
+    <div class="tabs"><span class="tab on">Daily report</span><span class="tab">Repair forms</span>
+      <span class="tab">PM Reports</span><span class="tab">Plan</span></div>
+    <div class="cal">
+      <div class="dow">จ</div><div class="dow">อ</div><div class="dow">พ</div><div class="dow">พฤ</div>
+      <div class="dow">ศ</div><div class="dow">ส</div><div class="dow">อา</div>
+      <div class="day none"><div class="d">31</div></div>
+      <div class="day"><div class="d">1</div><div class="jb">1 job</div>
+        <div class="sbar"><i style="background:#16A34A;width:100%"></i></div></div>
+      <div class="day"><div class="d">2</div><div class="jb">9 jobs</div>
+        <div class="sbar"><i style="background:#16A34A;width:11%"></i><i style="background:#8B5CF6;width:33%"></i><i style="background:#CBD5E1;width:56%"></i></div></div>
+      <div class="day"><div class="d">3</div><div class="jb">12 jobs</div>
+        <div class="sbar"><i style="background:#16A34A;width:25%"></i><i style="background:#CBD5E1;width:75%"></i></div></div>
+      <div class="day"><div class="d">4</div><div class="jb">26 jobs <span class="r">late</span></div>
+        <div class="sbar"><i style="background:#16A34A;width:8%"></i><i style="background:#F59E0B;width:15%"></i><i style="background:#8B5CF6;width:23%"></i><i style="background:#CBD5E1;width:54%"></i></div></div>
+      <div class="day"><div class="d">5</div><div class="jb">51 jobs</div>
+        <div class="sbar"><i style="background:#16A34A;width:2%"></i><i style="background:#F59E0B;width:20%"></i><i style="background:#8B5CF6;width:31%"></i><i style="background:#CBD5E1;width:47%"></i></div></div>
+      <div class="day miss"><div class="d">6</div><div class="x">no report</div><div class="jb">7 jobs closed</div></div>
+      <div class="day off"><div class="d mut">7</div><div class="jb mut">วันหยุด</div></div>
+      <div class="day miss"><div class="d">8</div><div class="x">no report</div><div class="jb">3 jobs closed</div></div>
+      <div class="day none"><div class="d">9</div></div><div class="day none"><div class="d">10</div></div>
+      <div class="day none"><div class="d">11</div></div><div class="day none"><div class="d">12</div></div>
+      <div class="day none"><div class="d">13</div></div><div class="day off"><div class="d mut">14</div></div>
+    </div>
+    <div class="lg" style="margin-top:9px">
+      <span><i class="sw" style="background:#16A34A"></i> เสร็จ / done</span>
+      <span><i class="sw" style="background:#F59E0B"></i> กำลังทำ / doing</span>
+      <span><i class="sw" style="background:#8B5CF6"></i> รอตรวจรับ / to accept</span>
+      <span><i class="sw" style="background:#CBD5E1"></i> ยังไม่เริ่ม / not started</span>
+      <span><i class="sw" style="background:#FEF6F6;border:1px solid #FADCDC"></i> working day with no report</span>
+    </div>
+  </div>
+</div>
+<div class="pros">
+  <div class="good"><b>WHY IT WORKS</b>It answers the audit question the list cannot: was a report issued every working day? Sept 6 and 8 closed jobs and produced no document — that is exactly what a QA check looks for, and today nothing on screen says it. Working days come from the Hours screen you already keep.</div>
+  <div class="bad"><b>THE COST</b>Reading one specific report takes an extra click, and a month grid shows one month at a time. Better as a strip <i>above</i> Option A than as a replacement for it.</div>
+</div>
+
+<!-- ══════════════ OPTION C ══════════════ -->
+<h2><span class="num">Option C</span> · Cards — the tablet answer</h2>
+<p class="lede">One card per report, three across. Reads the same on a phone in the workshop as on the office PC.</p>
+
+<div class="app">
+  <div class="apphd">BFLFP <span class="o">· CMMS</span><span class="sp"></span><span class="who">ผู้ดูแลระบบ (Admin)</span></div>
+  <div class="body">
+    <div class="ttl">Maintenance reports</div><div class="sub">8 documents · newest first</div>
+    <div class="grid">
+      <div class="rc">
+        <div class="dt">Fri 5 Sept 2026</div><div class="sm">0509-1749 · techfp1 · 17:49</div>
+        <div class="row"><div><div class="big">51</div><div class="sm">jobs</div></div>
+          <div style="flex:1"><div class="sbar" style="height:9px"><i style="background:#16A34A;width:2%"></i><i style="background:#F59E0B;width:20%"></i><i style="background:#8B5CF6;width:31%"></i><i style="background:#CBD5E1;width:47%"></i></div>
+            <div class="sm" style="margin-top:4px">1 done · 24 not started</div></div></div>
+        <div class="btns"><span class="mini pri">Open</span><span class="mini">⤓ PDF</span></div>
+      </div>
+      <div class="rc">
+        <div class="dt">Thu 4 Sept 2026</div><div class="sm">0509-0813 · techfp1 · <span class="r">issued next morning</span></div>
+        <div class="row"><div><div class="big">26</div><div class="sm">jobs</div></div>
+          <div style="flex:1"><div class="sbar" style="height:9px"><i style="background:#16A34A;width:8%"></i><i style="background:#F59E0B;width:15%"></i><i style="background:#8B5CF6;width:23%"></i><i style="background:#CBD5E1;width:54%"></i></div>
+            <div class="sm" style="margin-top:4px">2 done · 14 not started</div></div></div>
+        <div class="btns"><span class="mini pri">Open</span><span class="mini">⤓ PDF</span></div>
+      </div>
+      <div class="rc">
+        <div class="dt">Wed 3 Sept 2026</div><div class="sm">0309-1514 · techfp2 · 15:14</div>
+        <div class="row"><div><div class="big">12</div><div class="sm">jobs</div></div>
+          <div style="flex:1"><div class="sbar" style="height:9px"><i style="background:#16A34A;width:25%"></i><i style="background:#CBD5E1;width:75%"></i></div>
+            <div class="sm" style="margin-top:4px">3 done · 9 not started</div></div></div>
+        <div class="btns"><span class="mini pri">Open</span><span class="mini">⤓ PDF</span></div>
+      </div>
+      <div class="rc" style="border-style:dashed;background:#FDFDFE">
+        <div class="dt mut">Sat 29 Aug 2026</div><div class="sm">2908-1327 · dom · 13:27</div>
+        <div class="row"><div><div class="big mut">0</div><div class="sm">jobs</div></div>
+          <div style="flex:1"><div class="sm">empty report — nothing was finished that day</div></div></div>
+        <div class="btns"><span class="mini">Open</span><span class="mini">⤓ PDF</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="pros">
+  <div class="good"><b>WHY IT WORKS</b>No horizontal scroll on a phone, and the empty-report case reads as empty rather than as a row of zeros. Same markup for all four document types.</div>
+  <div class="bad"><b>THE COST</b>Fewer rows per screen — eight reports is comfortable, eighty is a lot of scrolling. Harder to compare two days side by side than a table.</div>
+</div>
+
+<!-- ══════════════ OPTION D ══════════════ -->
+<h2><span class="num">Option D</span> · One document library</h2>
+<p class="lede">The four tabs become filters over a single list, plus a panel that names what is missing. The direction to take if the document count keeps growing.</p>
+
+<div class="app">
+  <div class="apphd">BFLFP <span class="o">· CMMS</span><span class="sp"></span><span class="who">ผู้ดูแลระบบ (Admin)</span></div>
+  <div class="body">
+    <div class="ttl">Documents</div><div class="sub">43 filed · daily reports, repair forms, PM reports and plans in one place</div>
+    <div class="lib">
+      <div class="rail">
+        <h5>TYPE</h5>
+        <label><span class="bx on">✓</span> Daily report <span class="mut">8</span></label>
+        <label><span class="bx on">✓</span> Repair form <span class="mut">25</span></label>
+        <label><span class="bx"></span> PM report <span class="mut">0</span></label>
+        <label><span class="bx"></span> Plan <span class="mut">10</span></label>
+        <h5>MONTH</h5>
+        <label><span class="bx on">✓</span> Sept 2026 <span class="mut">30</span></label>
+        <label><span class="bx"></span> Aug 2026 <span class="mut">13</span></label>
+        <h5>ISSUED BY</h5>
+        <label><span class="bx"></span> techfp1 <span class="mut">18</span></label>
+        <label><span class="bx"></span> techfp2 <span class="mut">21</span></label>
+        <label><span class="bx"></span> dom <span class="mut">4</span></label>
+      </div>
+      <div>
+        <div class="gap">⚠ <b>2 working days in September have no daily report</b> — 6 Sept (7 jobs closed) and 8 Sept (3 jobs closed).
+          &nbsp;·&nbsp; <b>4 finished repairs have no repair form</b> filed. <span style="text-decoration:underline">Issue them now</span></div>
+        <table>
+          <tr><th>Type</th><th>For day</th><th>Document</th><th>Jobs</th><th style="width:120px">How it went</th><th>By</th><th></th></tr>
+          <tr><td><span class="chip" style="background:#EFF6FF;border-color:#DBEAFE;color:#1E40AF">Daily</span></td>
+            <td>5 Sept</td><td>0509-1749</td><td>51</td>
+            <td><div class="sbar"><i style="background:#16A34A;width:2%"></i><i style="background:#F59E0B;width:20%"></i><i style="background:#8B5CF6;width:31%"></i><i style="background:#CBD5E1;width:47%"></i></div></td>
+            <td>techfp1</td><td class="mut">Open ›</td></tr>
+          <tr><td><span class="chip" style="background:#FEF3C7;border-color:#FDE68A;color:#92400E">Repair</span></td>
+            <td>5 Sept</td><td>BKD-2609-006</td><td>1</td>
+            <td><span class="mut" style="font-size:10px">signed · ผู้แจ้งตรวจรับแล้ว</span></td><td>techfp2</td><td class="mut">Open ›</td></tr>
+          <tr><td><span class="chip" style="background:#DCFCE7;border-color:#BBF7D0;color:#166534">Plan</span></td>
+            <td>5 Sept</td><td>Plan 0509-0700</td><td>44</td>
+            <td><span class="mut" style="font-size:10px">3 crews · 5 people</span></td><td>planner1</td><td class="mut">Open ›</td></tr>
+          <tr><td><span class="chip" style="background:#EFF6FF;border-color:#DBEAFE;color:#1E40AF">Daily</span></td>
+            <td>4 Sept</td><td>0509-0813</td><td>26</td>
+            <td><div class="sbar"><i style="background:#16A34A;width:8%"></i><i style="background:#F59E0B;width:15%"></i><i style="background:#8B5CF6;width:23%"></i><i style="background:#CBD5E1;width:54%"></i></div></td>
+            <td>techfp1</td><td class="mut">Open ›</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="pros">
+  <div class="good"><b>WHY IT WORKS</b>Search once across everything — "what did we file for 5 September?" is one question, not four tabs. The gap panel turns the page from an archive into a to-do list, which is what an auditor actually asks of it.</div>
+  <div class="bad"><b>THE COST</b>The biggest change of the four, and the four document types have genuinely different columns. The gap panel needs a new query (finished jobs with no filed form).</div>
+</div>
+
+<h2>What I would do</h2>
+<div class="rec">
+  <b>A now, with B's coverage strip on top of it.</b> Option A spends data the rows already carry and turns the dead half of the screen into the document — that is the daily win, and it is the smallest change of the four.
+  Option B answers the one question the page is asked at audit time and works as a thin month strip above the list rather than a separate screen.
+  Option C is worth doing the day someone reads reports on a phone. Option D is right once the four tabs hold hundreds of documents — not yet.
+  <br><br>
+  <b>Either way, drop the Techs column</b> (always 0 on a daily report) and label the tiles with what they sum.
+</div>
+
+<div class="card" style="background:#FFF9F0;border-color:#FDE68A">
+  <h3 style="margin-top:0">Data check — what each option needs</h3>
+  <ul>
+    <li><b>A · already stored.</b> <code>plan_reports</code> holds <code>done_n · doing_n · accept_n · open_n · pm_n · cm_n · jobs · creator · created_at · path</code>. Status bar, late flag and tile labels need no server change; only the inline PDF pane is new wiring.</li>
+    <li><b>B</b> needs the plant's working days — the Hours screen already holds them — plus a per-day "were any jobs closed" count. Small query.</li>
+    <li><b>C</b> needs nothing new.</li>
+    <li><b>D</b> needs one endpoint returning all four document kinds, and the gap query.</li>
+  </ul>
+</div>
+
+<footer>BFLFP CMMS · preview only — nothing in <code>server/</code> or <code>static/</code> has been modified</footer>
+
+</div>
+</body>
+</html>

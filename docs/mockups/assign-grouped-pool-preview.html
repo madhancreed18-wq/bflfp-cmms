@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Assign board — grouped pool · preview</title>
+<style>
+  :root{--navy:#1E293B;--hbg:#202020;--bg:#F1F5F9;--bd:#D9E6F2;--or:#1B75BC;
+        --orange:#F97316;--green:#43A047;--red:#DC2626;--amber:#D97706;--gray:#5C789A}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Prompt',system-ui,-apple-system,'Segoe UI',sans-serif;background:#EEF2F7;
+       color:var(--navy);line-height:1.55;padding:0 0 60px}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 20px}
+  header.top{background:var(--hbg);color:#fff;padding:22px 0 20px;margin-bottom:26px}
+  header.top .wrap{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  header.top h1{font-size:21px;font-weight:600}
+  header.top .tag{font-size:12px;color:#F97316;border:1px solid rgba(249,115,22,.5);
+        border-radius:999px;padding:3px 11px;letter-spacing:.4px}
+  header.top p{font-size:13px;color:#CBD5E1;flex:1 1 100%;margin-top:4px}
+  h2{font-size:17px;margin:34px 0 12px;padding-bottom:7px;border-bottom:2px solid var(--bd)}
+  h3{font-size:14px;margin:18px 0 7px;color:#334155}
+  p,li{font-size:14px}
+  ul{margin:8px 0 8px 20px}
+  li{margin:4px 0}
+  code{background:#E2E8F0;border-radius:4px;padding:1px 5px;font-size:12.5px;
+       font-family:ui-monospace,Menlo,Consolas,monospace}
+  .card{background:#fff;border:1px solid var(--bd);border-radius:12px;padding:16px 18px;margin:12px 0}
+  .q{background:#fff;border:1px solid var(--bd);border-left:4px solid var(--orange);
+     border-radius:10px;padding:13px 16px;margin:10px 0}
+  .q b{display:block;font-size:14px;margin-bottom:3px}
+  .q .rec{font-size:13px;color:#166534;margin-top:5px}
+
+  /* ── the board mockup ─────────────────────────────────────────── */
+  .board{border:1px solid var(--bd);border-radius:12px;overflow:hidden;background:#fff;
+         box-shadow:0 10px 26px rgba(15,42,76,.10);margin:14px 0 6px}
+  .btop{background:#fff;border-bottom:1px solid var(--bd);padding:9px 12px;display:flex;
+        align-items:center;gap:10px;flex-wrap:wrap}
+  .btop .ttl{font-size:14px;font-weight:600}
+  .btop .sp{flex:1}
+  .bbtn{font-size:12px;border:1px solid var(--bd);background:#fff;border-radius:8px;padding:5px 11px}
+  .bbtn.pri{background:#EA6A0A;border-color:#EA6A0A;color:#fff;font-weight:600}
+  .cols{display:grid;grid-template-columns:1.35fr 1fr 1fr 1fr;min-height:430px}
+  .col{border-right:1px solid var(--bd);display:flex;flex-direction:column;min-width:0}
+  .col:last-child{border-right:none}
+  .ch{padding:8px 10px;border-bottom:1px solid var(--bd);background:#fff}
+  .ch .t{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600}
+  .dot{width:9px;height:9px;border-radius:50%}
+  .ch .m{display:flex;align-items:center;gap:5px;font-size:10.5px;color:#64748B;margin-top:3px}
+  .av{width:17px;height:17px;border-radius:50%;color:#fff;font-size:9px;display:inline-flex;
+      align-items:center;justify-content:center;font-weight:700}
+  .cb{flex:1;padding:8px;display:flex;flex-direction:column;gap:6px;background:#F8FAFC;overflow:hidden}
+  .cb.crew{background:#fff}
+  .fchips{display:flex;gap:5px;flex-wrap:wrap;padding:7px 8px 0;background:#F8FAFC}
+  .fc{font-size:11px;border:1px solid var(--bd);background:#fff;border-radius:999px;padding:2px 9px;color:#475569}
+  .fc.on{background:#0F2B4C;border-color:#0F2B4C;color:#fff;font-weight:600}
+  .gby{display:flex;gap:5px;align-items:center;padding:7px 8px 2px;background:#F8FAFC;font-size:11px;color:#64748B}
+  .gby .seg{display:flex;border:1px solid var(--bd);border-radius:8px;overflow:hidden;background:#fff}
+  .gby .seg span{padding:3px 9px;font-size:11px;color:#475569}
+  .gby .seg span.on{background:#EA6A0A;color:#fff;font-weight:600}
+
+  .gh{display:flex;align-items:center;gap:7px;background:#EEF3F9;border:1px solid #DBE5F0;
+      border-radius:8px;padding:5px 8px;font-size:11.5px;font-weight:700;color:#334155;cursor:grab}
+  .gh.sel{background:#FFF3E9;border-color:#F9C08A}
+  .gh .n{flex:1}
+  .gh .cnt{font-weight:400;color:#64748B}
+  .gh .grip{color:#94A3B8;font-size:13px;letter-spacing:-1px}
+  .box{width:13px;height:13px;border:1.5px solid #94A3B8;border-radius:3px;background:#fff;
+       display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:#fff;flex:none}
+  .box.on{background:#EA6A0A;border-color:#EA6A0A}
+  .box.half{background:#fff;border-color:#EA6A0A;color:#EA6A0A}
+
+  .j{display:flex;gap:7px;align-items:flex-start;background:#fff;border:1px solid var(--bd);
+     border-radius:8px;padding:6px 8px;margin-left:12px;position:relative}
+  .j.sel{border-color:#EA6A0A;box-shadow:0 0 0 2px rgba(234,106,10,.18);background:#FFFBF6}
+  .j .bar{width:3px;border-radius:2px;align-self:stretch;flex:none}
+  .j .id{font-size:11.5px;font-weight:700}
+  .j .m{font-size:10.5px;color:#64748B}
+  .j .d{font-size:10px;color:#94A3B8}
+  .tag{font-size:9.5px;border-radius:999px;padding:1px 6px;font-weight:700}
+  .row1{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+  .j.crewcard{margin-left:0}
+  .selbar{display:flex;align-items:center;gap:8px;background:#0F2B4C;color:#fff;border-radius:9px;
+          padding:6px 10px;font-size:11.5px;margin:0 0 2px}
+  .selbar b{color:#FDBA74}
+  .selbar .sp{flex:1}
+  .selbar button{font-size:10.5px;border:1px solid rgba(255,255,255,.3);background:transparent;
+                 color:#fff;border-radius:7px;padding:3px 9px}
+  .drop{border:2px dashed #EA6A0A;border-radius:9px;background:#FFF7ED;color:#9A3412;
+        font-size:11.5px;font-weight:700;text-align:center;padding:14px 6px}
+  .ghost{position:absolute;right:-6px;top:-8px;background:#0F2B4C;color:#fff;font-size:10px;
+         border-radius:999px;padding:2px 8px;font-weight:700}
+  .capt{font-size:12.5px;color:var(--gray);margin:2px 0 22px}
+  .capt b{color:var(--navy)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  @media(max-width:900px){.two{grid-template-columns:1fr}.cols{grid-template-columns:1fr}}
+  footer{margin-top:40px;font-size:12px;color:var(--gray);text-align:center}
+</style>
+</head>
+<body>
+
+<header class="top"><div class="wrap">
+  <h1>กระดานมอบหมาย — จัดกลุ่มตามชั้น และลากทั้งกลุ่มได้ / Assign board — grouped by floor, drag a whole group</h1>
+  <span class="tag">PREVIEW — no code changed yet</span>
+  <p>BFLFP CMMS · mockup for review before implementation</p>
+</div></header>
+
+<div class="wrap">
+
+<h2>1 · The problem this solves</h2>
+<div class="card">
+  <p>Today the pool is one flat list, newest-priority first, and every job is dragged on its own.
+  On a 44-jobs-a-day plant that is 44 drags, and nothing on screen tells the planner that eight of
+  them are all on floor 2 — which is exactly the grouping that keeps a crew in one area instead of
+  walking the plant. The chips filter by <b>type</b> (PM · CM · BD), never by <b>place</b>.</p>
+</div>
+
+<h2>2 · The board with a grouped pool</h2>
+
+<div class="board">
+  <div class="btop">
+    <span class="ttl">มอบหมายงาน · วันจันทร์ที่ 7 กันยายน 2569</span>
+    <span class="sp"></span>
+    <span style="font-size:11.5px;color:#64748B">3 ทีม · 5 คน</span>
+    <button class="bbtn">+ เพิ่มทีม</button>
+    <button class="bbtn">↩ ปฏิทินแผนงาน</button>
+    <button class="bbtn pri">บันทึกและมอบหมาย</button>
+  </div>
+  <div class="cols">
+
+    <!-- POOL -->
+    <div class="col">
+      <div class="ch">
+        <div class="t"><span class="dot" style="background:#64748B"></span>
+          <span>งานรอมอบหมาย / Pool</span><span class="sp" style="flex:1"></span></div>
+        <div class="m">14 งานรอ · เลือกได้ทีละงานหรือทั้งกลุ่ม</div>
+      </div>
+      <div class="fchips">
+        <span class="fc on">ทั้งหมด 14</span><span class="fc">PM 9</span><span class="fc">CM 3</span>
+        <span class="fc">BD 2</span><span class="fc">↤ ยกมา 2</span>
+      </div>
+      <div class="gby">
+        <span>จัดกลุ่มตาม / Group by</span>
+        <span class="seg"><span class="on">ชั้น</span><span>ไลน์</span><span>แผนก</span><span>กลุ่มสี PM</span><span>ไม่จัดกลุ่ม</span></span>
+      </div>
+      <div class="cb">
+        <div class="selbar">
+          <span>เลือกแล้ว <b>5</b> งาน</span><span class="sp"></span>
+          <button>ล้าง</button><button>↳ ใส่ทีม A</button>
+        </div>
+
+        <div class="gh sel"><span class="box on">✓</span><span class="n">ชั้น 2 · ห้องผสม</span>
+          <span class="cnt">5 งาน · PM 4 · CM 1</span><span class="grip">⠿</span></div>
+
+        <div class="j sel"><span class="bar" style="background:#16A34A"></span>
+          <span style="flex:1;min-width:0">
+            <span class="row1"><span class="box on">✓</span>
+              <span class="tag" style="background:#DCFCE7;color:#166534">PM</span>
+              <span class="id">PRM-2609-021</span></span>
+            <div class="m">W01MX01 · เครื่องผสม (Mixer) #1</div></span>
+          <span class="ghost">5</span></div>
+
+        <div class="j sel"><span class="bar" style="background:#16A34A"></span>
+          <span style="flex:1;min-width:0">
+            <span class="row1"><span class="box on">✓</span>
+              <span class="tag" style="background:#DCFCE7;color:#166534">PM</span>
+              <span class="id">PRM-2609-022</span></span>
+            <div class="m">W01MX02 · เครื่องผสม (Mixer) #2</div></span></div>
+
+        <div class="j sel"><span class="bar" style="background:#16A34A"></span>
+          <span style="flex:1;min-width:0">
+            <span class="row1"><span class="box on">✓</span>
+              <span class="tag" style="background:#DCFCE7;color:#166534">PM</span>
+              <span class="id">PRM-2609-023</span></span>
+            <div class="m">W01CV01 · สายพานลำเลียง (Conveyor) #1</div></span></div>
+
+        <div class="j sel" style="opacity:.85"><span class="bar" style="background:#2563EB"></span>
+          <span style="flex:1;min-width:0">
+            <span class="row1"><span class="box on">✓</span>
+              <span class="tag" style="background:#DBEAFE;color:#1E40AF">CM</span>
+              <span class="id">PRD-2609-014</span>
+              <span class="tag" style="background:#FEF3C7;color:#B45309">ด่วน</span></span>
+            <div class="m">W01LB01 · เครื่องติดฉลาก (Labeler) #1</div>
+            <div class="d">ฉลากติดไม่ตรง</div></span></div>
+
+        <div class="gh"><span class="box"></span><span class="n">ชั้น 1 · ไลน์บรรจุ</span>
+          <span class="cnt">6 งาน · PM 4 · BD 2</span><span class="grip">⠿</span></div>
+
+        <div class="j"><span class="bar" style="background:#DC2626"></span>
+          <span style="flex:1;min-width:0">
+            <span class="row1"><span class="box"></span>
+              <span class="tag" style="background:#FEE2E2;color:#991B1B">BD</span>
+              <span class="id">BKD-2609-006</span>
+              <span class="tag" style="background:#FEE2E2;color:#DC2626">ด่วนมาก</span></span>
+            <div class="m">W01SM01 · เครื่องปิดฝากระป๋อง</div></span></div>
+
+        <div class="j"><span class="bar" style="background:#16A34A"></span>
+          <span style="flex:1;min-width:0">
+            <span class="row1"><span class="box"></span>
+              <span class="tag" style="background:#DCFCE7;color:#166534">PM</span>
+              <span class="id">PRM-2609-025</span></span>
+            <div class="m">W01LP01 · เครื่องบรรจุซอง</div></span></div>
+
+        <div class="gh"><span class="box"></span><span class="n">ยูทิลิตี้ · นอกอาคาร</span>
+          <span class="cnt">3 งาน · PM 1 · CM 2</span><span class="grip">⠿</span></div>
+      </div>
+    </div>
+
+    <!-- CREW A: drop target -->
+    <div class="col">
+      <div class="ch">
+        <div class="t"><span class="dot" style="background:#2563EB"></span><span>ทีม A · ไลน์ผลิต</span></div>
+        <div class="m"><span class="av" style="background:#2563EB">สม</span>
+          <span class="av" style="background:#16A34A">ปร</span> สมชาย ★ <b style="color:#0F172A">4</b> งาน 📱</div>
+      </div>
+      <div class="cb crew">
+        <div class="drop">วางที่นี่ → เพิ่ม <b>5 งาน</b><br><span style="font-weight:400">drop to add 5 jobs</span></div>
+        <div class="j crewcard"><span class="bar" style="background:#16A34A"></span>
+          <span style="flex:1;min-width:0"><span class="row1">
+            <span class="tag" style="background:#DCFCE7;color:#166534">PM</span>
+            <span class="id">PRM-2609-018</span></span>
+            <div class="m">W01BL01 · หม้อไอน้ำ</div></span></div>
+        <div class="j crewcard"><span class="bar" style="background:#2563EB"></span>
+          <span style="flex:1;min-width:0"><span class="row1">
+            <span class="tag" style="background:#DBEAFE;color:#1E40AF">CM</span>
+            <span class="id">PRD-2609-011</span></span>
+            <div class="m">W01CH01 · ตู้แช่ทำความเย็น</div></span></div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="ch">
+        <div class="t"><span class="dot" style="background:#16A34A"></span><span>ทีม B · ยูทิลิตี้</span></div>
+        <div class="m"><span class="av" style="background:#D97706">สศ</span>
+          <span class="av" style="background:#7C3AED">วิ</span> สมศักดิ์ ★ <b style="color:#0F172A">3</b> งาน 📱</div>
+      </div>
+      <div class="cb crew">
+        <div class="j crewcard"><span class="bar" style="background:#16A34A"></span>
+          <span style="flex:1;min-width:0"><span class="row1">
+            <span class="tag" style="background:#DCFCE7;color:#166534">PM</span>
+            <span class="id">PRM-2609-019</span></span>
+            <div class="m">W01AC01 · ปั๊มลมสกรู</div></span></div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="ch">
+        <div class="t"><span class="dot" style="background:#DC2626"></span><span>ทีม C · งานด่วน</span></div>
+        <div class="m"><span class="av" style="background:#DC2626">กั</span> กัญญา ★ <b style="color:#0F172A">0</b> งาน 📱</div>
+      </div>
+      <div class="cb crew"><div style="text-align:center;color:#94A3B8;font-size:11.5px;padding:20px 6px">ลากงานมาที่นี่</div></div>
+    </div>
+  </div>
+</div>
+<div class="capt"><b>What changed:</b> the pool is grouped, each group header carries a tick box and a drag
+handle, and the tick boxes on the cards let a planner pick any mix by hand. The dark bar counts the
+selection and offers a one-press "add to crew" for phones and for people who dislike dragging. Everything
+else on the board is untouched.</div>
+
+<h2>3 · How it behaves</h2>
+<div class="card">
+<ul>
+  <li><b>Group by</b> — ชั้น (floor) by default, and ไลน์ (line) · แผนก (department) · กลุ่มสี PM (PM colour group) · ไม่จัดกลุ่ม (flat, today's behaviour) are one press away. The choice is remembered per browser.</li>
+  <li><b>Machines with no floor</b> land in a group called <b>ไม่ระบุชั้น / No floor</b> at the bottom, never hidden.</li>
+  <li><b>Dragging one unselected card</b> behaves exactly as it does today — one job moves. Nothing a planner already knows stops working.</li>
+  <li><b>Dragging a selected card</b> drags the whole selection; the card shows a badge with how many are coming.</li>
+  <li><b>Dragging a group header</b> drags every job in that group, whether or not the tick boxes are set.</li>
+  <li><b>The group tick box</b> is three-state: empty, half (some picked), full.</li>
+  <li><b>Jobs already started</b> stay locked, as now — a group drop simply skips them, and says how many it skipped.</li>
+  <li><b>The filter chips still apply</b>: filter to PM, and a group drop takes only the PM jobs on that floor.</li>
+  <li><b>Undo</b> — nothing is written until บันทึกและมอบหมาย (Save and assign), so a wrong group drop is dragged straight back to the pool.</li>
+</ul>
+</div>
+
+<h2>4 · What it needs in the code</h2>
+<div class="card">
+<ul>
+  <li><code>server/teams.py</code> — the three job queries and <code>_pm_due()</code> return <code>m.code, m.name</code> only. They need <b>floor, line, department, asset_group, pm_group_color</b> as well. That is the whole server change: no new endpoint, no schema change.</li>
+  <li><code>static/index.html</code> — <code>asgDraw()</code>'s pool section groups <code>shown</code> by the chosen key and renders a header per group; <code>asgJobCard</code> gains a tick box; <code>asgDragStart</code> carries a list of uids instead of one; <code>asgDrop</code> loops. The phone board gets the same selection bar, where it is worth more than on the desk.</li>
+  <li><b>No change to how jobs are stored</b> — a group drop is still N ordinary assignments, so Save writes exactly what it writes today.</li>
+</ul>
+</div>
+
+<h2>5 · Two things to decide</h2>
+
+<div class="q">
+  <b>1. What is the default grouping?</b>
+  Floor is what you asked for, but your register also carries Line, Department and the PM colour group —
+  and the colour group is the one already meant to keep a crew in one area.
+  <div class="rec">→ Recommend: default <b>ชั้น (floor)</b> as you asked, with the others one press away. If floor
+  turns out thin in the register, the switcher means nobody is stuck.</div>
+</div>
+
+<div class="q">
+  <b>2. Should a group drop respect the crew's capacity?</b>
+  Dropping 8 jobs onto a crew of 2 is easy to do by accident.
+  <div class="rec">→ Recommend: no hard limit, but the crew header turns amber past a threshold you set
+  (say 6 jobs per person per day), so it is visible rather than forbidden. Say the word if you want a hard stop instead.</div>
+</div>
+
+<div class="card" style="background:#FFF9F0;border-color:#FDE68A">
+  <h3 style="margin-top:0">Worth knowing before you decide</h3>
+  <p>This makes assigning faster, but it does not by itself even out the load between two people —
+  everyone in a crew is on every job that crew holds, and the per-technician figures still credit only
+  whoever pressed Start. Those are the two items from the last message; this one is independent of them.</p>
+</div>
+
+<footer>BFLFP CMMS · preview only — nothing in <code>server/</code> or <code>static/</code> has been modified</footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,231 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>All jobs — dynamic filters</title>
+<style>
+ :root{--ink:#16202c;--mut:#64748B;--ln:#e2e8f0;--bg:#f6f8fa;--dark:#1E293B}
+ *{box-sizing:border-box}
+ body{margin:0;font:14px/1.55 -apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+ .wrap{max-width:1240px;margin:0 auto;padding:22px 18px 60px}
+ h1{font-size:22px;margin:0 0 3px}.sub{color:var(--mut);margin:0 0 20px;font-size:13px}
+ h2{font-size:16px;margin:26px 0 8px;padding-bottom:5px;border-bottom:2px solid var(--ln)}
+ .card{background:#fff;border:1px solid var(--ln);border-radius:9px;padding:14px 15px;margin:12px 0}
+ .chip{font-size:11.5px;padding:3px 11px;border-radius:999px;border:1px solid var(--ln);background:#fff;color:#475569;cursor:pointer;white-space:nowrap;font-family:inherit}
+ .chip.on{background:var(--dark);border-color:var(--dark);color:#fff}
+ .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 8px}
+ .lbl{font-size:11px;color:#94A3B8;min-width:44px}
+ .pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;background:#EFF6FF;border:1px solid #BFDBFE;color:#1D4ED8;border-radius:6px;padding:2px 5px 2px 9px}
+ .pill b{font-weight:600}
+ .pill button{border:none;background:#BFDBFE;color:#1D4ED8;border-radius:4px;cursor:pointer;font-size:12px;line-height:1;padding:2px 5px;font-family:inherit}
+ .add{font-size:11.5px;padding:3px 11px;border-radius:6px;border:1px dashed #94A3B8;background:#fff;color:#475569;cursor:pointer;font-family:inherit}
+ .menu{position:absolute;z-index:40;background:#fff;border:1px solid var(--ln);border-radius:8px;box-shadow:0 8px 24px rgba(15,23,42,.14);padding:6px;min-width:210px;max-height:300px;overflow:auto}
+ .menu button{display:flex;width:100%;gap:8px;align-items:center;border:none;background:none;text-align:left;font-size:12.5px;padding:5px 8px;border-radius:5px;cursor:pointer;color:var(--ink);font-family:inherit}
+ .menu button:hover{background:#F1F5F9}
+ .menu .cnt{margin-left:auto;color:#94A3B8;font-size:11px}
+ .menu .hd{font-size:10.5px;color:#94A3B8;text-transform:uppercase;letter-spacing:.05em;padding:5px 8px 3px}
+ table{border-collapse:collapse;width:100%;font-size:12px;background:#fff}
+ th,td{padding:5px 8px;border-bottom:1px solid #eef1f4;text-align:left;white-space:nowrap;max-width:230px;overflow:hidden;text-overflow:ellipsis}
+ th{background:#F8FAFC;font-size:11px;color:var(--mut);font-weight:600;position:sticky;top:0}
+ .scroll{overflow:auto;max-height:460px;border:1px solid var(--ln);border-radius:8px}
+ .tag{font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:4px}
+ .BD{background:#FEE2E2;color:#B91C1C}.CM{background:#FFEDD5;color:#C2410C}.PM{background:#DBEAFE;color:#1D4ED8}.IMP{background:#EDE9FE;color:#6D28D9}
+ .st{font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:999px}
+ .Completed{background:#DCFCE7;color:#166534}.Reported{background:#F1F5F9;color:#475569}
+ .cnt-line{font-size:12.5px;color:var(--mut);margin:8px 2px}
+ .cnt-line b{color:var(--ink)}
+ .note{background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:11px 14px;margin:14px 0;font-size:13px}
+ .ok{background:#f0fdf4;border-color:#86efac}
+ code{background:#eef2f6;padding:1px 5px;border-radius:4px;font-size:12px}
+ ul{margin:6px 0;padding-left:20px}li{margin:3px 0}
+ .seg{display:inline-flex;border:1px solid var(--ln);border-radius:7px;overflow:hidden}
+ .seg button{font-size:11.5px;padding:3px 10px;border:none;cursor:pointer;background:#fff;color:#475569;font-family:inherit}
+ .seg button.on{background:var(--dark);color:#fff}
+ .save{font-size:11.5px;padding:3px 10px;border-radius:6px;border:1px solid var(--ln);background:#fff;color:#475569;cursor:pointer;font-family:inherit}
+</style></head><body><div class="wrap">
+<h1>All jobs — combining filters</h1>
+<p class="sub">Working preview on the 21 rows from your screenshot. Everything below is clickable — try stacking filters.</p>
+<h2>1 · What you have now</h2>
+<div class="card">
+<p style="margin:0 0 6px">Three rows of chips — <b>Show</b>, <b>Type</b>, <b>Status</b> — and they already combine: picking <i>Breakdown</i> and <i>Open</i> gives you breakdowns that are open. Two things are missing:</p>
+<ul style="margin:0">
+<li><b>One value per row.</b> You cannot ask for Breakdown <i>and</i> CM together, or two technicians at once.</li>
+<li><b>Only three columns can be filtered.</b> Lead tech, Trade, Priority, Asset, Waiting on and the dates are on screen but not filterable — so "everything waiting on Kanya that is a breakdown" means scrolling.</li>
+</ul>
+</div>
+
+<h2>2 · The proposal — try it</h2>
+<div class="card" id="bar"></div>
+<div class="cnt-line" id="count"></div>
+<div class="scroll"><table id="tbl"></table></div>
+
+<h2>3 · How it works</h2>
+<div class="card">
+<ul style="margin:0">
+<li><b>The quick chips stay.</b> They are the one-click answers to the questions a planner asks every morning, and they now hold more than one at a time.</li>
+<li><b>+ Filter adds any column.</b> Pick the column, tick the values you want — each with its live count so you never pick an empty one. Columns with free text (Machine, Issue, Asset, Job ID) get a search box instead.</li>
+<li><b>Everything ANDs by default</b>, values <i>inside</i> one filter OR together: Type is BD or CM, <b>and</b> Lead tech is Kanya. That is what people mean without having to be told.</li>
+<li><b>Active filters are visible as pills</b> with an × on each — so the count on screen always has a visible reason. Today, a filter left on three chips away is invisible.</li>
+<li><b>Save this view</b> names the whole set and remembers it. "My breakdowns to accept" becomes one click tomorrow.</li>
+</ul>
+</div>
+
+<div class="note">
+<b>A bug worth fixing at the same time.</b> <code>Export Excel</code> only sends the Type and Status chips and the search box to the server — it ignores the <b>Show</b> chip and the <b>From / To</b> dates. So filtering to <i>Overdue</i> and exporting gives you the whole list, quietly. Whatever we build, Export has to send exactly what is on screen.
+</div>
+
+<h2>4 · What I would not build</h2>
+<div class="card">
+<p style="margin:0 0 6px">A full <b>query builder</b> — field / operator / value rows with AND, OR and brackets — is the other way to read "dynamic filter". It is more powerful, and I would skip it:</p>
+<ul style="margin:0">
+<li>Every common question a planner has is a plain AND of a few columns. The builder makes that case slower, not faster.</li>
+<li>It needs teaching. The chips and tick-lists above need none.</li>
+<li>It is roughly three times the work, and most of it goes unused.</li>
+</ul>
+<p style="margin:8px 0 0">If a rare question needs OR across different columns, the honest answer is Export Excel and a pivot — not a query language inside a maintenance app.</p>
+</div>
+
+<div class="note ok">
+<b>Scope.</b> All of this is client-side over the list the page has already fetched, so it is fast and needs no server change — except Export, which is built server-side and needs the filter set passed to it. One caution: the filters only see what was loaded, which is the From / To range at the top. Widen the range first, then filter.
+</div>
+<p style="color:#64748B;font-size:12.5px;margin-top:30px;border-top:1px solid #e2e8f0;padding-top:11px">Preview only — nothing in the app has changed. Rows are the 21 visible in your screenshot.</p></div><script>
+/* The 21 rows visible in the screenshot, transcribed. Sample data for the preview only. */
+const JOBS=[
+{n:1,created:"2026-09-07 09:00",jobid:"BKD-2609-015",type:"BD",machine:"เครื่องสับผสม (Mixer Chapper)",issue:"ใบกวนสับผสม 300 kg. ยกขึ้นลงมาสุดและไม่…",planned:"2026-09-07",asset:"W01MI02",prio:2,trade:"Other",status:"Completed",waiting:"Reporter: to accept",completed:"2026-09-07 10:38",due:"",tech:"Kanya",rework:1},
+{n:2,created:"2026-09-07 07:59",jobid:"PRD-2609-018",type:"CM",machine:"ถังพักน้ำ RO เข้าเครื่อง RIBBON 2ton",issue:"ต่อท่อน้ำ RO เข้าถังพัก",planned:"2026-09-07",asset:"",prio:1,trade:"",status:"Reported",waiting:"Tech: to start",completed:"",due:"",tech:"Mark",rework:0},
+{n:3,created:"2026-09-06 01:39",jobid:"PRD-2609-017",type:"IMP",machine:"ที่จอดรถ",issue:"หลังคา ที่จอดมอเตอร์ไซค์ เสียหาย",planned:"2026-09-07",asset:"",prio:1,trade:"Other",status:"Reported",waiting:"Tech: to start",completed:"",due:"",tech:"Kanya",rework:0},
+{n:4,created:"2026-09-05 08:33",jobid:"BKD-2609-013",type:"BD",machine:"เดินท่อน้ำ RO",issue:"เดินท่อใหม่",planned:"2026-09-07",asset:"",prio:1,trade:"",status:"Reported",waiting:"Tech: to start",completed:"",due:"2569-09-05",tech:"Kanya",rework:1},
+{n:5,created:"2026-09-05 08:14",jobid:"PRM-2609-029",type:"PM",machine:"เครื่องตัดปลา#4",issue:"PM · Weekly · เครื่องตัดปลา 1. ใบมีด [เช็ค]…",planned:"2026-09-07",asset:"W01CT04",prio:1,trade:"",status:"Completed",waiting:"Reporter: to accept",completed:"2026-09-07 13:50",due:"2026-09-05",tech:"Kanya",rework:0},
+{n:6,created:"2026-09-05 08:14",jobid:"PRM-2609-028",type:"PM",machine:"เครื่องตัดปลา#1",issue:"PM · Weekly · เครื่องตัดปลา 1. ใบมีด [เช็ค]…",planned:"2026-09-07",asset:"W01CT01",prio:1,trade:"",status:"Completed",waiting:"Reporter: to accept",completed:"2026-09-07 13:51",due:"2026-09-05",tech:"Kanya",rework:0},
+{n:7,created:"2026-09-05 08:14",jobid:"PRM-2609-027",type:"PM",machine:"สายพาน PACK กระป๋อง",issue:"PM · Weekly · สายพาน pack กระป๋อง 1. ม…",planned:"2026-09-07",asset:"W01BC10",prio:1,trade:"",status:"Completed",waiting:"Reporter: to accept",completed:"2026-09-07 13:58",due:"2026-09-05",tech:"Kanya",rework:0},
+{n:8,created:"2026-09-05 08:14",jobid:"PRM-2609-026",type:"PM",machine:"สายพานขูดปลา (Cleering Convey…",issue:"PM · Weekly · สายพานขูดปลา 1. มอเตอร์เกี…",planned:"2026-09-07",asset:"W01BC02",prio:1,trade:"",status:"Completed",waiting:"Reporter: to accept",completed:"2026-09-07 13:57",due:"2026-09-05",tech:"Kanya",rework:0},
+{n:9,created:"2026-09-05 08:14",jobid:"PRM-2609-025",type:"PM",machine:"สายพานผ่าท้องปลา (Butohering C…",issue:"PM · Weekly · สายพานผ่าท้องปลา 1. มอเต…",planned:"2026-09-07",asset:"W01BC01",prio:1,trade:"",status:"Completed",waiting:"Reporter: to accept",completed:"2026-09-07 13:56",due:"2026-09-05",tech:"Kanya",rework:0},
+{n:10,created:"2026-09-05 08:14",jobid:"PRM-2609-024",type:"PM",machine:"ห้องเย็น#2",issue:"PM · Weekly · ห้องเย็น 1. พัดลมคอยล์ร้อน […",planned:"2026-09-07",asset:"W01AI09",prio:1,trade:"",status:"Completed",waiting:"Reporter: to accept",completed:"2026-09-07 13:54",due:"2026-09-05",tech:"Kanya",rework:0},
+{n:11,created:"2026-09-05 08:14",jobid:"PRM-2609-023",type:"PM",machine:"ห้องเย็น#1",issue:"PM · Weekly · ห้องเย็น 1. พัดลมคอยล์ร้อน […",planned:"2026-09-07",asset:"W01AI08",prio:1,trade:"",status:"Completed",waiting:"Reporter: to accept",completed:"2026-09-07 13:54",due:"2026-09-05",tech:"Kanya",rework:0},
+{n:12,created:"2026-09-05 08:14",jobid:"PRM-2609-022",type:"PM",machine:"ปั๊มลมสกรู (Air - Compressure)#2",issue:"PM · Monthly · ปั๊มลมสกรู Air Compress…",planned:"2026-09-07",asset:"W01AC03",prio:1,trade:"",status:"Reported",waiting:"Tech: to start",completed:"",due:"2026-09-05",tech:"Kanya",rework:0},
+{n:13,created:"2026-09-04 08:34",jobid:"BKD-2609-007",type:"BD",machine:"ตู้อบสแน็ค (Dryer Snack)",issue:"เซ็นเซอร์ไม่จับ",planned:"2026-09-07",asset:"W01DR02",prio:1,trade:"",status:"Reported",waiting:"Tech: to start",completed:"",due:"",tech:"Kanya",rework:2,kpix:1},
+{n:14,created:"2026-09-04 08:31",jobid:"BKD-2609-006",type:"BD",machine:"บรรจุของแมวเลีย TTK #2",issue:"แนวซีลไม่ได้ระนาบ",planned:"2026-09-07",asset:"W01PK18",prio:1,trade:"",status:"Reported",waiting:"Tech: to start",completed:"",due:"",tech:"Kanya",rework:2,kpix:1},
+{n:15,created:"2026-09-04 08:30",jobid:"BKD-2609-005",type:"BD",machine:"บรรจุของแมวเลีย TTK #1",issue:"ซีลไม่ระนาบ",planned:"2026-09-07",asset:"W01PK17",prio:1,trade:"",status:"Reported",waiting:"Tech: to start",completed:"",due:"",tech:"Kanya",rework:2,kpix:1},
+{n:16,created:"2026-09-03 21:59",jobid:"BKD-2609-004",type:"BD",machine:"เครื่องบรรจุของแมวเลีย (Treats Ca…",issue:"คุณภาพงานไม่ได้ / Product quality off s…",planned:"2026-09-07",asset:"W01PK07",prio:2,trade:"Process",status:"Reported",waiting:"Tech: to start",completed:"",due:"2569-09-05",tech:"Kanya",rework:3,kpix:1},
+{n:17,created:"2026-09-03 19:25",jobid:"PRM-2609-008",type:"PM",machine:"เครื่องล้างกระป๋อง (Can Washer)",issue:"PM · Weekly · เครื่องล้างกระป๋อง 1. หัวฉีด…",planned:"2026-09-07",asset:"W01WS01",prio:1,trade:"",status:"Completed",waiting:"Reporter: to accept",completed:"2026-09-07 14:38",due:"2026-09-04",tech:"Kanya",rework:0},
+{n:18,created:"2026-09-03 19:25",jobid:"PRM-2609-006",type:"PM",machine:"ตู้อบลมร้อน#2",issue:"PM · Weekly · ตู้อบลมร้อน 1. แผงควบคุม […",planned:"2026-09-07",asset:"W01DR04",prio:1,trade:"",status:"Completed",waiting:"Reporter: to accept",completed:"2026-09-07 14:40",due:"2026-09-04",tech:"Kanya",rework:0},
+{n:19,created:"2026-09-03 19:25",jobid:"PRM-2609-005",type:"PM",machine:"สายพานลำเลียงกล่อง",issue:"PM · Weekly · สายพานลำเลียงกล่อง 1. มอ…",planned:"2026-09-07",asset:"W01BC09",prio:1,trade:"",status:"Completed",waiting:"Reporter: to accept",completed:"2026-09-07 14:42",due:"2026-09-04",tech:"Kanya",rework:0},
+{n:20,created:"2026-09-03 19:25",jobid:"PRM-2609-004",type:"PM",machine:"ตู้อบลมร้อน#1",issue:"PM · Weekly · ตู้อบลมร้อน 1. แผงควบคุม […",planned:"2026-09-07",asset:"W01DR03",prio:1,trade:"",status:"Completed",waiting:"Reporter: to accept",completed:"2026-09-07 14:37",due:"2026-09-04",tech:"Kanya",rework:0},
+{n:21,created:"2026-09-03 19:25",jobid:"PRM-2609-003",type:"PM",machine:"สายพานตัดสแน็ค",issue:"PM · Weekly · สายพานตัดสแน็ค 1. มอเตอร์…",planned:"2026-09-07",asset:"W01BC07",prio:1,trade:"",status:"Completed",waiting:"Reporter: to accept",completed:"2026-09-07 14:37",due:"2026-09-04",tech:"Mark",rework:0}
+];
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const TODAY='2026-09-07';
+const DONE=['Done','Rejected','Cancelled'];
+/* the quick chips — same predicates the app already has, now multi-select */
+const VIEWS={
+  unassigned:{lb:'Not assigned',f:j=>!j.tech},
+  assigned:{lb:'Assigned',f:j=>!!j.tech&&j.status!=='Completed'},
+  toaccept:{lb:'To accept',f:j=>/Reporter: to accept/.test(j.waiting)},
+  overdue:{lb:'Overdue',f:j=>j.planned&&j.planned<TODAY&&!DONE.includes(j.status)},
+  duetoday:{lb:'Due today',f:j=>j.due===TODAY&&!DONE.includes(j.status)},
+  carried:{lb:'Carried forward',f:j=>(j.rework||0)>0&&!DONE.includes(j.status)}
+};
+/* the columns a value-list filter can be built on, and the ones that get a search box */
+const FIELDS=[
+  {k:'type',lb:'Type',kind:'set'},{k:'status',lb:'Job status',kind:'set'},
+  {k:'waiting',lb:'Waiting on',kind:'set'},{k:'tech',lb:'Lead tech',kind:'set'},
+  {k:'trade',lb:'Trade',kind:'set'},{k:'prio',lb:'Priority',kind:'set'},
+  {k:'planned',lb:'Planned date',kind:'set'},{k:'due',lb:'Due date',kind:'set'},
+  {k:'machine',lb:'Machine',kind:'text'},{k:'asset',lb:'Asset code',kind:'text'},
+  {k:'issue',lb:'Issue reported',kind:'text'},{k:'jobid',lb:'Job ID',kind:'text'}
+];
+const FLD=k=>FIELDS.find(f=>f.k===k);
+let ON=new Set(), F={}, MENU=null;          // ON = quick chips, F = column filters
+
+const passView=j=>[...ON].every(k=>VIEWS[k].f(j));
+function passField(j,k){
+  const v=F[k]; if(!v)return true;
+  if(v.kind==='text')return String(j[k]||'').toLowerCase().includes(v.q.toLowerCase());
+  return v.vals.size===0||v.vals.has(String(j[k]||''));   /* values inside one filter OR */
+}
+const shown=()=>JOBS.filter(j=>passView(j)&&Object.keys(F).every(k=>passField(j,k)));
+
+function counts(k,pool){
+  const c={}; pool.forEach(j=>{const v=String(j[k]||'');c[v]=(c[v]||0)+1;});
+  return Object.entries(c).sort((a,b)=>b[1]-a[1]);
+}
+/* a value list counts against everything EXCEPT its own filter, so ticking a second
+   value never shows zero for something that is plainly there */
+const poolFor=k=>JOBS.filter(j=>passView(j)&&Object.keys(F).filter(x=>x!==k).every(x=>passField(j,x)));
+
+function draw(){
+  const vis=shown();
+  document.getElementById('bar').innerHTML=`
+    <div class="row"><span class="lbl">Quick</span>
+      ${Object.entries(VIEWS).map(([k,v])=>{
+        const n=JOBS.filter(j=>v.f(j)).length;
+        return `<button class="chip ${ON.has(k)?'on':''}" onclick="tog('${k}')">${v.lb} ${n}</button>`;}).join('')}
+    </div>
+    <div class="row"><span class="lbl">Filters</span>
+      ${Object.keys(F).length?Object.entries(F).map(([k,v])=>{
+        const txt=v.kind==='text'?`contains “${esc(v.q)}”`:[...v.vals].map(x=>x||'(blank)').join(', ');
+        return `<span class="pill"><b>${FLD(k).lb}</b> ${esc(txt)}<button onclick="drop('${k}')">×</button></span>`;}).join('')
+        :'<span style="font-size:12px;color:#94A3B8">none yet — add one →</span>'}
+      <button class="add" id="addbtn" onclick="openMenu(event)">+ Filter</button>
+      ${(ON.size||Object.keys(F).length)?`<button class="save" onclick="ON=new Set();F={};draw()">Clear all</button>
+      <button class="save" onclick="alert('Would save this filter set under a name and list it beside the quick chips.')">☆ Save this view</button>`:''}
+    </div>`;
+  document.getElementById('count').innerHTML=
+    `Showing <b>${vis.length}</b> of ${JOBS.length} jobs`+
+    (vis.length<JOBS.length?` &nbsp;·&nbsp; <span style="color:#94A3B8">Export Excel sends exactly these ${vis.length}</span>`:'');
+  document.getElementById('tbl').innerHTML=
+    `<tr><th>#</th><th>Job ID</th><th>Type</th><th>Machine</th><th>Planned</th><th>Asset</th><th>Prio</th>
+       <th>Trade</th><th>Job status</th><th>Waiting on</th><th>Due</th><th>Lead tech</th></tr>`+
+    (vis.length?vis.map(j=>`<tr><td>${j.n}</td><td>${esc(j.jobid)}</td>
+      <td><span class="tag ${j.type}">${j.type}</span></td><td title="${esc(j.machine)}">${esc(j.machine)}</td>
+      <td>${esc(j.planned)}</td><td>${esc(j.asset)}</td><td>${j.prio}</td><td>${esc(j.trade)}</td>
+      <td><span class="st ${j.status}">${esc(j.status)}</span></td><td>${esc(j.waiting)}</td>
+      <td>${esc(j.due)}</td><td>${esc(j.tech)}</td></tr>`).join('')
+      :`<tr><td colspan="12" style="text-align:center;color:#94A3B8;padding:18px">— nothing matches — <button class="save" onclick="ON=new Set();F={};draw()">clear the filters</button></td></tr>`);
+}
+const tog=k=>{ON.has(k)?ON.delete(k):ON.add(k);draw();};
+const drop=k=>{delete F[k];draw();};
+
+function closeMenu(){if(MENU){MENU.remove();MENU=null;}}
+document.addEventListener('click',e=>{if(MENU&&!MENU.contains(e.target)&&e.target.id!=='addbtn')closeMenu();});
+function openMenu(ev){
+  ev.stopPropagation();closeMenu();
+  const m=document.createElement('div');m.className='menu';
+  m.innerHTML=`<div class="hd">Filter on which column?</div>`+FIELDS.map(f=>{
+    const n=f.kind==='set'?counts(f.k,poolFor(f.k)).length:0;
+    return `<button onclick="pick('${f.k}',event)">${f.lb}<span class="cnt">${f.kind==='text'?'text':n+' values'}</span></button>`;}).join('');
+  place(m,ev.target);
+}
+function pick(k,ev){
+  ev.stopPropagation();closeMenu();
+  const f=FLD(k),m=document.createElement('div');m.className='menu';
+  if(f.kind==='text'){
+    m.innerHTML=`<div class="hd">${f.lb} contains</div>
+      <input id="q" style="width:100%;font:inherit;font-size:12.5px;padding:5px 7px;border:1px solid #e2e8f0;border-radius:5px" placeholder="type and press Enter">`;
+    place(m,document.getElementById('addbtn'));
+    const q=m.querySelector('#q');q.focus();
+    q.onkeydown=e=>{if(e.key==='Enter'){if(q.value.trim())F[k]={kind:'text',q:q.value.trim()};closeMenu();draw();}};
+    return;
+  }
+  F[k]=F[k]||{kind:'set',vals:new Set()};
+  const rows=counts(k,poolFor(k));
+  m.innerHTML=`<div class="hd">${f.lb} — tick any</div>`+rows.map(([v,n])=>
+    `<button onclick="tickv('${k}',this.dataset.v,event)" data-v="${esc(v)}">
+       <span style="width:13px">${F[k].vals.has(v)?'✓':''}</span>${esc(v||'(blank)')}<span class="cnt">${n}</span></button>`).join('')
+    +`<div style="border-top:1px solid #eef1f4;margin-top:5px;padding-top:5px"><button onclick="closeMenu();draw()"><b>Done</b></button></div>`;
+  place(m,document.getElementById('addbtn'));
+}
+function tickv(k,v,ev){
+  ev.stopPropagation();
+  const s=F[k].vals; s.has(v)?s.delete(v):s.add(v);
+  if(!s.size)delete F[k];
+  const btn=ev.currentTarget; if(F[k])btn.firstElementChild.textContent=s.has(v)?'✓':'';
+  draw();
+}
+function place(m,anchor){
+  document.body.appendChild(m);
+  const r=anchor.getBoundingClientRect();
+  m.style.left=Math.min(r.left,window.innerWidth-240)+'px';
+  m.style.top=(r.bottom+window.scrollY+5)+'px';
+  MENU=m;
+}
+draw();
+</script></body></html>

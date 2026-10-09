@@ -1,7 +1,8 @@
 @echo off
 cd /d "%~dp0"
-echo Installing requirements (first run only)...
-pip install -r requirements.txt >nul 2>&1
+set "PY=%~dp0.venv\Scripts\python.exe"
+echo Installing requirements...
+"%PY%" -m pip install -r requirements.txt
 echo Starting BFLFP CMMS...
-python run.py
+"%PY%" run.py
 pause

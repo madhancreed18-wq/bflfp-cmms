@@ -1,0 +1,738 @@
+<title>Job Detail Redesign</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  /* the app's own palette — static/index.html :root, light only */
+  --blue:#1B75BC; --blue-d:#0F3D6E; --blue-soft:#E8F1F9;
+  --ink:#1E293B; --ink-2:#5C789A; --ink-3:#8CA3BC;
+  --bg:#F1F5F9; --card:#FFFFFF; --line:#D9E6F2; --line-2:#EEF3F8;
+  --ok:#065F46; --ok-bg:#D1FAE5;
+  --prog:#9A3412; --prog-bg:#FFEDD5;
+  --warn:#92400E; --warn-bg:#FEF3C7;
+  --stop:#991B1B; --stop-bg:#FEE2E2;
+  --wait:#5B21B6; --wait-bg:#EDE9FE;
+  --new:#075985; --new-bg:#E0F2FE;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --ui:'Prompt',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--ui);background:linear-gradient(180deg,#E4E9F1 0%,#F1F5F9 360px) no-repeat #F1F5F9;color:var(--ink);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1280px;margin:0 auto;padding:0 20px 60px}
+
+/* ---------- preview control strip ---------- */
+.demo{background:var(--card);border-bottom:1px solid var(--line);padding:10px 20px}
+.demo .in{max-width:1280px;margin:0 auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.demo b{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+.demo .seg{display:flex;gap:4px;background:var(--line-2);border:1px solid var(--line);padding:3px;border-radius:8px;flex-wrap:wrap}
+.demo button{font-family:var(--ui);font-size:12.5px;font-weight:500;color:var(--ink-2);background:transparent;border:0;padding:6px 12px;border-radius:6px;cursor:pointer}
+.demo button:hover{color:var(--blue);background:var(--card)}
+.demo button[aria-pressed="true"]{background:var(--blue);color:#fff}
+.demo button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.demo .note{font-size:11.5px;color:var(--ink-3);margin-left:auto}
+
+/* ---------- job header ---------- */
+.jhead{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-top:18px;overflow:hidden}
+.jhead .strip{height:4px;background:var(--blue)}
+.jhead .body{padding:16px 20px}
+.jtop{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}
+.jid{font-family:var(--mono);font-size:20px;font-weight:600;letter-spacing:-.01em}
+.jid span{color:var(--ink-3);font-weight:400}
+.jname{font-size:14.5px;color:var(--ink-2);margin-top:2px}
+.jname em{font-style:normal;color:var(--ink-3)}
+.jactions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.btn{font-family:var(--ui);font-size:13px;font-weight:500;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--blue);color:var(--blue)}
+.btn:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.btn.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.pri:hover{background:var(--blue-d);border-color:var(--blue-d);color:#fff}
+.btn.sm{padding:5px 10px;font-size:12px}
+
+/* stage pair */
+.stages{display:flex;align-items:stretch;gap:0;margin-top:14px;flex-wrap:wrap}
+.stage{display:flex;flex-direction:column;gap:2px;padding:8px 16px 8px 0;border-right:1px solid var(--line);margin-right:16px}
+.stage:last-of-type{border-right:0}
+.slab{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+.sval{font-size:15px;font-weight:600;display:flex;align-items:center;gap:7px}
+.dot{width:9px;height:9px;border-radius:50%;flex:none}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:3px 11px;border-radius:999px}
+.c-new{background:var(--new-bg);color:var(--new)}
+.c-prog{background:var(--prog-bg);color:var(--prog)}
+.c-hold{background:var(--stop-bg);color:var(--stop)}
+.c-wait{background:var(--wait-bg);color:var(--wait)}
+.c-done{background:var(--ok-bg);color:var(--ok)}
+.c-flat{background:var(--line-2);color:var(--ink-2)}
+
+/* facts grid */
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border-top:1px solid var(--line);margin-top:14px}
+.fact{background:var(--card);padding:11px 16px 12px}
+.fact .k{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+.fact .v{font-size:14px;font-weight:500;margin-top:3px;font-variant-numeric:tabular-nums}
+.fact .v small{display:block;font-size:11.5px;font-weight:400;color:var(--ink-3);font-family:var(--ui)}
+.fact .v.mono{font-family:var(--mono)}
+.fact .v.alert{color:var(--stop)}
+
+/* ---------- alert banner ---------- */
+.banner{display:flex;gap:14px;align-items:flex-start;border-radius:12px;padding:14px 16px;margin-top:14px;border:1px solid transparent}
+.banner.hold{background:var(--stop-bg);border-color:color-mix(in srgb,var(--stop) 30%,transparent)}
+.banner.sched{background:var(--warn-bg);border-color:color-mix(in srgb,var(--warn) 32%,transparent)}
+.banner .ico{font-size:19px;line-height:1.2}
+.banner h3{font-size:14.5px;font-weight:600;margin-bottom:3px}
+.banner.hold h3{color:var(--stop)} .banner.sched h3{color:var(--warn)}
+.banner p{font-size:13px;color:var(--ink-2)}
+.banner .act{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.banner .kv{font-size:12.5px;color:var(--ink-2)}
+.banner .kv b{font-family:var(--mono);color:var(--ink)}
+
+/* ---------- layout ---------- */
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 344px;gap:16px;margin-top:16px;align-items:start}
+@media(max-width:1020px){.grid{grid-template-columns:1fr}}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.side{position:sticky;top:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+.card>h2{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:600;padding:13px 18px;border-bottom:1px solid var(--line-2);display:flex;align-items:center;gap:8px}
+.card>h2 .th{letter-spacing:0;text-transform:none;font-size:11.5px;color:var(--ink-3);font-weight:400}
+.card>h2 .r{margin-left:auto;letter-spacing:0;text-transform:none;font-size:12px;font-weight:500}
+.pad{padding:16px 18px}
+
+/* timeline rail */
+.rail{padding:18px}
+.rail ol{list-style:none;display:flex;gap:0;overflow-x:auto}
+.rail li{flex:1 1 0;min-width:118px;position:relative;padding-right:10px}
+.rail li::before{content:'';position:absolute;top:7px;left:0;right:0;height:2px;background:var(--line)}
+.rail li.on::before{background:var(--blue)}
+.rail li.stop::before{background:var(--stop)}
+.rail .pt{position:relative;width:16px;height:16px;border-radius:50%;background:var(--card);border:2px solid var(--line);z-index:1}
+.rail li.on .pt{border-color:var(--blue);background:var(--blue)}
+.rail li.stop .pt{border-color:var(--stop);background:var(--stop)}
+.rail li.now .pt{border-color:var(--blue);background:var(--card);box-shadow:0 0 0 4px color-mix(in srgb,var(--blue) 22%,transparent)}
+.rail .nm{font-size:12.5px;font-weight:600;margin-top:9px}
+.rail .nm em{font-style:normal;font-weight:400;color:var(--ink-3);display:block;font-size:11px}
+.rail .ts{font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-top:2px}
+.rail li.off .nm,.rail li.off .ts{color:var(--ink-3);font-weight:500}
+
+/* report block */
+.rep{display:grid;grid-template-columns:120px minmax(0,1fr);gap:0}
+.rep dt{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:600;padding:11px 0;border-top:1px solid var(--line-2)}
+.rep dd{font-size:14px;padding:11px 0;border-top:1px solid var(--line-2)}
+.rep dt:first-of-type,.rep dd:first-of-type{border-top:0;padding-top:0}
+.rep dd.empty{color:var(--ink-3);font-style:italic}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.tag{font-size:11.5px;font-weight:500;padding:3px 10px;border-radius:6px;background:var(--line-2);color:var(--ink-2);border:1px solid var(--line)}
+.tag.trade{background:var(--blue-soft);color:var(--blue);border-color:color-mix(in srgb,var(--blue) 25%,transparent)}
+
+/* photos */
+.photos{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:16px 18px}
+@media(max-width:560px){.photos{grid-template-columns:1fr}}
+.ph{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--line-2)}
+.ph .cap{display:flex;align-items:center;gap:7px;padding:8px 12px;font-size:11.5px;font-weight:600;background:var(--card);border-bottom:1px solid var(--line-2)}
+.ph .cap .th{font-weight:400;color:var(--ink-3)}
+.ph .cap .r{margin-left:auto;font-family:var(--mono);font-weight:400;color:var(--ink-3);font-size:11px}
+.ph img{display:block;width:100%;height:150px;object-fit:cover;cursor:zoom-in}
+.ph .none{height:150px;display:flex;align-items:center;justify-content:center;color:var(--ink-3);font-size:12.5px}
+
+/* signatures */
+.sigs{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;padding:16px 18px}
+.sig{border:1px solid var(--line);border-radius:10px;padding:10px 12px 12px;display:flex;flex-direction:column;gap:8px}
+.sig .who{font-size:11.5px;font-weight:600}
+.sig .who em{font-style:normal;display:block;font-weight:400;color:var(--ink-3)}
+.sig .pad2{height:62px;border-bottom:1px dashed var(--line);display:flex;align-items:flex-end;justify-content:center}
+.sig svg{width:100%;height:56px}
+.sig .miss{align-items:center;justify-content:center;color:var(--ink-3);font-size:12px;border:1px dashed var(--line);border-bottom-style:dashed;border-radius:8px;display:flex;height:62px;cursor:pointer}
+.sig .miss:hover{border-color:var(--blue);color:var(--blue)}
+.sig .stamp{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+
+/* time log */
+.tl{padding:6px 18px 16px}
+.tl .row{display:grid;grid-template-columns:132px minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line-2)}
+.tl .row:last-child{border-bottom:0}
+.tl .t{font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums}
+.tl .who{font-size:13px}
+.tl .who em{font-style:normal;color:var(--ink-3);font-size:12px;display:block}
+.tl .dur{font-family:var(--mono);font-size:12.5px;color:var(--ink-2);text-align:right}
+.tl .kind{font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:5px;background:var(--line-2);color:var(--ink-2)}
+.tl .kind.h{background:var(--stop-bg);color:var(--stop)}
+.tl .tot{display:flex;justify-content:space-between;padding-top:12px;margin-top:4px;border-top:1px solid var(--line);font-size:13px;font-weight:600}
+.tl .tot span:last-child{font-family:var(--mono)}
+
+/* side: status + hold panel */
+.sbox{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.sline{display:flex;justify-content:space-between;gap:10px;font-size:13px}
+.sline .k{color:var(--ink-3)}
+.sline .v{font-weight:500;text-align:right;font-variant-numeric:tabular-nums}
+.sline .v.mono{font-family:var(--mono)}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+.field input,.field select{font-family:var(--ui);font-size:13.5px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);width:100%}
+.field input:focus,.field select:focus{outline:2px solid var(--blue);outline-offset:0;border-color:var(--blue)}
+.hint{font-size:11.5px;color:var(--ink-3);line-height:1.45}
+
+/* conversation */
+.tabs{display:flex;gap:2px;padding:10px 12px 0}
+.tabs button{flex:1;font-family:var(--ui);font-size:12.5px;font-weight:500;padding:8px 6px;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--ink-3);cursor:pointer}
+.tabs button[aria-selected="true"]{color:var(--blue);border-bottom-color:var(--blue)}
+.tabs button:focus-visible{outline:2px solid var(--blue);outline-offset:-2px}
+.feed{padding:12px 16px;display:flex;flex-direction:column;gap:12px;max-height:300px;overflow-y:auto}
+.ev{display:flex;gap:9px;font-size:12.5px}
+.ev .ei{flex:none;width:22px;height:22px;border-radius:50%;background:var(--line-2);display:flex;align-items:center;justify-content:center;font-size:11px}
+.ev .et{min-width:0}
+.ev .et b{font-weight:600}
+.ev .ed{font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-top:1px}
+.compose{padding:10px 16px 14px;border-top:1px solid var(--line-2);display:flex;flex-direction:column;gap:8px}
+.compose input{font-family:var(--ui);font-size:13.5px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);width:100%}
+
+/* change notes */
+.notes{margin-top:26px;border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden}
+.notes summary{padding:14px 18px;font-size:13px;font-weight:600;cursor:pointer;list-style:none;display:flex;align-items:center;gap:9px}
+.notes summary::-webkit-details-marker{display:none}
+.notes summary::before{content:'▸';color:var(--blue);font-size:12px}
+.notes[open] summary::before{content:'▾'}
+.notes .inner{padding:0 18px 18px;font-size:13.5px;color:var(--ink-2);display:flex;flex-direction:column;gap:16px}
+.notes h4{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin-bottom:7px}
+.notes ol,.notes ul{padding-left:20px;display:flex;flex-direction:column;gap:5px}
+.notes code{font-family:var(--mono);font-size:12.5px;background:var(--line-2);padding:1px 5px;border-radius:4px;color:var(--ink)}
+.rule{border-collapse:collapse;width:100%;font-size:13px}
+.rule th,.rule td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line-2)}
+.rule th{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.rule td:first-child{font-family:var(--mono);font-size:12.5px}
+.hide{display:none!important}
+
+/* ---- lightbox ---- */
+.ph img{cursor:zoom-in}
+.lb{position:fixed;inset:0;z-index:60;background:rgba(226,235,244,.97);backdrop-filter:blur(3px);display:flex;flex-direction:column;opacity:0;pointer-events:none;transition:opacity .16s}
+.lb.open{opacity:1;pointer-events:auto}
+.lb .lbar{display:flex;align-items:center;gap:10px;padding:12px 16px;color:var(--ink);font-size:12.5px;flex-wrap:wrap;background:var(--card);border-bottom:1px solid var(--line)}
+.lb .lbar .t{font-weight:600}
+.lb .lbar .t em{font-style:normal;color:var(--ink-3);font-weight:400}
+.lb .tools{margin-left:auto;display:flex;gap:6px;align-items:center}
+.lb .tools button{font-family:var(--ui);font-size:13px;min-width:34px;height:32px;padding:0 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.lb .tools button:hover{border-color:var(--blue);color:var(--blue)}
+.lb .tools button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.lb .zval{font-family:var(--mono);font-size:12px;color:var(--ink-2);min-width:46px;text-align:center}
+.lb .stage{flex:1;overflow:hidden;display:flex;align-items:center;justify-content:center;touch-action:none}
+.lb .stage img{width:min(88vw,1000px);height:auto;max-height:92%;object-fit:contain;transform-origin:center center;transition:transform .12s ease-out;user-select:none;-webkit-user-drag:none;box-shadow:0 8px 32px rgba(15,41,66,.22);border:1px solid var(--line);border-radius:6px;background:#fff}
+.lb .foot{padding:10px 16px 16px;text-align:center;color:var(--ink-3);font-size:11.5px}
+.lb kbd{font-family:var(--mono);font-size:11px;background:var(--line-2);border:1px solid var(--line);border-radius:4px;padding:1px 5px;color:var(--ink-2)}
+@media (prefers-reduced-motion:reduce){.lb,.lb .stage img{transition:none}}
+</style>
+
+<div class="demo">
+  <div class="in">
+    <b>Preview</b>
+    <div class="seg" role="group" aria-label="Job state">
+      <button data-st="hold_nodue" aria-pressed="true">On hold · no due date</button>
+      <button data-st="hold_due" aria-pressed="false">On hold · due date set</button>
+      <button data-st="prog" aria-pressed="false">In progress</button>
+      <button data-st="done" aria-pressed="false">Done</button>
+    </div>
+    <span class="note">Same screen, four states — switch to check each one.</span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ============ JOB HEADER ============ -->
+  <div class="jhead">
+    <div class="strip" id="strip"></div>
+    <div class="body">
+      <div class="jtop">
+        <div>
+          <div class="jid">BKD-2609-001 <span>· W01ST02</span></div>
+          <div class="jname">Retort Steam Sterilizer for Cans <em>· หม้อฆ่าเชื้อกระป๋อง</em></div>
+        </div>
+        <div class="jactions">
+          <button class="btn">← Back</button>
+          <button class="btn">🖨 Repair form PDF</button>
+          <button class="btn">⇄ Move job</button>
+          <button class="btn pri" id="primaryAct">Set due date</button>
+        </div>
+      </div>
+
+      <div class="stages">
+        <div class="stage">
+          <span class="slab">Stage 1 · สถานะงาน</span>
+          <span class="sval"><span class="dot" id="s1dot"></span><span id="s1">Hold</span></span>
+        </div>
+        <div class="stage">
+          <span class="slab">Stage 2 · สถานะย่อย</span>
+          <span class="sval"><span class="chip" id="s2">Pending due date</span></span>
+        </div>
+        <div class="stage">
+          <span class="slab">Type · ประเภท</span>
+          <span class="sval"><span class="chip c-hold">BD · Breakdown</span></span>
+        </div>
+        <div class="stage">
+          <span class="slab">Priority · ระดับ</span>
+          <span class="sval">3 <span class="chip c-hold">Urgent</span></span>
+        </div>
+        <div class="stage">
+          <span class="slab">Trade · หน่วยงานช่าง</span>
+          <span class="sval" style="font-size:14px">Mechanical</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="facts">
+      <div class="fact"><div class="k">Reported · แจ้งเมื่อ</div><div class="v mono">01 Sep 08:41<small>dom · Operator</small></div></div>
+      <div class="fact"><div class="k">Planned · วันที่วางแผน</div><div class="v mono">01 Sep 2026<small>08:30 – 12:00</small></div></div>
+      <div class="fact"><div class="k">Due · กำหนดเสร็จ</div><div class="v mono" id="fDue">—<small id="fDueSub">not set by planner</small></div></div>
+      <div class="fact"><div class="k">Assigned to · ผู้รับผิดชอบ</div><div class="v">Kanya<small>Team B · FP</small></div></div>
+      <div class="fact"><div class="k">Elapsed · เวลาที่ใช้</div><div class="v mono" id="fElapsed">14 min<small id="fElapsedSub">work time</small></div></div>
+      <div class="fact"><div class="k">Age · อายุงาน</div><div class="v mono">0d 2h<small>since report</small></div></div>
+    </div>
+  </div>
+
+  <!-- ============ BANNER ============ -->
+  <div class="banner hold" id="banner">
+    <span class="ico" id="bIco">⏸</span>
+    <div>
+      <h3 id="bTitle">On hold — waiting for spare part</h3>
+      <p id="bText">Held by Kanya at 09:03 on 01 Sep. No due date has been set, so nobody knows when this comes back. Set one to move Stage 2 to <b>Wait for action</b>.</p>
+    </div>
+    <div class="act" id="bAct">
+      <span class="kv">On hold for <b>2h 14m</b></span>
+      <button class="btn pri sm">Set due date</button>
+    </div>
+  </div>
+
+  <!-- ============ MAIN GRID ============ -->
+  <div class="grid">
+    <div class="col">
+
+      <!-- progress rail -->
+      <section class="card">
+        <h2>Progress <span class="th">· ความคืบหน้า</span><span class="r" id="railNote"></span></h2>
+        <div class="rail">
+          <ol id="rail"></ol>
+        </div>
+      </section>
+
+      <!-- reported issue -->
+      <section class="card">
+        <h2>Reported issue <span class="th">· อาการที่แจ้ง (ผู้แจ้ง)</span></h2>
+        <div class="pad">
+          <p style="font-size:15px">Steam is leaking from the gasket.</p>
+          <div class="tags">
+            <span class="tag">Symptom: ไอน้ำรั่ว / Steam leak</span>
+            <span class="tag">Line 1 · Retort room</span>
+            <span class="tag">Machine stopped</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- technician report -->
+      <section class="card">
+        <h2>Technician report <span class="th">· รายงานช่าง</span><span class="r" id="repBy"></span></h2>
+        <div class="pad">
+          <dl class="rep">
+            <dt>Problem<br><span style="text-transform:none;letter-spacing:0;font-weight:400">ปัญหา</span></dt>
+            <dd id="repProblem" class="empty">Not filled in</dd>
+            <dt>Root cause<br><span style="text-transform:none;letter-spacing:0;font-weight:400">สาเหตุ</span></dt>
+            <dd id="repCause" class="empty">Not filled in</dd>
+            <dt>Solution<br><span style="text-transform:none;letter-spacing:0;font-weight:400">วิธีแก้ไข</span></dt>
+            <dd id="repFix">Replace the gasket as the old one is damaged.</dd>
+          </dl>
+          <div class="tags">
+            <span class="tag trade">เครื่องกล / Mechanical</span>
+            <span class="tag">Seal / ปะเก็น</span>
+            <span class="tag">เปลี่ยนอะไหล่ / Replace</span>
+            <span class="tag" id="partTag">Part: gasket 6" — not in stock</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- photos -->
+      <section class="card">
+        <h2>Evidence <span class="th">· รูปก่อน / หลังซ่อม</span><span class="r">Tap a photo to enlarge</span></h2>
+        <div class="photos">
+          <figure class="ph">
+            <figcaption class="cap">Before <span class="th">· ก่อนซ่อม</span><span class="r">01 Sep 08:52</span></figcaption>
+            <img src="data:image/jpeg;base64,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" alt="Leaking gasket on the retort steam line before repair">
+          </figure>
+          <figure class="ph">
+            <figcaption class="cap">After <span class="th">· หลังซ่อม</span><span class="r" id="afterTs">01 Sep 09:01</span></figcaption>
+            <img src="data:image/jpeg;base64,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" alt="Repaired valve assembly after the gasket was replaced" id="afterImg">
+            <div class="none hide" id="afterNone">No photo yet</div>
+          </figure>
+        </div>
+      </section>
+
+      <!-- signatures -->
+      <section class="card">
+        <h2>Sign-off <span class="th">· ลายเซ็น</span><span class="r" id="sigNote"></span></h2>
+        <div class="sigs">
+          <div class="sig">
+            <div class="who">Technician<em>ช่างผู้ทำงาน · Kanya</em></div>
+            <div class="pad2" id="sigTechBox"><svg viewBox="0 0 200 56" aria-label="Technician signature"><path d="M12 42 C34 8, 46 46, 62 24 S88 6, 104 34 S128 48, 148 20 S172 12, 190 30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M30 46 C60 40, 96 44, 140 38" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".7"/></svg></div>
+            <div class="stamp" id="sigTechAt">01 Sep 09:03</div>
+          </div>
+          <div class="sig">
+            <div class="who">Operator<em>ผู้ตรวจรับ · dom</em></div>
+            <div class="pad2" id="sigOpBox"><svg viewBox="0 0 200 56" aria-label="Operator signature"><path d="M24 40 C30 12, 52 12, 50 34 S38 50, 44 30 S66 8, 76 34 S92 46, 96 22 C100 8, 112 12, 118 30 S130 40, 138 26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+            <div class="stamp" id="sigOpAt">01 Sep 09:14</div>
+          </div>
+          <div class="sig">
+            <div class="who">Planner<em>ผู้ตรวจสอบ · required for PDF</em></div>
+            <div class="miss" id="sigPlan">✍ Tap to sign</div>
+            <div class="stamp">Unlocks the ใบแจ้งซ่อม download</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- time log -->
+      <section class="card">
+        <h2>Time log <span class="th">· บันทึกเวลา</span></h2>
+        <div class="tl" id="tl"></div>
+      </section>
+    </div>
+
+    <!-- ============ SIDE ============ -->
+    <div class="col side">
+
+      <section class="card" id="planCard">
+        <h2>Planner action <span class="th">· สิ่งที่ต้องทำ</span></h2>
+        <div class="sbox">
+          <div class="field">
+            <label for="dd">Due date · กำหนดเสร็จ</label>
+            <input type="date" id="dd" value="2026-09-05" min="2026-09-01">
+          </div>
+          <div class="field">
+            <label for="rs">Reason on hold · เหตุผล</label>
+            <select id="rs">
+              <option>Waiting for spare part · รออะไหล่</option>
+              <option>Waiting for contractor · รอผู้รับเหมา</option>
+              <option>Waiting for production · รอฝ่ายผลิต</option>
+              <option>Waiting for approval · รออนุมัติ</option>
+              <option>Machine running · เครื่องกำลังเดิน</option>
+              <option>Other · อื่นๆ</option>
+            </select>
+          </div>
+          <button class="btn pri" style="width:100%">Save and notify the team</button>
+          <p class="hint" id="planHint">A due date cannot fall before the planned date (01 Sep). Saving one moves Stage 2 from <b>Pending due date</b> to <b>Wait for action</b> and tells Kanya on their phone.</p>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Status <span class="th">· สถานะ</span></h2>
+        <div class="sbox">
+          <div class="sline"><span class="k">Stage 1</span><span class="v" id="sSt1">Hold</span></div>
+          <div class="sline"><span class="k">Stage 2</span><span class="v" id="sSt2">Pending due date</span></div>
+          <div class="sline"><span class="k">Held since</span><span class="v mono" id="sHeld">01 Sep 09:03</span></div>
+          <div class="sline"><span class="k">Reason</span><span class="v" id="sReason">Waiting for spare part</span></div>
+          <div class="sline"><span class="k">Reported by</span><span class="v">dom · OperatorReport</span></div>
+          <div class="sline"><span class="k">Job number</span><span class="v mono">BKD-2609-001</span></div>
+          <div class="sline"><span class="k">Factory</span><span class="v">FP · Wet Food</span></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="tabs" role="tablist">
+          <button role="tab" aria-selected="true">Messages</button>
+          <button role="tab" aria-selected="false">Notes</button>
+          <button role="tab" aria-selected="false">Activity</button>
+        </div>
+        <div class="feed" id="feed"></div>
+        <div class="compose">
+          <input placeholder="Message the team… (@name to mention)">
+          <div style="display:flex;gap:8px">
+            <button class="btn sm">📷 Photo</button>
+            <button class="btn pri sm" style="margin-left:auto">Send</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ============ CHANGE NOTES ============ -->
+  <details class="notes" open>
+    <summary>What changed, and the new hold rule</summary>
+    <div class="inner">
+      <div>
+        <h4>The hold rule you asked for</h4>
+        <table class="rule">
+          <tr><th>Stage 1</th><th>Condition</th><th>Stage 2 shows</th></tr>
+          <tr><td>Hold</td><td>No due date on the job</td><td><span class="chip c-hold">Pending due date</span> — the planner still owes this job a date</td></tr>
+          <tr><td>Hold</td><td>Due date set by the planner</td><td><span class="chip c-wait">Wait for action</span> — parked until the part or the supplier arrives</td></tr>
+        </table>
+        <p style="margin-top:10px">Everything else in <code>stage_for()</code> stays as it is. Two code changes make it work: <code>stage_for()</code> in <code>server/db.py</code> takes <code>due_date</code> and branches on it for <code>Hold</code> and <code>Paused</code>; <code>set_stage()</code> reads that column and must also run when a due date is added or removed (<code>update_job</code>, <code>plan_jobs</code>, the assign board). <code>stagePair()</code> in <code>static/index.html</code> gets the same branch so old rows without stored stages still read right.</p>
+      </div>
+      <div>
+        <h4>Layout — what moved and why</h4>
+        <ol>
+          <li><b>One header carries the identity.</b> Job number, machine, Stage 1, Stage 2, type, priority and trade sit on one line instead of being scattered — the same pair the Jobs table shows, so the two screens agree.</li>
+          <li><b>A facts strip replaces the four loose spans.</b> Reported, Planned, Due, Assigned, Elapsed, Age — fixed places, monospaced figures, so the eye lands on the same spot every time.</li>
+          <li><b>The hold reason gets a banner, not a hidden field.</b> Today <code>pending_reason</code> is only visible on the planner list. Here it is the first thing on the page, with the action the job is waiting for.</li>
+          <li><b>Progress rail.</b> Reported → Assigned → In progress → Completed → Approved, with the real timestamps out of <code>job_events</code>. A held job shows a red break in the rail.</li>
+          <li><b>Photos and signatures gain captions and times.</b> The before/after pair says when each was taken; the three signature boxes say who owes which one and that the planner's unlocks the PDF download.</li>
+          <li><b>Time log totals.</b> Segments still list, but with a duration per row and a total, which is what the man-hour figure is built from.</li>
+          <li><b>Planner action card is sticky.</b> Due date and hold reason are editable from the job itself, so setting a date does not mean opening the re-plan dialog.</li>
+        </ol>
+      </div>
+      <div>
+        <h4>Still to decide</h4>
+        <ul>
+          <li>Should <b>Paused</b> follow the same rule as <b>Hold</b>, or stay <span class="chip c-flat">Assigned</span>? Paused is a short break inside a shift; Hold is a wait on someone outside.</li>
+          <li>Does a due date that passes while the job is on hold flip Stage 2 to <b>Overdue</b>, or stay <b>Wait for action</b> and let the Overdue chip on the Jobs list carry it?</li>
+          <li>Should the app <b>push a reminder</b> to the planner while a job sits at <i>Pending due date</i> — and after how long?</li>
+        </ul>
+      </div>
+    </div>
+  </details>
+</div>
+
+<div class="lb" id="lb" role="dialog" aria-modal="true" aria-label="Photo viewer">
+  <div class="lbar">
+    <span class="t" id="lbT">Before <em>· ก่อนซ่อม</em></span>
+    <span style="font-family:var(--mono);color:var(--ink-2)" id="lbTs"></span>
+    <div class="tools">
+      <button id="zOut" aria-label="Zoom out">−</button>
+      <span class="zval" id="zVal">100%</span>
+      <button id="zIn" aria-label="Zoom in">+</button>
+      <button id="zRst">Reset</button>
+      <button id="lbX" aria-label="Close viewer">✕</button>
+    </div>
+  </div>
+  <div class="stage" id="lbStage"><img id="lbImg" alt=""></div>
+  <div class="foot"><kbd>Esc</kbd> close · <kbd>+</kbd> <kbd>−</kbd> zoom · <kbd>0</kbd> reset · drag to pan · double-click to zoom</div>
+</div>
+
+<script>
+const S = {
+  hold_nodue:{
+    strip:'var(--stop)', s1:'Hold', s1dot:'var(--stop)', s2:'Pending due date', s2c:'c-hold',
+    due:'—', dueSub:'not set by planner', dueAlert:true,
+    elapsed:'14 min', elapsedSub:'before it was held',
+    banner:'hold', bIco:'⏸', bTitle:'On hold — waiting for spare part',
+    bText:'Held by Kanya at 09:03 on 01 Sep. No due date has been set, so nobody knows when this job comes back. Set one and Stage 2 moves to Wait for action.',
+    bKv:'On hold for <b>2h 14m</b>', bBtn:'Set due date',
+    primary:'Set due date', planner:true, planHint:'A due date cannot fall before the planned date (01 Sep). Saving one moves Stage 2 from <b>Pending due date</b> to <b>Wait for action</b> and tells Kanya on their phone.',
+    sHeld:'01 Sep 09:03', sReason:'Waiting for spare part', partTag:'Part: gasket 6" — not in stock',
+    repProblem:null, repCause:null, repFix:'Replace the gasket as the old one is damaged.',
+    repBy:'Kanya · in progress', sigTech:false, sigOp:false, sigNote:'Signed at completion — nothing to sign yet',
+    after:false, railNote:'Held at step 3', railStop:true, rail:2,
+    tl:[['08:49 – 09:03','Kanya','work','14 min',false],['09:03 – now','Kanya','hold · waiting for spare part','2h 14m',true]],
+    total:'14 min work · 2h 14m held'
+  },
+  hold_due:{
+    strip:'var(--warn)', s1:'Hold', s1dot:'var(--warn)', s2:'Wait for action', s2c:'c-wait',
+    due:'05 Sep 2026', dueSub:'set by Somchai, 01 Sep 11:20', dueAlert:false,
+    elapsed:'14 min', elapsedSub:'before it was held',
+    banner:'sched', bIco:'📦', bTitle:'Waiting for a spare part — back on 05 Sep',
+    bText:'Held by Kanya at 09:03. The planner has given it a date, so the job is parked rather than forgotten. Nothing is expected from the technician until the part arrives.',
+    bKv:'Due in <b>4 days</b>', bBtn:'Change due date',
+    primary:'Resume job', planner:true, planHint:'Clearing the due date puts Stage 2 back to <b>Pending due date</b>. A date before the planned date (01 Sep) is refused.',
+    sHeld:'01 Sep 09:03', sReason:'Waiting for spare part', partTag:'Part: gasket 6" — ordered, ETA 04 Sep',
+    repProblem:null, repCause:null, repFix:'Replace the gasket as the old one is damaged.',
+    repBy:'Kanya · in progress', sigTech:false, sigOp:false, sigNote:'Signed at completion — nothing to sign yet',
+    after:false, railNote:'Held at step 3 · resumes 05 Sep', railStop:true, rail:2,
+    tl:[['08:49 – 09:03','Kanya','work','14 min',false],['09:03 – now','Kanya','hold · waiting for spare part','2h 14m',true]],
+    total:'14 min work · 2h 14m held'
+  },
+  prog:{
+    strip:'var(--warn)', s1:'In progress', s1dot:'var(--warn)', s2:'Assigned', s2c:'c-prog',
+    due:'02 Sep 2026', dueSub:'set by Somchai', dueAlert:false,
+    elapsed:'14 min', elapsedSub:'running now',
+    banner:null,
+    primary:'Message technician', planner:false, planHint:'',
+    sHeld:'—', sReason:'—', partTag:'Part: gasket 6" — issued from store',
+    repProblem:null, repCause:null, repFix:null,
+    repBy:'Kanya · working', sigTech:false, sigOp:false, sigNote:'Signed at completion — nothing to sign yet',
+    after:false, railNote:'Working now', railStop:false, rail:2,
+    tl:[['08:49 – now','Kanya','work','14 min',false]],
+    total:'14 min so far'
+  },
+  done:{
+    strip:'var(--ok)', s1:'Completed', s1dot:'var(--ok)', s2:'Approved', s2c:'c-done',
+    due:'02 Sep 2026', dueSub:'finished 1 day early', dueAlert:false,
+    elapsed:'14 min', elapsedSub:'total work time',
+    banner:null,
+    primary:'✍ Sign &amp; unlock PDF', planner:false, planHint:'',
+    sHeld:'—', sReason:'—', partTag:'Part: gasket 6" — 1 used',
+    repProblem:'Steam escaping at the door gasket on the retort, seal not holding pressure.',
+    repCause:'Gasket hardened and split after 14 months in service.',
+    repFix:'Replace the gasket as the old one is damaged.',
+    repBy:'Kanya · 01 Sep 09:03', sigTech:true, sigOp:true, sigNote:'Complete — form F-SP-ENG02-03 filed',
+    after:true, railNote:'Closed 01 Sep 09:14', railStop:false, rail:5,
+    tl:[['08:49 – 09:03','Kanya','work · stop: complete','14 min',false]],
+    total:'14 min · 1 technician'
+  }
+};
+
+const RAIL = [
+  ['Reported','แจ้งซ่อม','01 Sep 08:41'],
+  ['Assigned','มอบหมาย','01 Sep 08:45'],
+  ['In progress','กำลังทำ','01 Sep 08:49'],
+  ['Completed','ซ่อมเสร็จ','01 Sep 09:03'],
+  ['Approved','ตรวจรับแล้ว','01 Sep 09:14']
+];
+
+const FEED = {
+  hold_nodue:[['⏸','<b>Kanya</b> put the job on hold — waiting for spare part','01 Sep 09:03'],
+    ['🙋','<b>Kanya</b>: gasket 6" is not in the store, need to order','01 Sep 09:04'],
+    ['⚙️','Status → <b>Hold</b> · Stage 2 <b>Pending due date</b>','01 Sep 09:03'],
+    ['👍','Job accepted by <b>Kanya</b>','01 Sep 08:49']],
+  hold_due:[['📅','<b>Somchai</b> set the due date to 05 Sep','01 Sep 11:20'],
+    ['⚙️','Stage 2 → <b>Wait for action</b>','01 Sep 11:20'],
+    ['⏸','<b>Kanya</b> put the job on hold — waiting for spare part','01 Sep 09:03'],
+    ['👍','Job accepted by <b>Kanya</b>','01 Sep 08:49']],
+  prog:[['▶️','<b>Kanya</b> started work','01 Sep 08:49'],
+    ['👍','Job accepted by <b>Kanya</b>','01 Sep 08:49'],
+    ['📣','New breakdown reported by <b>dom</b>','01 Sep 08:41']],
+  done:[['✅','Status → <b>Done</b> — accepted by <b>dom</b>','01 Sep 09:14'],
+    ['⚙️','Status → <b>Service Completed</b> (by Kanya)','01 Sep 09:03'],
+    ['👍','Job accepted by <b>Kanya</b>','01 Sep 08:49']]
+};
+
+const $ = s => document.querySelector(s);
+const set = (id, html) => { const e = document.getElementById(id); if (e) e.innerHTML = html; };
+
+function render(k){
+  const s = S[k];
+  $('#strip').style.background = s.strip;
+  set('s1', s.s1); $('#s1dot').style.background = s.s1dot;
+  const s2 = $('#s2'); s2.textContent = s.s2; s2.className = 'chip ' + s.s2c;
+  set('sSt1', s.s1); set('sSt2', s.s2);
+  set('fDue', s.due + '<small>' + s.dueSub + '</small>');
+  $('#fDue').classList.toggle('alert', !!s.dueAlert);
+  set('fElapsed', s.elapsed + '<small>' + s.elapsedSub + '</small>');
+  set('sHeld', s.sHeld); set('sReason', s.sReason); set('partTag', s.partTag);
+  set('primaryAct', s.primary);
+  set('repBy', s.repBy); set('sigNote', s.sigNote); set('railNote', s.railNote);
+
+  // banner
+  const b = $('#banner');
+  if (!s.banner) { b.classList.add('hide'); }
+  else {
+    b.classList.remove('hide');
+    b.className = 'banner ' + s.banner;
+    set('bIco', s.bIco); set('bTitle', s.bTitle); set('bText', s.bText);
+    set('bAct', '<span class="kv">' + s.bKv + '</span><button class="btn ' +
+      (s.banner === 'hold' ? 'pri ' : '') + 'sm">' + s.bBtn + '</button>');
+  }
+
+  // planner card
+  $('#planCard').classList.toggle('hide', !s.planner);
+  if (s.planner) set('planHint', s.planHint);
+
+  // technician report
+  const fill = (id, v) => {
+    const e = document.getElementById(id);
+    e.textContent = v || 'Not filled in';
+    e.classList.toggle('empty', !v);
+  };
+  fill('repProblem', s.repProblem); fill('repCause', s.repCause); fill('repFix', s.repFix);
+
+  // after photo
+  $('#afterImg').classList.toggle('hide', !s.after);
+  $('#afterNone').classList.toggle('hide', s.after);
+  set('afterTs', s.after ? '01 Sep 09:01' : '—');
+
+  // signatures
+  $('#sigTechBox').classList.toggle('hide', !s.sigTech);
+  $('#sigOpBox').classList.toggle('hide', !s.sigOp);
+  set('sigTechAt', s.sigTech ? '01 Sep 09:03' : 'Not signed yet');
+  set('sigOpAt', s.sigOp ? '01 Sep 09:14' : 'Not signed yet');
+
+  // rail
+  set('rail', RAIL.map((r, i) => {
+    let cls = i < s.rail ? 'on' : i === s.rail ? 'now' : 'off';
+    if (s.railStop && i === s.rail) cls = 'stop';
+    return '<li class="' + cls + '"><span class="pt"></span>' +
+      '<div class="nm">' + r[0] + '<em>' + r[1] + '</em></div>' +
+      '<div class="ts">' + (i <= s.rail ? r[2] : '—') + '</div></li>';
+  }).join(''));
+
+  // time log
+  set('tl', s.tl.map(r =>
+    '<div class="row"><span class="t">' + r[0] + '</span>' +
+    '<span class="who">' + r[1] + '<em>' + r[2] + '</em></span>' +
+    '<span class="dur"><span class="kind' + (r[4] ? ' h' : '') + '">' + (r[4] ? 'hold' : 'work') + '</span> ' + r[3] + '</span></div>'
+  ).join('') + '<div class="tot"><span>Total</span><span>' + s.total + '</span></div>');
+
+  // feed
+  set('feed', FEED[k].map(e =>
+    '<div class="ev"><span class="ei">' + e[0] + '</span><div class="et">' + e[1] +
+    '<div class="ed">' + e[2] + '</div></div></div>'
+  ).join(''));
+}
+
+document.querySelectorAll('.demo button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.demo button').forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
+    render(btn.dataset.st);
+  });
+});
+
+document.querySelectorAll('.tabs button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b === btn)));
+  });
+});
+
+/* ---------- lightbox with zoom ---------- */
+const lb = document.getElementById('lb'), lbImg = document.getElementById('lbImg'),
+      lbStage = document.getElementById('lbStage'), zVal = document.getElementById('zVal');
+let z = 1, px = 0, py = 0, opener = null, dragging = false, sx = 0, sy = 0;
+
+function apply(){
+  lbImg.style.transform = 'translate(' + px + 'px,' + py + 'px) scale(' + z + ')';
+  zVal.textContent = Math.round(z * 100) + '%';
+  lbStage.style.cursor = z > 1 ? (dragging ? 'grabbing' : 'grab') : 'default';
+}
+function zoom(next){
+  const nz = Math.min(6, Math.max(1, +next.toFixed(2)));
+  if (nz === 1) { px = 0; py = 0; }
+  z = nz; apply();
+}
+function openLb(img){
+  opener = img;
+  const fig = img.closest('.ph'), cap = fig.querySelector('.cap');
+  lbImg.src = img.src; lbImg.alt = img.alt;
+  document.getElementById('lbT').innerHTML = cap.childNodes[0].textContent.trim() +
+    ' <em>' + (cap.querySelector('.th') ? cap.querySelector('.th').textContent : '') + '</em>';
+  document.getElementById('lbTs').textContent = cap.querySelector('.r') ? cap.querySelector('.r').textContent : '';
+  z = 1; px = 0; py = 0; apply();
+  lb.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('lbX').focus();
+}
+function closeLb(){
+  lb.classList.remove('open');
+  document.body.style.overflow = '';
+  if (opener) opener.focus();
+}
+document.querySelectorAll('.ph img').forEach(im => {
+  im.tabIndex = 0;
+  im.addEventListener('click', () => openLb(im));
+  im.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLb(im); } });
+});
+document.getElementById('zIn').onclick = () => zoom(z + .5);
+document.getElementById('zOut').onclick = () => zoom(z - .5);
+document.getElementById('zRst').onclick = () => zoom(1);
+document.getElementById('lbX').onclick = closeLb;
+lbStage.addEventListener('click', e => { if (e.target === lbStage) closeLb(); });
+lbImg.addEventListener('dblclick', () => zoom(z > 1 ? 1 : 2.5));
+lbStage.addEventListener('wheel', e => {
+  if (!lb.classList.contains('open')) return;
+  e.preventDefault();
+  zoom(z + (e.deltaY < 0 ? .25 : -.25));
+}, { passive:false });
+lbStage.addEventListener('pointerdown', e => {
+  if (z <= 1) return;
+  dragging = true; sx = e.clientX - px; sy = e.clientY - py;
+  lbStage.setPointerCapture(e.pointerId);
+});
+lbStage.addEventListener('pointermove', e => {
+  if (!dragging) return;
+  px = e.clientX - sx; py = e.clientY - sy; apply();
+});
+['pointerup','pointercancel'].forEach(ev => lbStage.addEventListener(ev, () => { dragging = false; apply(); }));
+document.addEventListener('keydown', e => {
+  if (!lb.classList.contains('open')) return;
+  if (e.key === 'Escape') { e.preventDefault(); closeLb(); }
+  else if (e.key === '+' || e.key === '=') zoom(z + .5);
+  else if (e.key === '-' || e.key === '_') zoom(z - .5);
+  else if (e.key === '0') zoom(1);
+});
+
+render('hold_nodue');
+</script>

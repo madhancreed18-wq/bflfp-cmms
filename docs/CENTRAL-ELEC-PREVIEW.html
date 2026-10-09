@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Central Electrical PM — preview</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#E2E8F0;font-family:Sarabun,"Segoe UI",Tahoma,sans-serif;color:#0F172A;font-size:13.5px}
+.note{max-width:1280px;margin:14px auto;background:#FFFBEB;border:1px solid #FDE68A;color:#78350F;border-radius:10px;padding:10px 14px;line-height:1.55}
+.nav{max-width:1280px;margin:0 auto 12px;display:flex;gap:6px;flex-wrap:wrap}
+.nav button{border:1px solid #CBD5E1;background:#fff;border-radius:99px;padding:7px 14px;font:600 13px inherit;font-family:inherit;cursor:pointer}
+.nav button.on{background:#EA6A0A;border-color:#EA6A0A;color:#fff}
+.scr{display:none;max-width:1280px;margin:0 auto 40px}.scr.on{display:block}
+.pc{background:#fff;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.12);overflow:hidden}
+.bar{background:#202020;color:#fff;padding:10px 16px;font-weight:700;display:flex;gap:10px;align-items:center}
+.bar span.o{color:#EA6A0A}.bar .r{margin-left:auto;font-weight:500;font-size:12.5px;color:#CBD5E1}
+.pad{padding:16px}
+h3{margin:0 0 10px;font-size:16px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid #E2E8F0;margin-bottom:14px}
+.tabs div{padding:8px 14px;font-weight:600;color:#64748B;border-bottom:3px solid transparent}
+.tabs .on{color:#EA6A0A;border-color:#EA6A0A}
+table{border-collapse:collapse;width:100%}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #EEF2F7;vertical-align:middle}
+th{font-size:12px;color:#64748B;font-weight:700;background:#F8FAFC}
+.pill{display:inline-block;font-size:11.5px;font-weight:700;border-radius:99px;padding:2px 9px}
+.el{background:#FEF3C7;color:#92400E}.ge{background:#E2E8F0;color:#334155}.me{background:#DBEAFE;color:#1D4ED8}.ci{background:#DCFCE7;color:#166534}
+.ok{background:#DCFCE7;color:#166534}.ng{background:#FEE2E2;color:#B91C1C}.wt{background:#FFEDD5;color:#C2410C}.bl{background:#DBEAFE;color:#1D4ED8}
+.btn{border:none;border-radius:8px;padding:8px 14px;font:700 13px inherit;font-family:inherit;cursor:pointer}
+.bo{background:#EA6A0A;color:#fff}.bg{background:#F1F5F9;color:#334155;border:1px solid #CBD5E1}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.card{border:1px solid #E2E8F0;border-radius:10px;padding:12px}
+.sw{display:inline-flex;border:1px solid #CBD5E1;border-radius:8px;overflow:hidden}
+.sw span{padding:6px 12px;font-weight:600;font-size:12.5px}.sw .on{background:#EA6A0A;color:#fff}
+.lbl{font-size:12px;color:#64748B;font-weight:700;margin:10px 0 4px}
+.mut{color:#64748B;font-size:12px}
+/* calendar */
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.cal .h{font-size:11.5px;font-weight:700;color:#64748B;text-align:center}
+.day{min-height:92px;border:1px solid #E2E8F0;border-radius:8px;padding:5px;font-size:11.5px;background:#fff}
+.day.x{background:#F8FAFC;color:#CBD5E1}.day b{font-size:12px}
+.ev{margin-top:3px;border-radius:5px;padding:2px 5px;font-weight:600;font-size:11px;display:flex;justify-content:space-between;gap:4px}
+.ev.e{background:#FEF3C7;color:#92400E}.ev.d{background:#DCFCE7;color:#166534}.ev.w{background:#FFEDD5;color:#C2410C}
+/* phones */
+.phones{display:flex;gap:36px;justify-content:center;flex-wrap:wrap}
+.ph{width:350px;border:10px solid #0F172A;border-radius:36px;overflow:hidden;background:#F1F5F9;box-shadow:0 14px 40px rgba(0,0,0,.25)}
+.ph .top{background:#202020;color:#fff;padding:11px 14px;font-weight:700;display:flex;gap:8px;align-items:center}
+.ph .top small{margin-left:auto;font-weight:500;color:#FDBA74;font-size:11px}
+.jh{background:#fff;padding:10px 12px;border-bottom:1px solid #E2E8F0}
+.jh b{font-size:14px}
+.row{background:#fff;margin:6px 8px;border:1px solid #E2E8F0;border-radius:10px;padding:8px 10px}
+.row .t{font-weight:600;font-size:12.8px}.row .en{color:#64748B;font-size:11.5px}
+.row .a{display:flex;gap:6px;margin-top:6px;align-items:center}
+.row .a span.b{flex:1;text-align:center;border:1px solid #CBD5E1;border-radius:7px;padding:5px 0;font-weight:700;font-size:12px;background:#fff}
+.row .a span.b.sok{background:#16A34A;border-color:#16A34A;color:#fff}.row .a span.b.sng{background:#DC2626;border-color:#DC2626;color:#fff}
+.row.lock{background:#F1F5F9;opacity:.75}.row.lock .a span.b{background:#E2E8F0;color:#94A3B8;border-color:#E2E8F0}
+.lk{font-size:11px;font-weight:700;color:#92400E;background:#FEF3C7;border-radius:6px;padding:2px 6px;margin-left:auto;white-space:nowrap}
+.lk.g{color:#475569;background:#E2E8F0}
+.foot{padding:10px 8px 14px}.foot .btn{width:100%;padding:11px}
+.stt{margin:8px;border-radius:10px;padding:8px 10px;font-weight:700;font-size:12.5px}
+.flow{display:flex;gap:8px;align-items:stretch;flex-wrap:wrap}
+.fb{flex:1;min-width:170px;border-radius:10px;padding:12px;border:1px solid #E2E8F0;background:#fff}
+.fb b{display:block;margin-bottom:4px}
+.ar{align-self:center;font-size:20px;color:#94A3B8}
+.q{background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:10px;padding:10px 14px;margin-top:14px;line-height:1.5}
+</style></head><body>
+
+<div class="note"><b>PREVIEW ONLY — not built yet.</b> Central Electrical PM for <b>BFL and BFLPC</b>, starting <b>1 Oct 2026</b>. One PM job, two parts: General technician does mechanical/civil points, Central Electrical team does electrical points; the PM report is made only when every point is done. BFLFP unchanged. Examples use real assets and checklist points from the 26 Sep live copy. Click the buttons to switch screens.</div>
+
+<div class="nav">
+ <button class="on" onclick="go(0,this)">① Manage — Central Electrical</button>
+ <button onclick="go(1,this)">② Mark &amp; compare checklist</button>
+ <button onclick="go(2,this)">③ Electrical planner calendar</button>
+ <button onclick="go(3,this)">④ Same job — two phones</button>
+ <button onclick="go(4,this)">⑤ Job status flow</button>
+</div>
+
+<!-- ① MANAGE -->
+<div class="scr on">
+ <div class="pc"><div class="bar">BFL Group <span class="o">- CMMS</span><span class="r">admin1 · Manage</span></div>
+ <div class="pad">
+  <div class="tabs"><div>Users</div><div>Factories</div><div>Departments</div><div class="on">⚡ Central Electrical</div><div>Holidays</div></div>
+  <div class="grid2">
+   <div class="card">
+    <h3>Settings</h3>
+    <div class="lbl">Turned on for plants</div>
+    <label><input type="checkbox" checked> BFL</label> &nbsp; <label><input type="checkbox" checked> BFLPC</label> &nbsp; <label style="color:#94A3B8"><input type="checkbox" disabled> BFLFP (not used)</label>
+    <div class="lbl">Start date — electrical points locked for general technicians from</div>
+    <input value="01/10/2026" style="padding:6px 8px;border:1px solid #CBD5E1;border-radius:6px;font-family:inherit"> <span class="mut">jobs finished before this date are not touched</span>
+    <div class="lbl">Electrical points marked</div>
+    <div>BFL <span class="pill ok">412 points · approved</span> &nbsp; BFLPC <span class="pill wt">388 points · waiting to compare</span></div>
+    <div class="lbl">Status</div>
+    <span class="pill wt">Not active yet — BFLPC compare not approved</span>
+   </div>
+   <div class="card">
+    <h3>Team members</h3>
+    <table>
+     <tr><th>User</th><th>Role</th><th>Plants</th><th>Team</th></tr>
+     <tr><td>planner2 · Tum Parinya</td><td>Planner</td><td>All</td><td><span class="pill el">⚡ Central Electrical</span></td></tr>
+     <tr><td>planner3 · Earth</td><td>Manager ⚠</td><td>BFLPC</td><td><span class="pill el">⚡ Central Electrical</span></td></tr>
+     <tr><td>planner4 · Sompasong</td><td>Planner</td><td>All</td><td><span class="pill el">⚡ Central Electrical</span></td></tr>
+     <tr><td>planner5 · Nathawut</td><td>Planner</td><td>All</td><td><span class="pill el">⚡ Central Electrical</span></td></tr>
+     <tr><td>elec1 · (technician)</td><td>Technician</td><td>BFL, BFLPC</td><td><span class="pill el">⚡ Central Electrical</span></td></tr>
+     <tr><td>elec2 · (technician)</td><td>Technician</td><td>BFL, BFLPC</td><td><span class="pill el">⚡ Central Electrical</span></td></tr>
+    </table>
+    <div style="margin-top:10px"><button class="btn bo">+ Add member</button></div>
+    <div class="mut" style="margin-top:8px">⚠ planner3 is set as <b>Manager</b> for BFLPC only in the live copy — to confirm.</div>
+   </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+   <h3>Users → edit user (the same switch is also on each user)</h3>
+   <div style="display:flex;gap:30px;flex-wrap:wrap;align-items:center">
+    <div><div class="lbl">Username</div>planner2</div>
+    <div><div class="lbl">Role</div>Planner</div>
+    <div><div class="lbl">Team</div><div class="sw"><span>General</span><span class="on">⚡ Central Electrical</span></div></div>
+   </div>
+  </div>
+ </div></div>
+</div>
+
+<!-- ② COMPARE -->
+<div class="scr">
+ <div class="pc"><div class="bar">BFL Group <span class="o">- CMMS</span><span class="r">Manage · ⚡ Central Electrical · BFL</span></div>
+ <div class="pad">
+  <h3>Step 1 — electrical team marks the points &nbsp;·&nbsp; Step 2 — compare with the existing checklist</h3>
+  <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+   <button class="btn bg">⬇ Download checklist (Excel) for marking</button>
+   <button class="btn bg">⬆ Upload marked Excel</button>
+   <span class="mut" style="align-self:center">Excel has one row per point with a column <b>Type = E / M / C</b> (Electrical / Mechanical / Civil). Or tick in the app below.</span>
+  </div>
+  <div style="display:flex;gap:10px;margin-bottom:10px"><span class="pill ok">Match 405</span><span class="pill wt">Check 5</span><span class="pill ng">Not in checklist 2</span><span class="mut" style="margin-left:auto">Asset: <b>B01BW01</b> พัดลม ดายเออร์1 ตัวที่1 (dryer 1 fan no.1)</span></div>
+  <table>
+   <tr><th>#</th><th>Existing checklist point</th><th>Freq</th><th>Marked by electrical team</th><th>Result</th></tr>
+   <tr><td>1</td><td>อัดจารบีที่ Housing Bearing <span class="mut">(grease the housing bearing)</span></td><td>monthly</td><td><span class="pill me">M</span></td><td><span class="pill ok">Match</span></td></tr>
+   <tr><td>2</td><td>วัดอุณหภูมิมอเตอร์ <span class="mut">(measure motor temperature)</span></td><td>monthly</td><td><span class="pill el">E</span></td><td><span class="pill wt">Check — mechanical team also claims it</span></td></tr>
+   <tr><td>3</td><td>วัด Temp Housing Bearing <span class="mut">(measure bearing housing temperature)</span></td><td>monthly</td><td><span class="pill me">M</span></td><td><span class="pill ok">Match</span></td></tr>
+   <tr><td>4</td><td>ตรวจเช็คสภาพภายนอก Exhaust Fan <span class="mut">(check exhaust fan outside condition)</span></td><td>monthly</td><td><span class="pill me">M</span></td><td><span class="pill ok">Match</span></td></tr>
+   <tr><td>5</td><td>ตรวจเช็คมอเตอร์ <span class="mut">(check the motor)</span></td><td>monthly</td><td><span class="pill el">E</span></td><td><span class="pill ok">Match</span></td></tr>
+   <tr><td>6</td><td>ตรวจเช็คสภาพและตั้งสายพาน <span class="mut">(check and adjust the belt)</span></td><td>monthly</td><td><span class="pill me">M</span></td><td><span class="pill ok">Match</span></td></tr>
+   <tr><td>7</td><td>ขันแน่นขั้วมอเตอร์ <span class="mut">(tighten motor terminals)</span></td><td>3-monthly</td><td><span class="pill el">E</span></td><td><span class="pill ok">Match</span></td></tr>
+   <tr><td>8</td><td>เช็คเมกกะโอมมอเตอร์ <span class="mut">(megger test the motor)</span></td><td>6-monthly</td><td><span class="pill el">E</span></td><td><span class="pill ok">Match</span></td></tr>
+   <tr style="background:#FEF2F2"><td>—</td><td>ตรวจเช็คตู้คอนโทรลพัดลม <span class="mut">(check fan control panel)</span></td><td>monthly</td><td><span class="pill el">E</span></td><td><span class="pill ng">Not in existing checklist — add it or drop it</span></td></tr>
+  </table>
+  <div style="margin-top:14px;display:flex;gap:8px"><button class="btn bo">✔ Approve BFL — all points agreed</button><button class="btn bg">Export differences (Excel)</button></div>
+  <div class="mut" style="margin-top:6px">Nothing changes on the phones until the plant is approved. Electrical PM follows the existing Day 1 / due dates — no new plan.</div>
+ </div></div>
+</div>
+
+<!-- ③ CALENDAR -->
+<div class="scr">
+ <div class="pc"><div class="bar">BFL Group <span class="o">- CMMS</span><span class="r">planner2 · ⚡ Central Electrical · BFL + BFLPC</span></div>
+ <div class="pad">
+  <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+   <h3 style="margin:0">PM calendar — October 2026</h3>
+   <div class="sw" style="margin-left:14px"><span class="on">All</span><span>BFL</span><span>BFLPC</span></div>
+   <span class="mut" style="margin-left:auto">Only PM jobs with electrical points are shown. Chip = plant · jobs · electrical points done.</span>
+  </div>
+  <div class="cal">
+   <div class="h">Mon</div><div class="h">Tue</div><div class="h">Wed</div><div class="h">Thu</div><div class="h">Fri</div><div class="h">Sat</div><div class="h">Sun</div>
+   <div class="day x">28</div><div class="day x">29</div><div class="day x">30</div>
+   <div class="day"><b>1</b><div class="ev d"><span>BFL 18</span><span>18/18 ✔</span></div><div class="ev d"><span>PC 9</span><span>9/9 ✔</span></div></div>
+   <div class="day"><b>2</b><div class="ev w"><span>BFL 22</span><span>14/22</span></div><div class="ev e"><span>PC 6</span><span>0/6</span></div></div>
+   <div class="day"><b>3</b><div class="ev e"><span>BFL 11</span><span>0/11</span></div></div>
+   <div class="day"><b>4</b></div>
+   <div class="day"><b>5</b><div class="ev e"><span>BFL 9</span><span>0/9</span></div><div class="ev e"><span>PC 26</span><span>0/26</span></div></div>
+   <div class="day"><b>6</b><div class="ev e"><span>BFL 20</span><span>0/20</span></div></div>
+   <div class="day"><b>7</b><div class="ev e"><span>PC 14</span><span>0/14</span></div></div>
+   <div class="day"><b>8</b><div class="ev e"><span>BFL 16</span><span>0/16</span></div></div>
+   <div class="day"><b>9</b><div class="ev e"><span>PC 12</span><span>0/12</span></div></div>
+   <div class="day"><b>10</b></div><div class="day"><b>11</b></div>
+  </div>
+  <div class="card" style="margin-top:16px">
+   <h3>2 Oct · BFL — 22 PM jobs with electrical points</h3>
+   <table>
+    <tr><th>Job</th><th>Asset</th><th>Electrical points</th><th>General part</th><th>Electrical part</th><th>Crew</th></tr>
+    <tr><td>PRM-2610-014</td><td>B01BW01 พัดลม ดายเออร์1 <span class="mut">(dryer 1 fan)</span></td><td>2 of 6 today</td><td><span class="pill ok">Done 09:40</span></td><td><span class="pill wt">Waiting: Electrical</span></td><td>elec1</td></tr>
+    <tr><td>PRM-2610-015</td><td>A08BE01 กระพ้อ สเกล2 <span class="mut">(bucket elevator, scale 2)</span></td><td>1 of 12</td><td><span class="pill bl">In progress</span></td><td><span class="pill ok">Done 10:15</span></td><td>elec1</td></tr>
+    <tr><td>PRM-2610-016</td><td>G01ES04 MDB1</td><td>6 of 6 (all electrical)</td><td><span class="pill ge">— none —</span></td><td><span class="pill ok">Done → report made</span></td><td>elec2</td></tr>
+    <tr><td>PRM-2610-017</td><td>A02SC02 สกรู ถังแบทชิ่ง1 <span class="mut">(batching bin screw 1)</span></td><td>1 of 8</td><td><span class="pill ge">Not started</span></td><td><span class="pill ge">Not started</span></td><td>— assign —</td></tr>
+   </table>
+   <div class="mut" style="margin-top:6px">Machines with no electrical points (e.g. a slide gate or bin) never appear here. The plant planner (planner1 / hor / planner6) still sees every PM job, with the electrical part shown as a status.</div>
+  </div>
+ </div></div>
+</div>
+
+<!-- ④ PHONES -->
+<div class="scr">
+ <div class="phones">
+  <div>
+   <div class="ph">
+    <div class="top">PRM-2610-014 <small>General tech · BFL</small></div>
+    <div class="jh"><b>B01BW01</b> พัดลม ดายเออร์1 ตัวที่1 <span class="mut">(dryer 1 fan no.1)</span><br><span class="pill ok" style="margin-top:4px">Your part: 4 of 4 done</span> <span class="pill el">⚡ 2 for electrical team</span></div>
+    <div class="row"><div class="t">1. อัดจารบีที่ Housing Bearing</div><div class="en">grease the housing bearing</div><div class="a"><span class="b sok">OK</span><span class="b">NG</span></div></div>
+    <div class="row lock"><div class="t" style="display:flex">2. วัดอุณหภูมิมอเตอร์ <span class="lk">⚡ Central Electrical</span></div><div class="en">measure motor temperature</div><div class="a"><span class="b">OK</span><span class="b">NG</span></div></div>
+    <div class="row"><div class="t">3. วัด Temp Housing Bearing</div><div class="en">measure bearing housing temperature</div><div class="a"><span class="b sok">OK</span><span class="b">NG</span></div></div>
+    <div class="row"><div class="t">4. ตรวจเช็คสภาพภายนอก Exhaust Fan</div><div class="en">check exhaust fan outside condition</div><div class="a"><span class="b sok">OK</span><span class="b">NG</span></div></div>
+    <div class="row lock"><div class="t" style="display:flex">5. ตรวจเช็คมอเตอร์ <span class="lk">⚡ Central Electrical</span></div><div class="en">check the motor</div><div class="a"><span class="b">OK</span><span class="b">NG</span></div></div>
+    <div class="row"><div class="t">6. ตรวจเช็คสภาพและตั้งสายพาน</div><div class="en">check and adjust the belt</div><div class="a"><span class="b sok">OK</span><span class="b">NG</span></div></div>
+    <div class="foot"><button class="btn bo">■ Stop — finish my part</button></div>
+    <div class="stt" style="background:#FFEDD5;color:#C2410C">After Stop: job shows <b>Waiting: Electrical</b> — leaves this technician's list, no PM report yet.</div>
+   </div>
+   <div style="text-align:center;font-weight:700;margin-top:8px">A · General technician</div>
+  </div>
+  <div>
+   <div class="ph">
+    <div class="top">PRM-2610-014 <small>⚡ elec1 · BFL</small></div>
+    <div class="jh"><b>B01BW01</b> พัดลม ดายเออร์1 ตัวที่1 <span class="mut">(dryer 1 fan no.1)</span><br><span class="pill wt" style="margin-top:4px">Your part: 1 of 2 done</span> <span class="pill ok">General part done 09:40 · Somchai</span></div>
+    <div class="row lock"><div class="t" style="display:flex">1. อัดจารบีที่ Housing Bearing <span class="lk g">General · OK</span></div><div class="en">grease the housing bearing</div></div>
+    <div class="row"><div class="t">2. วัดอุณหภูมิมอเตอร์</div><div class="en">measure motor temperature</div><div class="a"><span class="b sok">OK</span><span class="b">NG</span></div></div>
+    <div class="row lock"><div class="t" style="display:flex">3. วัด Temp Housing Bearing <span class="lk g">General · OK</span></div><div class="en">measure bearing housing temperature</div></div>
+    <div class="row lock"><div class="t" style="display:flex">4. ตรวจเช็คสภาพภายนอก Exhaust Fan <span class="lk g">General · OK</span></div><div class="en">check exhaust fan outside condition</div></div>
+    <div class="row"><div class="t">5. ตรวจเช็คมอเตอร์</div><div class="en">check the motor</div><div class="a"><span class="b">OK</span><span class="b">NG</span></div></div>
+    <div class="row lock"><div class="t" style="display:flex">6. ตรวจเช็คสภาพและตั้งสายพาน <span class="lk g">General · OK</span></div><div class="en">check and adjust the belt</div></div>
+    <div class="foot"><button class="btn bo" style="opacity:.5">■ Stop — answer point 5 first</button></div>
+    <div class="stt" style="background:#DCFCE7;color:#166534">After Stop with all 6 points done: job <b>Finished</b> → PM report made → planner accepts.</div>
+   </div>
+   <div style="text-align:center;font-weight:700;margin-top:8px">B · Central Electrical technician (same job)</div>
+  </div>
+ </div>
+</div>
+
+<!-- ⑤ FLOW -->
+<div class="scr">
+ <div class="pc"><div class="bar">Job status flow — one PRM job</div><div class="pad">
+  <div class="flow">
+   <div class="fb"><b>PM job due</b>Same job, same due date as today. Shows in plant planner's calendar (all jobs) and electrical planners' calendar (only if it has ⚡ points).</div>
+   <div class="ar">→</div>
+   <div class="fb"><b>Part 1 — either team first</b>General tech answers M/C points → Stop.<br>or Electrical tech answers E points → Stop.</div>
+   <div class="ar">→</div>
+   <div class="fb" style="background:#FFF7ED"><b>Waiting: Electrical / Waiting: General</b>Not finished. No report. Leaves the first technician's list.</div>
+   <div class="ar">→</div>
+   <div class="fb"><b>Part 2</b>Other team answers its points → Stop.</div>
+   <div class="ar">→</div>
+   <div class="fb" style="background:#F0FDF4"><b>Finished</b>All points done → PM checklist report made → plant planner accepts.</div>
+  </div>
+  <ul style="line-height:1.7;margin-top:16px">
+   <li><b>No electrical points</b> on the machine → works exactly as today.</li>
+   <li><b>All points electrical</b> (transformer, MDB, cap bank, MCC) → only the electrical team sees and does it.</li>
+   <li><b>PM on time</b> → only if both parts finish inside the PM period.</li>
+   <li><b>Time credit</b> → each part credits its own crew.</li>
+   <li><b>Electrical NG</b> → CM job raised for the Central Electrical team.</li>
+   <li><b>Jobs open on 1 Oct</b> → new rule applies even if already started. Jobs finished before 1 Oct → not changed.</li>
+  </ul>
+  <div class="q"><b>To confirm:</b> ① in the live copy <b>planner3 (Earth)</b> is set as <i>Manager</i> for BFLPC only, and there is also a separate planner account <b>earth</b> — which one is the Central Electrical planner? ② The electrical <b>technicians</b> — which user accounts (existing or new)?</div>
+ </div></div>
+</div>
+
+<script>
+function go(i,b){document.querySelectorAll('.scr').forEach((s,k)=>s.classList.toggle('on',k===i));
+document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('on',x===b));}
+</script>
+</body></html>

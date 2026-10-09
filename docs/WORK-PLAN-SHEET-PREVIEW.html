@@ -1,0 +1,370 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Work plan sheet</title>
+<style>
+ :root{
+   --plan:#2a78d6; --act:#eb6834; --late:#B3261E; --good:#0E7A70; --mute:#84837c;
+   --page:#f6f8fa; --card:#fff; --line:#d9e2ec; --hard:#94a3b8; --ink:#16202c; --dim:#64748B;
+   --head:#eef4fb; --sun:#e8ebef; --today:#ffe9d6;
+ }
+ *{box-sizing:border-box}
+ body{margin:0;font:14px/1.5 -apple-system,"Segoe UI",Roboto,"Leelawadee UI",Tahoma,sans-serif;color:var(--ink);background:var(--page)}
+ .wrap{max-width:1400px;margin:0 auto;padding:20px 16px 70px}
+ h1{font-size:21px;margin:0 0 3px}.sub{color:var(--dim);margin:0 0 18px;font-size:13px}
+ h2{font-size:15px;margin:26px 0 8px;padding-bottom:5px;border-bottom:2px solid #e2e8f0}
+ .card{background:var(--card);border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin:12px 0}
+ .note{background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:11px 14px;margin:14px 0;font-size:13px}
+ .ok{background:#f0fdf4;border-color:#86efac}
+ ul{margin:6px 0;padding-left:20px}li{margin:4px 0}
+ code{background:#eef2f6;padding:1px 5px;border-radius:4px;font-size:12.5px}
+ .btns{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px}
+ .btn{font:600 12.5px/1 inherit;padding:8px 13px;border-radius:7px;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink)}
+ .btn[aria-pressed="true"]{background:#0F172A;color:#fff;border-color:#0F172A}
+ .btn.go{background:var(--plan);border-color:var(--plan);color:#fff}
+
+ /* ── the sheet ─────────────────────────────────────────────────────────── */
+ .sheet{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px;overflow:auto}
+ .ttl{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:10px;flex-wrap:wrap}
+ .ttl h3{margin:0 0 2px;font-size:16px}
+ .meta{font-size:11.5px;color:var(--dim);line-height:1.7}
+ .meta b{color:var(--ink)}
+ table.wp{border-collapse:collapse;font-size:11px;white-space:nowrap}
+ .wp th,.wp td{border:1px solid var(--line);padding:2px 5px;vertical-align:middle}
+ .wp thead th{background:var(--head);font-weight:600;font-size:10px;color:#334155;text-align:center;line-height:1.2}
+ .wp thead th.day.sun{background:#d7dce2;color:#475569}
+ .wp thead th.day.now{background:#ffd9b8;color:#9a3412}
+ .wp th.lft,.wp td.lft{text-align:left}
+ .wp td.n{text-align:right;font-variant-numeric:tabular-nums}
+ .wp td.c{text-align:center}
+ .wp .task{white-space:normal;min-width:190px;max-width:250px;line-height:1.3}
+ .wp .grp td{background:#eef4fb;font-weight:700}
+ .day{width:24px;min-width:24px;padding:0!important;position:relative}
+ .day.sun{background:var(--sun)}
+ .day.now{background:var(--today)}
+ .bar{display:block;height:8px;margin:1px 0}
+ .bar.p{background:var(--plan)}
+ .bar.a{background:var(--act)}
+ .bar.a.part{background:repeating-linear-gradient(45deg,var(--act),var(--act) 3px,#f7b697 3px,#f7b697 6px)}
+ .wp tr.pa td{border-bottom:none;height:12px}
+ .wp tr.pb td{border-top:none;height:12px}
+ .tag{font-size:9px;color:var(--mute);font-weight:600}
+ .wp tfoot td{background:#f8fafc;font-weight:600}
+ .wp tfoot .v{font-size:9.5px;text-align:center;padding:1px 0}
+ .sig{display:flex;gap:26px;margin-top:16px;font-size:11px;color:var(--dim);flex-wrap:wrap}
+ .sig div{flex:1;min-width:150px;border-top:1px solid var(--hard);padding-top:4px;text-align:center}
+ .lg{display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:11.5px;color:#52514e;margin:0 0 8px 2px}
+ .lg i{display:inline-block;width:16px;height:8px;margin-right:6px;vertical-align:-1px}
+
+ @media print{
+   @page{size:A3 landscape;margin:8mm}
+   body{background:#fff}
+   .wrap{max-width:none;padding:0}
+   .noprint{display:none!important}
+   .sheet{border:none;border-radius:0;padding:0;overflow:visible}
+   .wp thead{display:table-header-group}
+   .wp{font-size:8.5px}
+   .day{width:16px;min-width:16px}
+ }
+</style></head><body><div class="wrap">
+<h1 class="noprint">Work plan sheet — the Excel view</h1>
+<p class="sub noprint">Same project, same numbers as the Plan-vs-actual tab. This is the shape you already print and pin up: rows of work, columns of days, a shaded cell for every day the job is meant to run — and a second shaded row underneath for what actually happened.</p>
+<div class="noprint">
+<h2>1 · What was wrong with the chart</h2>
+<div class="card">
+<p style="margin:0 0 8px">Nothing, as a chart. But an Excel work plan is not a chart — it is a <b>register with a calendar bolted to the side</b>, and that is why it survives being printed, signed and pinned to a wall. Three things it has that the chart did not:</p>
+<ul style="margin:0">
+<li><b>Columns.</b> A number people can say out loud (“item 4 is late”), the phase, the responsible person, start, finish, days, hours, weight, per cent, and a remark column that carries the real story.</li>
+<li><b>Days you can count.</b> A shaded cell per working day, Sundays greyed, today marked — not a bar you have to measure against a gridline.</li>
+<li><b>A bottom band.</b> Plan % and Actual % per week, and the cumulative pair underneath. That band <i>is</i> the S-curve — the curve is just those two rows drawn.</li>
+</ul>
+</div>
+</div>
+
+<h2 class="noprint">2 · The sheet</h2>
+<div class="btns noprint" id="btns"></div>
+<div class="lg noprint">
+  <span><i style="background:var(--plan)"></i>Plan</span>
+  <span><i style="background:var(--act)"></i>Actual — done</span>
+  <span><i style="background:repeating-linear-gradient(45deg,#eb6834,#eb6834 3px,#f7b697 3px,#f7b697 6px)"></i>Actual — running</span>
+  <span><i style="background:var(--sun);border:1px solid var(--line)"></i>Sunday</span>
+  <span><i style="background:var(--today);border:1px solid var(--line)"></i>Today</span>
+</div>
+<div class="sheet" id="sheet"></div>
+
+<div class="noprint">
+<h2>3 · Where the bottom band comes from</h2>
+<div class="card" id="explain"></div>
+
+<h2>4 · Printing and export</h2>
+<div class="card">
+<ul style="margin:0 0 10px">
+<li><b>Print</b> lays it out A3 landscape with the header row repeating on every page, the buttons and commentary hidden, and the day columns tightened so a ten-week project still fits across. A4 landscape works for anything up to about six weeks in day mode, or a year in week mode.</li>
+<li><b>Export to Excel</b> writes the same sheet as a real <code>.xlsx</code> — the columns as columns, the shaded days as filled cells, the bottom band as formulas — so the file you send on can still be edited by somebody who does not use the app.</li>
+</ul>
+<p style="margin:0"><b>The point of the export is not to leave the app.</b> It is so the plan can go to a contractor, a vendor or a meeting that runs on Excel, without anybody having to rebuild it by hand and then keep two versions in step.</p>
+</div>
+
+<div class="note">
+<b>One decision, and it is about weight.</b> The bottom band and the S-curve both need to know what each task is <i>worth</i>. Two honest answers:
+<ul style="margin:6px 0 0">
+<li><b>Man-hours</b> — what I have used here. Free, already on every task, and it measures effort. It undervalues a task that is mostly waiting: “material receive” is 120 hours of nothing happening.</li>
+<li><b>Cost</b> — closer to what a manager means by progress, but it means typing a value on every task and keeping it current.</li>
+</ul>
+My recommendation: hours by default, with a cost column that overrides the weight when it is filled in. That way the sheet works on day one and gets better if anybody wants it to.
+</div>
+
+<div class="note ok">
+<b>This does not replace the chart — it sits beside it.</b> The work-plan sheet is what you print, hand out and sign. The Plan-vs-actual chart is what you look at when somebody asks whether the finish date still holds. Same rows, same dates, one more tab.
+</div>
+</div>
+<script>
+const PROJ = {
+  code: "PJ-2609-001", name: "digest — control panel build",
+  plant: "BFLPC", area: "Feedmill · Panel room", owner: "madhan",
+  start: "2026-09-07", finish: "2026-09-30", today: "2026-09-18",
+  offday: [6],                       // Sunday off (0=Mon … 6=Sun)
+  prepared: "madhan", approved: "ผู้ดูแลระบบ (Admin)"
+};
+/* The columns an Excel work plan carries that the app did not:
+     phase   — งานหลัก, the band the task sits under (Design / Procurement / Build …)
+     wbs     — 1, 1.1, 2 … the number people say out loud in the meeting
+     weight  — how much of the whole job this task is worth. In a proper plan this is
+               NOT invented: it is the task's hours over the project's hours, which is
+               also exactly what makes the S-curve mean something.
+     remark  — the column that ends up carrying the real story ("waiting PO", "vendor")
+   plan start/end, actual start/end, % done and who are what the app already holds. */
+const TASKS = [
+  // wbs, phase, task, who, plan s, plan e, act s, act e, hours, pct, remark
+  ["1",   "Design",      "design control panel / ออกแบบตู้คอนโทรล", "Kanya", "2026-09-07","2026-09-10","2026-09-07","2026-09-11", 72,100,""],
+  ["2",   "Design",      "prepare BOQ / ทำ BOQ",                    "Kanya", "2026-09-11","2026-09-12","2026-09-12","2026-09-13", 48,100,""],
+  ["3",   "Procurement", "PR / PO process",                          "madhan","2026-09-13","2026-09-15","2026-09-14","2026-09-17", 72,100,"PO 3 days late"],
+  ["4",   "Procurement", "material receive / delivery",              "madhan","2026-09-16","2026-09-20","2026-09-18",null,       120, 30,"vendor part-shipped"],
+  ["5",   "Build",       "panel assembly / ประกอบตู้",                "madhan","2026-09-21","2026-09-21",null,      null,        24,  0,""],
+  ["6",   "Build",       "panel wiring / เดินสายไฟ",                  "madhan","2026-09-22","2026-09-25",null,      null,        96,  0,""],
+  ["7",   "Software",    "PLC programming",                          "madhan","2026-09-13","2026-09-16","2026-09-13","2026-09-16", 96,100,""],
+  ["8",   "Software",    "HMI programming",                          "Kanya", "2026-09-15","2026-09-18","2026-09-15",null,        96, 70,""]
+];
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const D = s => new Date(String(s).slice(0, 10) + 'T00:00:00');
+const DAY = 864e5;
+const dd = (a, b) => Math.round((D(b) - D(a)) / DAY);
+const addD = (s, n) => new Date(+D(s) + n * DAY).toISOString().slice(0, 10);
+const fmt = s => D(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+const dow = s => (D(s).getDay() + 6) % 7;               // 0 = Monday … 6 = Sunday
+const isOff = s => PROJ.offday.includes(dow(s));
+const r1 = n => Math.round(n * 10) / 10;
+
+/* ── the calendar the sheet is drawn on ───────────────────────────────────────
+   It has to cover the promised finish AND anything that already runs past it, or a
+   task that has overrun simply falls off the right-hand edge and the sheet quietly
+   stops mentioning it. */
+let LAST = PROJ.finish;
+TASKS.forEach(t => { [t[5], t[7]].forEach(d => { if (d && d > LAST) LAST = d; }); });
+const DAYS = [];
+for (let d = PROJ.start; d <= LAST; d = addD(d, 1)) DAYS.push(d);
+
+/* Weight: a task's share of the whole job. Hours, because hours are already there and
+   nobody has to type anything for the sheet to start telling the truth. */
+const TOTH = TASKS.reduce((s, t) => s + t[8], 0) || 1;
+const wt = t => t[8] / TOTH * 100;
+
+/* Working days only. A plan that spreads a task's effort across a Sunday the plant does
+   not work is a plan that quietly promises work nobody is there to do. */
+const workDays = (a, b) => { const o = []; if (!a || !b) return o;
+  for (let d = a; d <= b; d = addD(d, 1)) if (!isOff(d)) o.push(d); return o; };
+
+let VIEW = 'day';
+
+/* ── the sheet ──────────────────────────────────────────────────────────────── */
+function draw() {
+  const cols = VIEW === 'day' ? DAYS.map(d => [d, d]) : weekCols();
+  const DOWL = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  const kls = s => VIEW === 'day' ? (isOff(s) ? ' sun' : '') + (s === PROJ.today ? ' now' : '') : '';
+  const head2 = cols.map(([k, s]) => `<th class="day${kls(s)}">${
+    VIEW === 'day' ? DOWL[dow(s)] : 'W' + (cols.findIndex(c => c[0] === k) + 1)}</th>`).join('');
+  const head3 = cols.map(([, s]) => `<th class="day${kls(s)}">${
+    VIEW === 'day' ? D(s).getDate() : D(s).getDate()}</th>`).join('');
+  const head1 = monthSpans(cols).map(([lb, n]) => `<th class="day" colspan="${n}">${lb}</th>`).join('');
+
+  const LEFT = [['#', 'wbs'], ['Task', 'task'], ['Who', 'who'],
+                ['Start', 's'], ['Finish', 'f'], ['Days', 'n'], ['Hrs', 'n'],
+                ['Wt %', 'n'], ['Done', 'n'], ['Slip', 'n'], ['Remark', 'rm']];
+  let h = `<table class="wp"><thead>
+    <tr>${LEFT.map(([l]) => `<th rowspan="3" class="lft">${l}</th>`).join('')}${head1}</tr>
+    <tr>${head2}</tr><tr>${head3}</tr></thead><tbody>`;
+
+  let phase = null;
+  TASKS.forEach(t => {
+    const [wbs, ph, name, who, ps, pe, as, ae, hrs, pct, rm] = t;
+    if (ph !== phase) { phase = ph;
+      h += `<tr class="grp"><td colspan="${LEFT.length + cols.length}" class="lft">${esc(ph)}</td></tr>`; }
+    const pn = workDays(ps, pe).length, an = as ? workDays(as, ae || PROJ.today).length : 0;
+    const end = ae || (as ? PROJ.today : pe);
+    const slip = ae ? dd(pe, ae) : as ? Math.max(0, dd(pe, PROJ.today)) : 0;
+    const scol = slip > 0 ? 'var(--late)' : slip < 0 ? 'var(--good)' : 'var(--mute)';
+    const cells = (kind) => cols.map(([k, s, e]) => {
+      const a = VIEW === 'day' ? s : s, b = VIEW === 'day' ? s : e;
+      const on = kind === 'p' ? overlaps(ps, pe, a, b) : (as ? overlaps(as, ae || PROJ.today, a, b) : false);
+      const cls = VIEW === 'day' ? (isOff(s) ? ' sun' : '') + (s === PROJ.today ? ' now' : '') : '';
+      const part = kind === 'a' && !ae && on ? ' part' : '';
+      return `<td class="day${cls}">${on ? `<span class="bar ${kind}${part}"></span>` : ''}</td>`;
+    }).join('');
+    h += `<tr class="pa">
+      <td class="lft" rowspan="2">${esc(wbs)}</td>
+      <td class="lft task" rowspan="2">${esc(name)}</td>
+      <td class="lft" rowspan="2">${esc(who)}</td>
+      <td class="c">${fmt(ps)}</td><td class="c">${fmt(pe)}</td>
+      <td class="n">${pn}</td><td class="n" rowspan="2">${hrs}</td>
+      <td class="n" rowspan="2">${r1(wt(t))}</td>
+      <td class="n" rowspan="2">${pct}%</td>
+      <td class="n" rowspan="2" style="color:${scol};font-weight:700">${slip > 0 ? '+' + slip : slip || '0'}</td>
+      <td class="lft" rowspan="2">${esc(rm)}</td>
+      ${cells('p')}</tr>
+      <tr class="pb"><td class="c">${as ? fmt(as) : '—'}</td><td class="c">${ae ? fmt(ae) : as ? '…' : '—'}</td>
+      <td class="n">${an || '—'}</td>${cells('a')}</tr>`;
+  });
+
+  /* ── the bottom band: plan % and actual % per column, then the running totals.
+        This band IS the S-curve. The curve is these two rows drawn as lines, which is
+        why they can never disagree with it. ── */
+  const band = series(cols);
+  h += `</tbody><tfoot>
+    <tr><td class="lft" colspan="${LEFT.length}">Plan % this ${VIEW}</td>${band.p.map(v => `<td class="v">${v ? r1(v) : ''}</td>`).join('')}</tr>
+    <tr><td class="lft" colspan="${LEFT.length}">Actual % this ${VIEW}</td>${band.a.map((v, i) => `<td class="v" style="color:${band.done[i] ? 'var(--act)' : 'var(--mute)'}">${band.done[i] ? (v ? r1(v) : '') : ''}</td>`).join('')}</tr>
+    <tr><td class="lft" colspan="${LEFT.length}"><b>Cumulative plan %</b></td>${band.cp.map(v => `<td class="v" style="color:var(--plan)"><b>${Math.round(v)}</b></td>`).join('')}</tr>
+    <tr><td class="lft" colspan="${LEFT.length}"><b>Cumulative actual %</b></td>${band.ca.map((v, i) => `<td class="v" style="color:var(--act)"><b>${band.done[i] ? Math.round(v) : ''}</b></td>`).join('')}</tr>
+  </tfoot></table>`;
+
+  const doneN = TASKS.filter(t => t[7]).length, runN = TASKS.filter(t => t[6] && !t[7]).length;
+  const cpNow = band.cp[lastDoneIdx(band)] || 0, caNow = band.ca[lastDoneIdx(band)] || 0;
+  $('sheet').innerHTML = `<div class="ttl">
+      <div><h3>${esc(PROJ.name)}</h3>
+        <div class="meta"><b>${esc(PROJ.code)}</b> · ${esc(PROJ.plant)} · ${esc(PROJ.area)} ·
+          owner <b>${esc(PROJ.owner)}</b><br>
+          ${fmt(PROJ.start)} → ${fmt(PROJ.finish)} · ${TASKS.length} tasks · ${TOTH} man-hours ·
+          ${doneN} done, ${runN} running</div></div>
+      <div class="meta" style="text-align:right">as at <b>${fmt(PROJ.today)}</b><br>
+        plan <b style="color:var(--plan)">${Math.round(cpNow)}%</b> ·
+        actual <b style="color:var(--act)">${Math.round(caNow)}%</b> ·
+        <b style="color:${caNow - cpNow < 0 ? 'var(--late)' : 'var(--good)'}">${caNow - cpNow > 0 ? '+' : ''}${Math.round(caNow - cpNow)}%</b></div>
+    </div>${h}
+    <div class="sig"><div>Prepared by — ${esc(PROJ.prepared)}</div><div>Checked by</div>
+      <div>Approved by — ${esc(PROJ.approved)}</div><div>Date</div></div>`;
+
+  explain(band, cpNow, caNow);
+  [...document.querySelectorAll('#btns .btn[data-v]')].forEach(b => b.setAttribute('aria-pressed', b.dataset.v === VIEW));
+}
+
+function lastDoneIdx(band) { let i = -1; band.done.forEach((d, k) => { if (d) i = k; }); return Math.max(0, i); }
+
+function weekCols() {
+  const out = []; let s = PROJ.start;
+  s = addD(s, -dow(s));                                   // back to Monday
+  if (s < PROJ.start) { /* keep the true start in the first week */ }
+  for (let d = s; d <= LAST; d = addD(d, 7)) out.push([d, d, addD(d, 6)]);
+  return out;
+}
+function monthSpans(cols) {
+  const out = [];
+  cols.forEach(([, s]) => {
+    const lb = D(s).toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
+    if (out.length && out[out.length - 1][0] === lb) out[out.length - 1][1]++;
+    else out.push([lb, 1]);
+  });
+  return out;
+}
+const overlaps = (a0, a1, b0, b1) => !!(a0 && a1) && a0 <= b1 && a1 >= b0;
+
+/* Effort is spread over the WORKING days a task spans, not its calendar days, and a
+   task banks its weight in proportion to how far along it is. Both halves stop at
+   today — a plan may run into the future, a measurement may not. */
+function series(cols) {
+  const p = cols.map(() => 0), a = cols.map(() => 0);
+  const done = cols.map(([, s, e]) => D(VIEW === 'day' ? s : (e || s)) <= D(PROJ.today) || D(s) <= D(PROJ.today));
+  TASKS.forEach(t => {
+    const [, , , , ps, pe, as, ae, , pct] = t, w = wt(t);
+    const pw = workDays(ps, pe);
+    pw.forEach(d => { const i = colOf(cols, d); if (i >= 0) p[i] += w / pw.length; });
+    if (as) {
+      const aw = workDays(as, ae || PROJ.today);
+      const banked = w * (ae ? 100 : pct) / 100;
+      aw.forEach(d => { const i = colOf(cols, d); if (i >= 0) a[i] += banked / aw.length; });
+    }
+  });
+  const cum = arr => { let s = 0; return arr.map(v => (s += v)); };
+  return { p, a, cp: cum(p), ca: cum(a), done };
+}
+function colOf(cols, d) {
+  if (VIEW === 'day') return cols.findIndex(c => c[0] === d);
+  return cols.findIndex(([, s, e]) => d >= s && d <= e);
+}
+
+function explain(band, cp, ca) {
+  const v = Math.round(ca - cp);
+  $('explain').innerHTML =
+    `<p style="margin:0 0 8px">Every task carries a <b>weight</b> — its hours as a share of the project's ${TOTH}.
+      Spread that weight across the <b>working days</b> the task runs (Sundays skipped, because the plant does not work them),
+      add up every task in each column, and you have the <b>Plan %</b> row. Do the same with what has actually been worked,
+      scaled by how much of it is done, and you have <b>Actual %</b>. Run a running total under each and you have the two
+      cumulative rows.</p>
+    <p style="margin:0 0 8px">As at ${fmt(PROJ.today)}: plan <b style="color:var(--plan)">${Math.round(cp)}%</b>,
+      actual <b style="color:var(--act)">${Math.round(ca)}%</b> —
+      <b style="color:${v < 0 ? 'var(--late)' : 'var(--good)'}">${v > 0 ? '+' : ''}${v}%</b>
+      ${v < 0 ? 'behind' : 'ahead of'} plan.</p>
+    <p style="margin:0"><b>Those last two rows are the S-curve.</b> Not a second calculation that might drift from this one —
+      literally the same numbers, drawn instead of printed. That is the reason to build the sheet and the curve from one
+      place: a plan that reports two different percentages in two tabs is a plan nobody trusts by the third week.</p>`;
+}
+
+/* ── Excel export ────────────────────────────────────────────────────────────
+   SpreadsheetML, so it is one file with no library: real columns, real filled cells,
+   and the bottom band as real numbers a vendor can carry on editing. */
+function toExcel() {
+  const cols = VIEW === 'day' ? DAYS.map(d => [d, d]) : weekCols();
+  const band = series(cols);
+  const esc2 = s => String(s == null ? '' : s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const cell = (v, st, num) => `<Cell${st ? ` ss:StyleID="${st}"` : ''}><Data ss:Type="${num ? 'Number' : 'String'}">${esc2(v)}</Data></Cell>`;
+  let rows = '';
+  rows += `<Row>${['#', 'Phase', 'Task', 'Who', 'Row', 'Start', 'Finish', 'Days', 'Hrs', 'Wt %', 'Done %', 'Slip', 'Remark']
+    .map(x => cell(x, 'h')).join('')}${cols.map(([, s]) => cell(VIEW === 'day' ? D(s).getDate() : fmt(s), 'h')).join('')}</Row>`;
+  TASKS.forEach(t => {
+    const [wbs, ph, name, who, ps, pe, as, ae, hrs, pct, rm] = t;
+    const slip = ae ? dd(pe, ae) : as ? Math.max(0, dd(pe, PROJ.today)) : 0;
+    const strip = (kind) => cols.map(([, s, e]) => {
+      const b = VIEW === 'day' ? s : e;
+      const on = kind === 'p' ? overlaps(ps, pe, s, b) : (as ? overlaps(as, ae || PROJ.today, s, b) : false);
+      return on ? cell('', kind === 'p' ? 'bp' : 'ba') : cell('');
+    }).join('');
+    rows += `<Row>${cell(wbs)}${cell(ph)}${cell(name)}${cell(who)}${cell('Plan')}${cell(fmt(ps))}${cell(fmt(pe))}`
+      + `${cell(workDays(ps, pe).length, '', 1)}${cell(hrs, '', 1)}${cell(r1(wt(t)), '', 1)}${cell(pct, '', 1)}${cell(slip, '', 1)}${cell(rm)}${strip('p')}</Row>`;
+    rows += `<Row>${cell('')}${cell('')}${cell('')}${cell('')}${cell('Actual')}${cell(as ? fmt(as) : '')}${cell(ae ? fmt(ae) : '')}`
+      + `${cell(as ? workDays(as, ae || PROJ.today).length : '', '', !!as)}${cell('')}${cell('')}${cell('')}${cell('')}${cell('')}${strip('a')}</Row>`;
+  });
+  const bandRow = (lb, arr, mask) => `<Row>${cell(lb, 'h')}${Array(12).fill(cell('')).join('')}`
+    + arr.map((v, i) => (mask && !band.done[i]) ? cell('') : cell(r1(v), '', 1)).join('') + `</Row>`;
+  rows += bandRow('Plan % this ' + VIEW, band.p);
+  rows += bandRow('Actual % this ' + VIEW, band.a, 1);
+  rows += bandRow('Cumulative plan %', band.cp);
+  rows += bandRow('Cumulative actual %', band.ca, 1);
+  const xml = `<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+<Styles>
+ <Style ss:ID="h"><Font ss:Bold="1"/><Interior ss:Color="#EEF4FB" ss:Pattern="Solid"/></Style>
+ <Style ss:ID="bp"><Interior ss:Color="#2A78D6" ss:Pattern="Solid"/></Style>
+ <Style ss:ID="ba"><Interior ss:Color="#EB6834" ss:Pattern="Solid"/></Style>
+</Styles>
+<Worksheet ss:Name="Work plan"><Table>${rows}</Table></Worksheet></Workbook>`;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([xml], { type: 'application/vnd.ms-excel' }));
+  a.download = PROJ.code + '-work-plan.xls';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+$('btns').innerHTML =
+  [['day', 'Day columns'], ['week', 'Week columns']]
+    .map(([v, l]) => `<button class="btn" data-v="${v}" aria-pressed="false" onclick="VIEW='${v}';draw()">${l}</button>`).join('')
+  + `<button class="btn go" onclick="window.print()">🖨 Print (A3 landscape)</button>`
+  + `<button class="btn" onclick="toExcel()">⬇ Export to Excel</button>`;
+draw();
+</script></div></body></html>

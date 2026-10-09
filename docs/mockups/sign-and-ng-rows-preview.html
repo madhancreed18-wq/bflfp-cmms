@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Signature + NG rows — preview</title>
+<style>
+ *{box-sizing:border-box}
+ body{margin:0;background:#EEF1F5;color:#16202c;font:14px/1.55 "Segoe UI",system-ui,"Noto Sans Thai",sans-serif}
+ .wrap{max-width:1180px;margin:0 auto;padding:26px 18px 70px}
+ h1{font-size:22px;margin:0 0 4px}
+ .sub{color:#64748B;font-size:13.5px;margin:0 0 26px}
+ h2{font-size:15px;margin:34px 0 3px;padding-top:22px;border-top:2px solid #cbd5e1}
+ h2 .n{display:inline-block;background:#1E293B;color:#fff;border-radius:5px;font-size:11.5px;padding:2px 7px;margin-right:8px;vertical-align:2px}
+ .why{color:#475569;font-size:13px;margin:0 0 16px;max-width:78ch}
+ .grid{display:grid;gap:16px}
+ .g2{grid-template-columns:repeat(auto-fit,minmax(330px,1fr))}
+ .g3{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+ .card{background:#fff;border:1px solid #d9e0e8;border-radius:11px;overflow:hidden}
+ .cap{padding:9px 13px;font-size:12px;font-weight:600;background:#F4F6F9;border-bottom:1px solid #e3e8ee;display:flex;align-items:center;gap:8px}
+ .cap .tag{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:999px}
+ .now{background:#FEE2E2;color:#B91C1C}.opt{background:#DCFCE7;color:#15803D}.alt{background:#E0E7FF;color:#3730A3}
+ .body{padding:14px}
+ .note{font-size:11.8px;color:#64748B;padding:0 13px 13px;margin-top:-4px}
+ /* ── the printed PDF fragment ── */
+ .pdf{font-family:"Noto Sans Thai","Segoe UI",sans-serif;font-size:11px}
+ .pdf table{border-collapse:collapse;width:100%}
+ .pdf td,.pdf th{border:1px solid #111;padding:4px 6px;vertical-align:middle}
+ .pdf th{background:#F4F6F9;font-weight:600;text-align:center;font-size:10.5px}
+ .pdf .sec{background:#F4F6F9;text-align:center;font-weight:700;font-size:11px}
+ .pdf .mid{text-align:center}
+ .blank td{height:22px}
+ .flag{outline:2px solid #DC2626;outline-offset:-2px}
+ .lbl{font-size:10px;color:#94A3B8}
+ /* ── app UI mock ── */
+ .app{background:#fff;border-radius:10px;border:1px solid #d9e0e8;overflow:hidden}
+ .dlg{background:#fff;padding:16px}
+ .dlg h3{margin:0 0 5px;font-size:16px}
+ .dlg p.m{margin:0 0 11px;color:#64748B;font-size:12.5px}
+ .sigbox{border:2px dashed #cbd5e1;border-radius:9px;height:118px;display:flex;align-items:center;justify-content:center;color:#B6C0CC;font-size:12.5px;background:#FBFCFD;position:relative}
+ .sigbox.filled{border:1px solid #cbd5e1;background:#fff}
+ .row{display:flex;gap:8px;margin-top:11px}
+ .btn{flex:1;border:1px solid #cbd5e1;background:#fff;border-radius:8px;padding:9px 12px;font:inherit;font-size:13px;cursor:default;text-align:center}
+ .btn.p{background:#22C55E;border-color:#22C55E;color:#fff;font-weight:600}
+ .btn.g{background:#fff;color:#475569}
+ .btn.b{background:#1B75BC;border-color:#1B75BC;color:#fff;font-weight:600}
+ .btn.sm{flex:0 0 auto;padding:7px 12px;font-size:12.5px}
+ .link{color:#1155CC;text-decoration:underline;font-size:12.5px;display:inline-block;margin-top:9px}
+ .saved{display:flex;align-items:center;gap:12px;border:1px solid #cbd5e1;border-radius:9px;padding:10px 12px;background:#F8FAFC}
+ .saved .sig{flex:0 0 130px;height:52px;background:#fff;border:1px solid #e2e8f0;border-radius:6px;display:flex;align-items:center;justify-content:center}
+ .saved .who{font-size:12.5px}
+ .saved .who b{display:block;font-size:13.5px}
+ .qr{width:104px;height:104px;background:
+   repeating-conic-gradient(#16202c 0 25%,#fff 0 50%) 0 0/13px 13px;border:5px solid #fff;outline:1px solid #cbd5e1;border-radius:4px}
+ .th{color:#0F172A}
+ .en{color:#64748B;font-size:11.5px}
+ .steps{counter-reset:s;padding:0;margin:12px 0 0;list-style:none}
+ .steps li{counter-increment:s;position:relative;padding:6px 0 6px 30px;font-size:13px;border-top:1px solid #eef1f4}
+ .steps li:first-child{border-top:none}
+ .steps li::before{content:counter(s);position:absolute;left:0;top:7px;width:20px;height:20px;border-radius:50%;background:#1E293B;color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center}
+ table.cmp{border-collapse:collapse;width:100%;background:#fff;border:1px solid #d9e0e8;border-radius:11px;overflow:hidden;font-size:13px}
+ table.cmp th{background:#1E293B;color:#fff;text-align:left;font-size:11.5px;font-weight:600;padding:8px 11px}
+ table.cmp td{border-top:1px solid #e6e9ee;padding:9px 11px;vertical-align:top}
+ table.cmp td:first-child{font-weight:600;white-space:nowrap}
+ .pill{font-size:11px;padding:2px 8px;border-radius:999px;background:#E2E8F0;color:#334155;white-space:nowrap}
+ .pill.best{background:#DCFCE7;color:#15803D;font-weight:700}
+ .ask{background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:13px 15px;margin-top:14px;font-size:13px}
+ .ask b{color:#92400E}
+ svg.sg{display:block}
+</style></head><body><div class="wrap">
+
+<h1>Two small things — a preview</h1>
+<p class="sub">A · the blank rows under <b>ไม่มีรายการ NG</b> (no NG items) on the printed PM sheet &nbsp;·&nbsp; B · signing on a PC without fighting a mouse. Nothing is built yet.</p>
+
+<!-- ══════════════════ A ══════════════════ -->
+<h2><span class="n">A</span> ส่วนที่ 3 — the empty rows</h2>
+<p class="why">They are not a bug. <code>pmreport.py</code> adds <b>two ruled blank lines</b> to the NG table every time, so a supervisor walking the machine later has somewhere to write. The trouble is only when there is nothing to chase: the sheet says <i>no NG items</i> and then shows empty boxes, which reads as a table that failed to fill.</p>
+
+<div class="grid g2">
+  <div class="card">
+    <div class="cap"><span class="tag now">Now</span> what prints today</div>
+    <div class="body pdf">
+      <table>
+        <tr><td class="sec" colspan="4">ส่วนที่ 3 งานที่ต้องติดตาม (NG) <span class="lbl">/ items to chase</span></td></tr>
+        <tr><th style="width:12%">ลำดับ</th><th style="width:30%">รายการ</th><th>สิ่งที่พบ / การแก้ไข</th><th style="width:24%">ใบแจ้งซ่อม CM</th></tr>
+        <tr><td class="mid" colspan="4">— ไม่มีรายการ NG —</td></tr>
+        <tr class="blank flag"><td></td><td></td><td></td><td></td></tr>
+        <tr class="blank flag"><td></td><td></td><td></td><td></td></tr>
+      </table>
+    </div>
+    <div class="note">The two rows in red are the ones you circled. They print on every sheet, NG or not.</div>
+  </div>
+
+  <div class="card">
+    <div class="cap"><span class="tag opt">Option 1 — recommended</span> keep them only when there is NG</div>
+    <div class="body pdf">
+      <table>
+        <tr><td class="sec" colspan="4">ส่วนที่ 3 งานที่ต้องติดตาม (NG)</td></tr>
+        <tr><th style="width:12%">ลำดับ</th><th style="width:30%">รายการ</th><th>สิ่งที่พบ / การแก้ไข</th><th style="width:24%">ใบแจ้งซ่อม CM</th></tr>
+        <tr><td class="mid" colspan="4">— ไม่มีรายการ NG —</td></tr>
+      </table>
+      <div style="height:11px"></div>
+      <table>
+        <tr><td class="sec" colspan="4">…and a sheet that DID find something keeps its write-in lines</td></tr>
+        <tr><th style="width:12%">ลำดับ</th><th style="width:30%">รายการ</th><th>สิ่งที่พบ / การแก้ไข</th><th style="width:24%">ใบแจ้งซ่อม CM</th></tr>
+        <tr><td class="mid">3</td><td>สายพาน</td><td>สายพานหย่อน · ปรับความตึงแล้ว</td><td class="mid">เลขที่ ..........</td></tr>
+        <tr class="blank"><td></td><td></td><td></td><td></td></tr>
+        <tr class="blank"><td></td><td></td><td></td><td></td></tr>
+      </table>
+    </div>
+    <div class="note">One line of code: skip the filler loop when the list of NG items is empty. The table closes on the “no NG” line and the sheet reads finished.</div>
+  </div>
+</div>
+
+<div class="grid g2" style="margin-top:16px">
+  <div class="card">
+    <div class="cap"><span class="tag alt">Option 2</span> drop them always</div>
+    <div class="body pdf">
+      <table>
+        <tr><td class="sec" colspan="4">ส่วนที่ 3 งานที่ต้องติดตาม (NG)</td></tr>
+        <tr><th style="width:12%">ลำดับ</th><th style="width:30%">รายการ</th><th>สิ่งที่พบ / การแก้ไข</th><th style="width:24%">ใบแจ้งซ่อม CM</th></tr>
+        <tr><td class="mid">3</td><td>สายพาน</td><td>สายพานหย่อน · ปรับความตึงแล้ว</td><td class="mid">เลขที่ ..........</td></tr>
+      </table>
+    </div>
+    <div class="note">Right only if nobody ever writes on the printed sheet by hand. Shortest sheet, no room for an afterthought.</div>
+  </div>
+
+  <div class="card">
+    <div class="cap"><span class="tag alt">Option 3</span> keep them, but say what they are</div>
+    <div class="body pdf">
+      <table>
+        <tr><td class="sec" colspan="4">ส่วนที่ 3 งานที่ต้องติดตาม (NG)</td></tr>
+        <tr><th style="width:12%">ลำดับ</th><th style="width:30%">รายการ</th><th>สิ่งที่พบ / การแก้ไข</th><th style="width:24%">ใบแจ้งซ่อม CM</th></tr>
+        <tr><td class="mid" colspan="4">— ไม่มีรายการ NG —</td></tr>
+        <tr class="blank"><td colspan="4" style="color:#B6C0CC;font-size:9.5px;text-align:center">สำหรับบันทึกเพิ่มเติมภายหลัง / space for later notes</td></tr>
+        <tr class="blank"><td></td><td></td><td></td><td></td></tr>
+      </table>
+    </div>
+    <div class="note">Same as the greyed row numbers 7–14 in ส่วนที่ 2 above — which already read correctly, because the grey numbering explains them.</div>
+  </div>
+</div>
+
+<!-- ══════════════════ B ══════════════════ -->
+<h2><span class="n">B</span> Signing on a PC</h2>
+<p class="why">A mouse cannot draw a signature — it will look wrong however carefully you move it. The fix is not a better drawing box; it is to stop drawing at the moment of signing. Below: what a planner would see, and what it takes to build.</p>
+
+<div class="grid g2">
+  <div class="card">
+    <div class="cap"><span class="tag now">Now</span> ตรวจรับงาน + เซ็นชื่อ / Approve + sign, on a PC</div>
+    <div class="body">
+      <div class="dlg" style="padding:0">
+        <h3>ตรวจรับงาน + เซ็นชื่อ</h3>
+        <p class="m">Approve + sign — ผู้ตรวจรับ เซ็นเพื่อรับงานที่เสร็จ</p>
+        <div class="sigbox">
+          <svg class="sg" width="150" height="46" viewBox="0 0 150 46"><path d="M12 34 C26 8 30 40 44 22 C56 6 60 38 74 26 C86 16 92 34 104 24" fill="none" stroke="#94A3B8" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="3 5"/></svg>
+          <span style="position:absolute;bottom:7px;right:11px;font-size:11px;color:#CBD5E1">เซ็นในกรอบนี้ / sign here</span>
+        </div>
+        <div class="row"><button class="btn sm g">ล้าง / Clear</button><button class="btn g">ยกเลิก</button><button class="btn p">✓ รับงาน / Approve</button></div>
+      </div>
+    </div>
+    <div class="note">Fine on a phone with a finger. On a PC it is a mouse scribble, and there are 30 PM sheets in a sitting.</div>
+  </div>
+
+  <div class="card">
+    <div class="cap"><span class="tag opt">Option 1 — recommended</span> ลายเซ็นที่บันทึกไว้ / saved signature</div>
+    <div class="body">
+      <div class="dlg" style="padding:0">
+        <h3>ตรวจรับงาน + เซ็นชื่อ</h3>
+        <p class="m">Approve + sign — PRM-2609-041 · เครื่องบด#2</p>
+        <div class="saved">
+          <div class="sig">
+            <svg class="sg" width="112" height="40" viewBox="0 0 150 46"><path d="M10 33 C24 6 29 41 43 21 C55 5 59 39 73 25 C85 15 91 35 103 23 C112 14 120 30 138 18" fill="none" stroke="#16202c" stroke-width="2.6" stroke-linecap="round"/></svg>
+          </div>
+          <div class="who"><b>คุณวางแผน (Planner)</b>
+            <span class="en">ลายเซ็นที่บันทึกไว้ · your saved signature</span></div>
+        </div>
+        <div class="row"><button class="btn g">ยกเลิก</button><button class="btn p">✓ ใช้ลายเซ็นนี้ &amp; รับงาน / Use it &amp; approve</button></div>
+        <a class="link">เซ็นใหม่ครั้งนี้ / sign by hand this time instead</a>
+      </div>
+    </div>
+    <div class="note">One click. The drawn-by-hand box is still one link away, so a signature made fresh is always possible.</div>
+  </div>
+</div>
+
+<div class="grid g2" style="margin-top:16px">
+  <div class="card">
+    <div class="cap"><span class="tag opt">Option 1 · setup</span> ตั้งค่าลายเซ็นครั้งเดียว / set it up once</div>
+    <div class="body">
+      <div class="dlg" style="padding:0">
+        <h3>ลายเซ็นของฉัน / My signature</h3>
+        <p class="m">Set once. Used wherever you sign, on any device.</p>
+        <div class="grid g3" style="gap:9px">
+          <div style="border:1px solid #cbd5e1;border-radius:9px;padding:11px;text-align:center">
+            <div style="font-size:21px">✍️</div><div class="th" style="font-size:12.5px;font-weight:600">เซ็นบนมือถือ</div><div class="en">sign on your phone</div></div>
+          <div style="border:1px solid #cbd5e1;border-radius:9px;padding:11px;text-align:center">
+            <div style="font-size:21px">📷</div><div class="th" style="font-size:12.5px;font-weight:600">อัปโหลดรูปลายเซ็น</div><div class="en">photo of a paper signature</div></div>
+          <div style="border:1px solid #cbd5e1;border-radius:9px;padding:11px;text-align:center">
+            <div style="font-size:21px">⌨️</div><div class="th" style="font-size:12.5px;font-weight:600">พิมพ์ชื่อ</div><div class="en">type your name</div></div>
+        </div>
+        <ol class="steps">
+          <li>Open the app on your phone → เมนู More → ลายเซ็นของฉัน</li>
+          <li>Sign once with your finger → บันทึก / Save</li>
+          <li>From then on, the PC offers it on every accept screen</li>
+        </ol>
+      </div>
+    </div>
+    <div class="note">Build: one new column on <code>users</code>, one small profile screen, one button on the two sign dialogs. Signature stored against the login, replaceable any time.</div>
+  </div>
+
+  <div class="card">
+    <div class="cap"><span class="tag alt">Option 2</span> เซ็นจากมือถือทุกครั้ง / sign from the phone each time</div>
+    <div class="body">
+      <div class="dlg" style="padding:0">
+        <h3>ตรวจรับงาน + เซ็นชื่อ</h3>
+        <p class="m">สแกนเพื่อเซ็นบนมือถือ / scan to sign on your phone</p>
+        <div style="display:flex;gap:14px;align-items:center">
+          <div class="qr"></div>
+          <div style="font-size:12.5px;color:#475569">
+            <div>1 · เปิดกล้องมือถือ · point your camera</div>
+            <div>2 · เซ็นด้วยนิ้ว · sign with a finger</div>
+            <div>3 · หน้าจอนี้จะรับเอง · this screen picks it up</div>
+            <div style="margin-top:7px;color:#94A3B8;font-size:11.5px">รอลายเซ็น… / waiting for the signature…</div>
+          </div>
+        </div>
+        <div class="row"><button class="btn g">ยกเลิก</button><button class="btn b" style="flex:0 0 46%">เซ็นด้วยเมาส์แทน / use the mouse</button></div>
+      </div>
+    </div>
+    <div class="note">Nothing is stored, so it satisfies a “signed fresh every time” rule if QA has one. More to build: a short-lived link, a page for it, and the desktop waiting for the answer.</div>
+  </div>
+</div>
+
+<div style="margin-top:16px">
+<table class="cmp">
+  <tr><th style="width:20%">Option</th><th style="width:24%">What you do</th><th>Trade-off</th><th style="width:13%">Build</th></tr>
+  <tr><td>1 · Saved signature <span class="pill best">recommended</span></td>
+      <td>Sign once on a phone. Then one click per job on the PC.</td>
+      <td>Fast for 30 sheets in a row. If QA insists each signature be made at the moment of signing, this is not it.</td>
+      <td><span class="pill">small</span></td></tr>
+  <tr><td>2 · Sign from phone via QR</td>
+      <td>Scan, sign with a finger, the PC picks it up.</td>
+      <td>A fresh stroke every time. Slower — a phone in the hand for every job.</td>
+      <td><span class="pill">medium</span></td></tr>
+  <tr><td>3 · Upload a photo</td>
+      <td>Sign on paper once, photograph, upload.</td>
+      <td>Simplest of all. Often looks worse on the sheet than a finger stroke — paper grain, shadow, crooked.</td>
+      <td><span class="pill">tiny</span></td></tr>
+  <tr><td>4 · Typed name</td>
+      <td>Type your name; it prints in a handwriting face with the login and time beneath.</td>
+      <td>No drawing at all. Honest, and the weakest-looking on a printed form.</td>
+      <td><span class="pill">tiny</span></td></tr>
+  <tr><td>5 · Stylus or touchscreen</td>
+      <td>A cheap graphics tablet, or a touchscreen laptop.</td>
+      <td>No code at all. Only helps whoever is holding that device.</td>
+      <td><span class="pill">none</span></td></tr>
+</table>
+</div>
+
+<div class="ask">
+  <b>Worth knowing before you choose.</b> The app already records <b>who accepted and when</b> — <code>approver_id</code> and <code>approved_at</code>, on the job and in the audit trail. That is stronger evidence than any drawn line, and it is not affected by any of these options. The drawing exists for the printed form and for QA's eye.
+  <div style="margin-top:9px">Two things I need from you: <b>1</b> — which NG option, and <b>2</b> — whether QA requires each signature to be made at the moment of signing. If they do, option 1 is out and option 2 is the answer.</div>
+</div>
+
+<p style="margin-top:22px;color:#94A3B8;font-size:11.5px">Preview only · nothing has been changed in the app · BFLFP CMMS</p>
+</div></body></html>

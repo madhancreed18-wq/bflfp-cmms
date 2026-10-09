@@ -1,0 +1,366 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Can the crew take this project?</title>
+<style>
+ :root{color-scheme:light;
+   --surface-1:#fcfcfb; --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#84837c;
+   --grid:#e7e7e2;
+   --s-pm:#2a78d6; --s-pj:#eb6834; --s-bd:#1baf7a;      /* PM · Project · Breakdown */
+   --good:#0E7A70; --crit:#B3261E; --critBg:#fdf1f0; --cap:#0b0b0b;
+   --page:#f6f8fa; --card:#fff; --line:#e2e8f0; --ink:#16202c; --dim:#64748B;
+   --chip:#eef2f6; --thead:#F8FAFC; --rowline:#eef1f4; --track:#f1f3f6;
+   --noteBg:#fffbeb; --noteLn:#fcd34d; --okBg:#f0fdf4; --okLn:#86efac;
+   --btn:#fff; --btnOn:#0F172A; --btnOnFg:#fff}
+ @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;
+   --surface-1:#1a1a19; --text-primary:#fff; --text-secondary:#c3c2b7; --text-muted:#8f8e86;
+   --grid:#33322e;
+   --s-pm:#3987e5; --s-pj:#d95926; --s-bd:#199e70;
+   --good:#3fae9f; --crit:#e66767; --critBg:#2b1a19; --cap:#f2f1ea;
+   --page:#111110; --card:#1a1a19; --line:#33322e; --ink:#f2f1ea; --dim:#8f8e86;
+   --chip:#26251f; --thead:#201f1b; --rowline:#2b2a25; --track:#26251f;
+   --noteBg:#231f10; --noteLn:#8a6d17; --okBg:#12241a; --okLn:#2f6b45;
+   --btn:#26251f; --btnOn:#f2f1ea; --btnOnFg:#111110}}
+ *{box-sizing:border-box}
+ body{margin:0;font:14px/1.55 -apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--page)}
+ .wrap{max-width:1180px;margin:0 auto;padding:22px 18px 70px}
+ h1{font-size:22px;margin:0 0 3px}.sub{color:var(--dim);margin:0 0 20px;font-size:13px}
+ h2{font-size:16px;margin:28px 0 8px;padding-bottom:5px;border-bottom:2px solid var(--line)}
+ .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin:12px 0}
+ ul{margin:6px 0;padding-left:20px}li{margin:4px 0}
+ code{background:var(--chip);padding:1px 5px;border-radius:4px;font-size:12.5px}
+ .note{background:var(--noteBg);border:1px solid var(--noteLn);border-radius:8px;padding:11px 14px;margin:14px 0;font-size:13px}
+ .ok{background:var(--okBg);border-color:var(--okLn)}
+ .tiles{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 14px}
+ .tile{flex:1;min-width:132px;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:9px 12px}
+ .tile b{display:block;font-size:19px;line-height:1.25;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+ .tile > span{font-size:11px;color:var(--dim)}
+ .legend{display:flex;gap:16px;align-items:center;font-size:12px;color:var(--text-secondary);margin:0 0 8px 4px;flex-wrap:wrap}
+ .legend i{display:inline-block;width:15px;height:9px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+ .scroll{overflow-x:auto}
+ /* ── the load grid ── */
+ .gr{border-collapse:separate;border-spacing:0;font-size:12px}
+ .gr th{background:var(--thead);font-size:10.5px;color:var(--dim);font-weight:600;padding:5px 6px;
+        text-align:left;white-space:nowrap;border-bottom:1px solid var(--line);position:sticky;top:0}
+ .gr td{padding:5px 6px;border-bottom:1px solid var(--rowline);vertical-align:middle}
+ .gr td.who{white-space:nowrap;font-weight:600;padding-right:12px}
+ .gr td.who small{display:block;font-weight:400;color:var(--dim);font-size:10.5px}
+ .cell{width:94px}
+ .cell.hot{background:var(--critBg)}
+ .trk{position:relative;height:11px;background:var(--track);border-radius:3px;overflow:visible;display:flex}
+ .trk i{display:block;height:11px;border-radius:2px;margin-right:2px}   /* 2px surface gap */
+ .trk i:last-child{margin-right:0}
+ .capm{position:absolute;top:-3px;height:17px;width:2px;background:var(--cap);opacity:.8;border-radius:1px}
+ .pct{font-size:10.5px;font-variant-numeric:tabular-nums;color:var(--text-secondary);margin-top:2px;display:block}
+ .pct.over{color:var(--crit);font-weight:700}
+ .btns{display:flex;gap:8px;margin:0 0 10px;flex-wrap:wrap}
+ .btn{font:600 12.5px/1 inherit;padding:8px 13px;border-radius:7px;cursor:pointer;
+      border:1px solid var(--line);background:var(--btn);color:var(--ink)}
+ .btn[aria-pressed="true"]{background:var(--btnOn);color:var(--btnOnFg);border-color:var(--btnOn)}
+ table.t{border-collapse:collapse;width:100%;font-size:12.5px}
+ .t th,.t td{padding:5px 8px;border-bottom:1px solid var(--rowline);text-align:left;white-space:nowrap}
+ .t th{background:var(--thead);font-size:11px;color:var(--dim);font-weight:600}
+ .t td.n,.t th.n{text-align:right;font-variant-numeric:tabular-nums}
+ svg{display:block;max-width:100%}
+ .tip{position:absolute;pointer-events:none;background:#0b0b0b;color:#fff;font-size:11.5px;
+      padding:6px 9px;border-radius:6px;opacity:0;transition:opacity .12s;white-space:pre;z-index:20;
+      border:1px solid #3a3a36}
+</style></head><body><div class="wrap viz-root">
+<h1>Can the crew actually take this project?</h1>
+<p class="sub">The S-curve says how much is earned. The timeline says which task is late. Neither says whether the people exist to do the work — which is what made the foundations slip in the first place.</p>
+<h2>1 · The question</h2>
+<div class="card">
+<p style="margin:0 0 8px">A project plan is a promise about <b>dates</b>. Whether it can be kept is a question about <b>people</b> — and the same four technicians who install the bagging line are the ones who owe 302 PM jobs a week and whatever breaks on Tuesday.</p>
+<p style="margin:0">Every hour is already in the app. The PM route knows its own minutes. Breakdown hours are twelve weeks of history. Project hours and who does them are on the task. <b>Nothing new has to be typed</b> — the three just have to be added up in the same place.</p>
+</div>
+
+<h2>2 · Every hour the crew owes, week by week</h2>
+<div class="tiles" id="tiles"></div>
+<div class="legend">
+  <span><i style="background:var(--s-pm)"></i>PM route</span>
+  <span><i style="background:var(--s-pj)"></i>This project</span>
+  <span><i style="background:var(--s-bd)"></i>Breakdown allowance</span>
+  <span><i style="background:var(--cap);width:3px;height:13px;border-radius:1px"></i>What the crew can give</span>
+</div>
+<div class="card" style="padding:12px 8px 8px"><div class="scroll"><div id="team"></div></div></div>
+<p style="margin:4px 0 0 4px;font-size:12px;color:var(--dim)">Read this chart on its own and the project looks affordable — the crew total barely crosses the line. That is exactly the mistake. Hours are not pooled; they belong to people. Keep going.</p>
+
+<h2>3 · Who is drowning, and who is free</h2>
+<div class="btns" id="btns"></div>
+<div class="card" style="padding:10px 12px"><div class="scroll"><table class="gr" id="grid"></table></div></div>
+<p style="margin:4px 0 0 4px;font-size:12px;color:var(--dim)">Each bar is one person in one week, cut into PM · project · breakdown. The upright mark is what that person can give. A bar past the mark is a week that cannot happen as written.</p>
+
+<h2>4 · What it is telling you</h2>
+<div class="card" id="story"></div>
+
+<h2>5 · The same thing as numbers</h2>
+<div class="card" style="padding:0;overflow:hidden"><div class="scroll"><table class="t" id="ttab"></table></div></div>
+
+<h2>6 · What it costs to build</h2>
+<div class="card">
+<p style="margin:0 0 8px">Three sums the app can already do, one screen to show them:</p>
+<ul style="margin:0 0 10px">
+<li><b>PM hours per person per week</b> — the PM route already assigns machines to days; each machine already carries estimated minutes. Group by technician and week.</li>
+<li><b>Project hours per person per week</b> — a task's <code>hours</code> spread across the days of its own span, credited to the person in <code>who</code>.</li>
+<li><b>Breakdown allowance</b> — that person's average CM + BD hours over the last twelve weeks. Measured, not guessed, and it updates itself.</li>
+</ul>
+<p style="margin:0"><b>The one number somebody has to agree:</b> what a technician can actually give in a week. Not the payroll hours — the honest number after walking between towers, waiting for a permit and standing in the morning meeting. Set it once per person; it is the line everything else is judged against.</p>
+</div>
+
+<div class="note">
+<b>One decision.</b> When a week goes over, what should the app do?
+<ul style="margin:6px 0 0">
+<li><b>Warn only.</b> Colour the week and leave it to the planner. Honest, and easy to ignore.</li>
+<li><b>Refuse the assignment.</b> The assign board will not let a job be dropped on someone already over. Safe, and it will be fought about the first week.</li>
+<li><b>Warn, and offer the swap.</b> When you assign into a full week, the app names who in the same trade has room and offers to move a PM job across. My recommendation — it turns a red number into one press.</li>
+</ul>
+</div>
+
+<div class="note ok">
+<b>Where it lives.</b> This is not a project screen. It is a <b>planner screen</b> — the same view answers "can we take this project?", "can we take on a shutdown in week 42?" and "why is Mark always behind?". The project is just one of the three colours.
+</div>
+<script>
+const PROJ = {
+  code: "PRJ-2609-001",
+  name: "ติดตั้งไลน์บรรจุ L7 / New bagging line L7 — install and commission",
+  plant: "BFLPC", start: "2026-09-07", finish: "2026-11-14", today: "2026-10-09"
+};
+
+/* The crew. hours = what one person can actually give in a 6-day week, after
+   meetings, travel between towers and the tea break — not the payroll number.
+   pm   = the PM route this person already carries every week (the app knows this:
+          it is the sum of estimated minutes on their share of the 302 weekly PMs).
+   bd   = breakdown allowance — their own rolling average of CM + BD hours over the
+          last 12 weeks. Not a guess; a measurement. */
+const CREW = [
+  { name: "Mark",    trade: "Mechanical", cap: 45, pm: 26, bd: 7 },
+  { name: "Somchai", trade: "Mechanical", cap: 45, pm: 30, bd: 7 },
+  { name: "Choke",   trade: "Electrical", cap: 45, pm: 22, bd: 6 },
+  { name: "Nook",    trade: "Electrical", cap: 45, pm: 28, bd: 6 },
+  { name: "Kanya",   trade: "Engineering",cap: 30, pm:  4, bd: 2 }
+];
+
+/* id, task, plan start, plan finish, hours, who — the same project as the timeline
+   preview. Nothing new is needed here: hours and who are already on every task. */
+const TASKS = [
+  ["T1", "แบบและอนุมัติ / Design and approval",               "2026-09-07", "2026-09-19", 32, "Kanya"],
+  ["T2", "สั่งของ — สายพาน มอเตอร์ / Order belts and motors", "2026-09-14", "2026-10-10", 16, "Kanya"],
+  ["T3", "รื้อของเดิม / Strip out the old line",              "2026-09-21", "2026-09-30", 40, "Mark"],
+  ["T4", "ฐานและโครงสร้าง / Foundations and steelwork",       "2026-09-28", "2026-10-17", 60, "Mark"],
+  ["T5", "ติดตั้งสายพาน / Install conveyors",                 "2026-10-12", "2026-10-31", 80, "Mark"],
+  ["T6", "งานไฟฟ้าและตู้คอนโทรล / Electrical and panel",      "2026-10-19", "2026-11-04", 60, "Choke"],
+  ["T7", "ระบบลม / Compressed air pipework",                  "2026-10-19", "2026-10-28", 24, "Mark"],
+  ["T8", "เครื่องชั่งและตรวจโลหะ / Weigher and metal detector","2026-10-26", "2026-11-04", 32, "Choke"],
+  ["T9", "ทดสอบเดินเครื่อง / Dry run and commissioning",      "2026-11-02", "2026-11-10", 40, "Kanya"],
+  ["T10","อบรมและส่งมอบ / Training and handover",             "2026-11-09", "2026-11-14", 24, "Kanya"]
+];
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const D = s => new Date(s + "T00:00:00");
+const DAY = 864e5, dd = (a, b) => Math.round((D(b) - D(a)) / DAY);
+const addD = (s, n) => new Date(+D(s) + n * DAY).toISOString().slice(0, 10);
+const fmt = s => D(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+const r1 = n => Math.round(n * 10) / 10;
+
+/* ── weeks, Monday to Sunday, covering the whole project ── */
+const WEEKS = (() => {
+  const out = []; let d = PROJ.start;
+  while (D(d) <= D(PROJ.finish)) { out.push(d); d = addD(d, 7); }
+  return out;
+})();
+const WLBL = w => 'W' + (WEEKS.indexOf(w) + 1);
+const NOWW = WEEKS.filter(w => D(w) <= D(PROJ.today)).slice(-1)[0];
+
+/* ── project hours, spread across the days a task actually spans ──
+   A task is not a lump that lands on its start date: 60 hours over three weeks is
+   20 hours a week, and that is the number that collides with the PM route. */
+const load = {};                                   // name → week → {pm, pj, bd}
+CREW.forEach(c => { load[c.name] = {}; WEEKS.forEach(w => load[c.name][w] = { pm: c.pm, pj: 0, bd: c.bd }); });
+TASKS.forEach(([id, nm, ps, pf, hrs, who]) => {
+  if (!load[who]) return;
+  const days = dd(ps, pf) + 1, per = hrs / days;
+  WEEKS.forEach(w => {
+    const a = D(w) > D(ps) ? w : ps, b = D(addD(w, 6)) < D(pf) ? addD(w, 6) : pf;
+    const n = dd(a, b) + 1;
+    if (n > 0) load[who][w].pj += per * n;
+  });
+});
+
+/* ── the rebalance: move PM work off whoever is over, to whoever has room ──
+   Only PM moves. Project hours are assigned by skill and breakdown is not optional,
+   so PM route work is the only thing a planner can honestly shuffle — and only to
+   somebody of the same trade, because an electrician cannot grease a bearing. */
+function rebalance(src) {
+  const out = {}; CREW.forEach(c => { out[c.name] = {}; WEEKS.forEach(w => out[c.name][w] = { ...src[c.name][w] }); });
+  WEEKS.forEach(w => {
+    const tot = n => out[n][w].pm + out[n][w].pj + out[n][w].bd;
+    const cap = n => CREW.find(c => c.name === n).cap;
+    CREW.filter(c => tot(c.name) > cap(c.name)).forEach(c => {
+      CREW.filter(o => o.trade === c.trade && o.name !== c.name).forEach(o => {
+        const need = tot(c.name) - cap(c.name), room = cap(o.name) - tot(o.name);
+        const mv = Math.min(need, room, out[c.name][w].pm);
+        if (mv > 0.5) { out[c.name][w].pm -= mv; out[o.name][w].pm += mv; }
+      });
+    });
+  });
+  return out;
+}
+const PLANS = { plan: load, fix: rebalance(load) };
+let VIEW = 'plan';
+
+const capOf = n => CREW.find(c => c.name === n).cap;
+const totOf = (S, n, w) => S[n][w].pm + S[n][w].pj + S[n][w].bd;
+const overOf = (S, n, w) => Math.max(0, totOf(S, n, w) - capOf(n));
+const MAXL = Math.max(...CREW.flatMap(c => WEEKS.map(w => totOf(load, c.name, w))));
+const TEAMCAP = CREW.reduce((s, c) => s + c.cap, 0);
+
+/* ── tiles ── */
+(() => {
+  const wk = WEEKS.map(w => ({ w, t: CREW.reduce((s, c) => s + totOf(load, c.name, w), 0) }));
+  const peak = wk.slice().sort((a, b) => b.t - a.t)[0];
+  const overCells = CREW.flatMap(c => WEEKS.map(w => overOf(load, c.name, w))).filter(h => h > 0.5);
+  const shortfall = overCells.reduce((s, h) => s + h, 0);
+  const fixShort = CREW.flatMap(c => WEEKS.map(w => overOf(PLANS.fix, c.name, w))).reduce((s, h) => s + h, 0);
+  const worst = CREW.map(c => ({ c, n: WEEKS.filter(w => overOf(load, c.name, w) > .5).length }))
+    .sort((a, b) => b.n - a.n)[0];
+  /* only spare that could actually help: room on somebody else, in a week where
+     somebody is over. Idle hours in a quiet week rescue nobody. */
+  const hotW = WEEKS.filter(w => CREW.some(c => overOf(load, c.name, w) > .5));
+  const spare = hotW.reduce((s, w) => s + CREW.reduce((t, c) => t + Math.max(0, capOf(c.name) - totOf(load, c.name, w)), 0), 0);
+  $('tiles').innerHTML = [
+    [`<span style="color:var(--crit)">${Math.round(peak.t)} h</span>`, `Peak week (${WLBL(peak.w)}) against ${TEAMCAP} h`],
+    [`<span style="color:var(--crit)">${overCells.length}</span>`, 'Person-weeks over capacity'],
+    [`<span style="color:var(--crit)">${Math.round(shortfall)} h</span>`, 'Hours the crew does not have'],
+    [esc(worst.c.name) + ' · ' + worst.n, 'Weeks over, worst hit'],
+    [`${Math.round(spare)} h`, 'Spare on others, those same weeks'],
+    [`<span style="color:${fixShort > .5 ? 'var(--crit)' : 'var(--good)'}">${Math.round(fixShort)} h</span>`, 'Still short after rebalancing']
+  ].map(([v, l]) => `<div class="tile"><b>${v}</b><span>${l}</span></div>`).join('');
+})();
+
+/* ── the team chart: stacked hours per week, against one capacity line ── */
+(() => {
+  const W = 1040, H = 300, ML = 46, MR = 14, MT = 16, MB = 44;
+  const top = Math.ceil(Math.max(MAXL * 0 + Math.max(...WEEKS.map(w => CREW.reduce((s, c) => s + totOf(load, c.name, w), 0))), TEAMCAP) / 20) * 20 + 20;
+  const y = v => MT + (1 - v / top) * (H - MT - MB);
+  const bw = (W - ML - MR) / WEEKS.length, bar = Math.min(52, bw - 14);
+  let g = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img"
+    aria-label="Total crew hours per week, split into PM route, project and breakdown, against team capacity">
+    <rect width="${W}" height="${H}" fill="var(--surface-1)"/>`;
+  for (let v = 0; v <= top; v += 40)
+    g += `<line x1="${ML}" y1="${y(v)}" x2="${W - MR}" y2="${y(v)}" stroke="var(--grid)" stroke-width="1"/>
+      <text x="${ML - 7}" y="${y(v) + 4}" font-size="10.5" text-anchor="end" fill="var(--text-muted)">${v}</text>`;
+  WEEKS.forEach((w, i) => {
+    const cx = ML + i * bw + bw / 2, x0 = cx - bar / 2;
+    const pm = CREW.reduce((s, c) => s + load[c.name][w].pm, 0);
+    const pj = CREW.reduce((s, c) => s + load[c.name][w].pj, 0);
+    const bd = CREW.reduce((s, c) => s + load[c.name][w].bd, 0);
+    let acc = 0;
+    [[pm, 'var(--s-pm)', 'PM route'], [pj, 'var(--s-pj)', 'This project'], [bd, 'var(--s-bd)', 'Breakdown allowance']]
+      .forEach(([v, col]) => {
+        if (v < .2) return;
+        const yTop = y(acc + v), hgt = Math.max(1, y(acc) - y(acc + v) - 2);   /* 2px surface gap */
+        g += `<rect x="${x0}" y="${yTop}" width="${bar}" height="${hgt}" rx="3" fill="${col}"/>`;
+        acc += v;
+      });
+    const over = acc - TEAMCAP;
+    g += `<rect class="hh" x="${x0 - 4}" y="${MT}" width="${bar + 8}" height="${H - MT - MB}" fill="transparent"
+       data-t="${WLBL(w)} · week of ${fmt(w)}&#10;PM route ${Math.round(pm)} h&#10;This project ${Math.round(pj)} h&#10;Breakdown ${Math.round(bd)} h&#10;Total ${Math.round(acc)} h against ${TEAMCAP} h${
+       over > .5 ? '&#10;OVER by ' + Math.round(over) + ' h' : ''}"/>`;
+    if (over > .5)
+      g += `<text x="${cx}" y="${y(acc) - 6}" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--crit)">+${Math.round(over)} h</text>`;
+    g += `<text x="${cx}" y="${H - MB + 15}" font-size="10.5" text-anchor="middle" fill="var(--text-secondary)">${WLBL(w)}</text>
+      <text x="${cx}" y="${H - MB + 27}" font-size="9.5" text-anchor="middle" fill="var(--text-muted)">${fmt(w)}</text>`;
+    if (w === NOWW) g += `<text x="${cx}" y="${H - MB + 39}" font-size="9.5" text-anchor="middle" fill="var(--s-pj)">this week</text>`;
+  });
+  g += `<line x1="${ML}" y1="${y(TEAMCAP)}" x2="${W - MR}" y2="${y(TEAMCAP)}" stroke="var(--cap)" stroke-width="2"/>
+    <text x="${W - MR}" y="${y(TEAMCAP) - 6}" font-size="10.5" font-weight="600" text-anchor="end" fill="var(--cap)">what the crew can give — ${TEAMCAP} h/week</text></svg>`;
+  $('team').innerHTML = g;
+})();
+
+/* ── the per-person grid, with a scenario toggle ── */
+function drawGrid() {
+  const S = PLANS[VIEW], TR = 86, sc = TR / MAXL;
+  let h = `<thead><tr><th>Who</th>${WEEKS.map(w =>
+    `<th>${WLBL(w)}<div style="font-weight:400;color:var(--text-muted)">${fmt(w)}</div></th>`).join('')}</tr></thead><tbody>`;
+  CREW.forEach(c => {
+    h += `<tr><td class="who">${esc(c.name)}<small>${esc(c.trade)} · ${c.cap} h</small></td>`;
+    WEEKS.forEach(w => {
+      const d = S[c.name][w], tot = d.pm + d.pj + d.bd, pct = Math.round(tot / c.cap * 100), over = tot - c.cap > .5;
+      const moved = r1(d.pm - PLANS.plan[c.name][w].pm);
+      h += `<td class="cell${over ? ' hot' : ''}"><div class="trk" data-t="${esc(c.name)} · ${WLBL(w)}&#10;PM route ${r1(d.pm)} h&#10;This project ${r1(d.pj)} h&#10;Breakdown ${r1(d.bd)} h&#10;Total ${r1(tot)} h of ${c.cap} h${
+        over ? '&#10;OVER by ' + r1(tot - c.cap) + ' h' : ''}${moved ? '&#10;PM moved: ' + (moved > 0 ? '+' : '') + moved + ' h' : ''}">`
+        + [[d.pm, 'var(--s-pm)'], [d.pj, 'var(--s-pj)'], [d.bd, 'var(--s-bd)']]
+            .filter(([v]) => v > .2).map(([v, col]) => `<i style="width:${(v * sc).toFixed(1)}px;background:${col}"></i>`).join('')
+        + `<span class="capm" style="left:${(c.cap * sc).toFixed(1)}px"></span></div>`
+        + `<span class="pct${over ? ' over' : ''}">${pct}%${over ? ' · over' : ''}</span></td>`;
+    });
+    h += `</tr>`;
+  });
+  $('grid').innerHTML = h + `</tbody>`;
+  [...document.querySelectorAll('#btns .btn')].forEach(b => b.setAttribute('aria-pressed', b.dataset.v === VIEW));
+}
+$('btns').innerHTML = [['plan', 'As the project is written'], ['fix', 'After moving PM work to whoever has room']]
+  .map(([v, l]) => `<button class="btn" data-v="${v}" aria-pressed="false">${l}</button>`).join('');
+$('btns').addEventListener('click', e => { const b = e.target.closest('.btn'); if (!b) return; VIEW = b.dataset.v; drawGrid(); });
+drawGrid();
+
+/* ── read it out loud ── */
+(() => {
+  const short = CREW.flatMap(c => WEEKS.map(w => overOf(load, c.name, w))).reduce((s, h) => s + h, 0);
+  const fixShort = CREW.flatMap(c => WEEKS.map(w => overOf(PLANS.fix, c.name, w))).reduce((s, h) => s + h, 0);
+  const per = CREW.map(c => ({ c, over: WEEKS.reduce((s, w) => s + overOf(load, c.name, w), 0),
+                                  wk: WEEKS.filter(w => overOf(load, c.name, w) > .5) }))
+    .filter(x => x.over > .5).sort((a, b) => b.over - a.over);
+  const hotW = WEEKS.filter(w => CREW.some(c => overOf(load, c.name, w) > .5));
+  const free = CREW.map(c => ({ c, sp: hotW.reduce((s, w) => s + Math.max(0, c.cap - totOf(load, c.name, w)), 0) }))
+    .filter(x => x.sp > 20 && !per.some(p => p.c.name === x.c.name)).sort((a, b) => b.sp - a.sp);
+  const worst = per[0];
+  const teamOver = WEEKS.filter(w => CREW.reduce((s, c) => s + totOf(load, c.name, w), 0) > TEAMCAP + .5);
+  const alone = per.filter(p => !CREW.some(o => o.trade === p.c.trade && o.name !== p.c.name));
+  $('story').innerHTML =
+    `<p style="margin:0 0 8px">The project asks the crew for <b style="color:var(--crit)">${Math.round(short)} hours they do not have</b>, `
+    + `concentrated in ${worst.wk.length} weeks around ${WLBL(worst.wk[0])}–${WLBL(worst.wk.slice(-1)[0])}. `
+    + `This is not a scheduling detail — it is the reason the foundations finished 4 days late and the conveyors are running behind. `
+    + `The dates were never the problem; the hours were.</p><ul style="margin:0">`
+    + `<li><b>The team total is the trap.</b> Add every hour together and only ${teamOver.length === 1 ? WLBL(teamOver[0]) + ' goes' : teamOver.length + ' weeks go'} over — `
+    + `by ${Math.round(Math.max(...WEEKS.map(w => CREW.reduce((s, c) => s + totOf(load, c.name, w), 0)))) - TEAMCAP} hours. `
+    + `On that chart alone you would sign the project off. The work is not shared out, so the total hides it.</li>`
+    + per.map(p => `<li><b>${esc(p.c.name)}</b> is over in <b>${p.wk.length} weeks</b> — ${Math.round(p.over)} hours beyond capacity, `
+        + `peaking at ${Math.max(...p.wk.map(w => Math.round(totOf(load, p.c.name, w) / p.c.cap * 100)))}% of a full week.</li>`).join('')
+    + (free.length ? `<li><b>${free.map(f => esc(f.c.name)).join(' and ')}</b> ${free.length > 1 ? 'have' : 'has'} `
+        + `<b>${Math.round(free.reduce((s, f) => s + f.sp, 0))} spare hours</b> in those same weeks. The crew is not short of people; it is short of the right people in the right weeks.</li>` : '')
+    + (alone.length ? `<li><b>${alone.map(a => esc(a.c.name)).join(' and ')}</b> cannot be helped at all — `
+        + `nobody else on the crew does ${alone.map(a => esc(a.c.trade).toLowerCase()).join(' or ')} work. `
+        + `That overload has no fix inside the team.</li>` : '')
+    + `<li><b>Rebalancing closes part of it, not all of it.</b> Moving every PM job the others can absorb leaves `
+    + `<b style="color:var(--crit)">${Math.round(fixShort)} hours</b> still uncovered — press the second button above to see it. `
+    + `That remainder is a real decision: one contract fitter for the peak weeks, or ${Math.round(fixShort)} hours of PM deferred and signed for.</li>`
+    + `<li><b>Say it before the project starts, not in November.</b> Every number on this page existed on day one. Nothing here needed the project to go wrong first.</li>`
+    + `</ul>`;
+})();
+
+/* ── the table ── */
+(() => {
+  const rows = CREW.map(c => {
+    const cells = WEEKS.map(w => {
+      const t = totOf(load, c.name, w), over = t - c.cap > .5;
+      return `<td class="n"${over ? ' style="color:var(--crit);font-weight:700"' : ''}>${Math.round(t)}</td>`;
+    }).join('');
+    const tot = WEEKS.reduce((s, w) => s + totOf(load, c.name, w), 0);
+    return `<tr><td>${esc(c.name)}</td><td>${esc(c.trade)}</td><td class="n">${c.cap}</td>${cells}<td class="n">${Math.round(tot)}</td></tr>`;
+  }).join('');
+  $('ttab').innerHTML = `<thead><tr><th>Who</th><th>Trade</th><th class="n">Can give</th>`
+    + WEEKS.map(w => `<th class="n">${WLBL(w)}</th>`).join('') + `<th class="n">Total</th></tr></thead><tbody>${rows}</tbody>`;
+})();
+
+/* ── hover ── */
+(() => {
+  const tip = document.createElement('div'); tip.className = 'tip'; document.body.appendChild(tip);
+  document.addEventListener('mousemove', e => {
+    const t = e.target.closest && e.target.closest('[data-t]');
+    if (!t) { tip.style.opacity = 0; return; }
+    tip.textContent = t.getAttribute('data-t'); tip.style.opacity = 1;
+    tip.style.left = Math.min(e.pageX + 14, window.innerWidth - 260) + 'px';
+    tip.style.top = (e.pageY + 14) + 'px';
+  });
+})();
+</script></div></body></html>

@@ -1,0 +1,297 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Search bar — one line, grows sideways</title>
+<style>
+ :root{--ink:#16202c;--mut:#64748B;--ln:#e2e8f0;--bg:#f6f8fa;--dark:#1E293B;--bd:#cbd5e1}
+ *{box-sizing:border-box}
+ body{margin:0;font:14px/1.55 -apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+ .wrap{max-width:1180px;margin:0 auto;padding:22px 18px 70px}
+ h1{font-size:22px;margin:0 0 3px}.sub{color:var(--mut);margin:0 0 20px;font-size:13px}
+ h2{font-size:16px;margin:28px 0 8px;padding-bottom:5px;border-bottom:2px solid var(--ln)}
+ .card{background:#fff;border:1px solid var(--ln);border-radius:9px;padding:15px;margin:12px 0}
+ ul{margin:6px 0;padding-left:20px}li{margin:4px 0}
+ code{background:#eef2f6;padding:1px 5px;border-radius:4px;font-size:12.5px}
+ .note{background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:11px 14px;margin:14px 0;font-size:13px}
+ .ok{background:#f0fdf4;border-color:#86efac}
+ /* ── the toolbar being demonstrated ───────────────────────────────────────── */
+ .toolbar{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--ln);
+          border-radius:9px;padding:10px 12px;overflow:hidden}
+ .tab{font-size:12.5px;padding:5px 11px;border-radius:7px;border:1px solid var(--ln);background:#fff;color:#475569;white-space:nowrap}
+ .tab.on{background:var(--dark);color:#fff;border-color:var(--dark)}
+ /* the bar: FIXED height, animated WIDTH, never wraps */
+ #bar,#bar2{display:flex;align-items:center;height:34px;min-height:34px;max-height:34px;
+      border:1px solid var(--bd);border-radius:9px;background:#fff;overflow:hidden;
+      flex:0 0 auto;transition:width .22s cubic-bezier(.4,0,.2,1),border-color .18s}
+ #bar.act,#bar2.act{border-color:#1D4ED8}
+ #bar .ico,#bar2 .ico{padding:0 3px 0 10px;color:#94A3B8;font-size:13px;flex:none}
+ #toks,#toks2{display:flex;align-items:center;gap:4px;flex:none;padding-left:3px;white-space:nowrap}
+ #q,#q2{flex:1;min-width:56px;border:none;outline:none;font:inherit;font-size:13px;padding:3px 8px;background:transparent}
+ .tok{display:inline-flex;align-items:center;gap:4px;font-size:11px;background:#EFF6FF;border:1px solid #BFDBFE;
+      color:#1D4ED8;border-radius:5px;padding:1px 2px 1px 7px;white-space:nowrap;flex:none;line-height:1.5}
+ .tok b{font-weight:600}
+ .tok button{border:none;background:#BFDBFE;color:#1D4ED8;border-radius:3px;cursor:pointer;font-size:11px;
+             line-height:1;padding:2px 4px;font-family:inherit}
+ .more{display:inline-flex;align-items:center;gap:4px;font-size:11px;background:#E0E7FF;border:1px solid #C7D2FE;
+       color:#3730A3;border-radius:5px;padding:2px 7px;white-space:nowrap;flex:none;cursor:pointer;font-family:inherit}
+ .funnel{display:inline-flex;align-items:center;gap:5px;border:none;border-left:1px solid #eef1f4;
+         background:#F8FAFC;color:#475569;cursor:pointer;font-size:12.5px;padding:0 11px;height:100%;
+         font-family:inherit;white-space:nowrap;flex:none;border-radius:0 8px 8px 0}
+ .funnel.on{background:#1D4ED8;color:#fff}
+ .dates{margin-left:auto;display:flex;align-items:center;gap:5px;flex:none;white-space:nowrap}
+ .dates input{font-size:12px;padding:3px 5px;height:30px;width:126px;border:1px solid var(--bd);border-radius:8px;font:inherit;font-size:12px}
+ .lbl{font-size:11px;color:#94A3B8}
+ #drop{position:absolute;z-index:50;background:#fff;border:1px solid var(--ln);border-radius:8px;
+       box-shadow:0 10px 28px rgba(15,23,42,.16);padding:6px;min-width:210px;display:none}
+ #drop .row{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:5px 7px;border-radius:5px}
+ #drop .row:hover{background:#F1F5F9}
+ #drop .row button{margin-left:auto;border:none;background:#BFDBFE;color:#1D4ED8;border-radius:4px;
+                   cursor:pointer;font-size:12px;line-height:1;padding:2px 6px;font-family:inherit}
+ #meas{position:absolute;visibility:hidden;height:0;overflow:hidden;white-space:nowrap;top:-999px;left:-999px}
+ .ctl{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 0}
+ .ctl button{font-size:12px;padding:5px 11px;border-radius:7px;border:1px solid var(--ln);background:#fff;
+             color:#334155;cursor:pointer;font-family:inherit}
+ .ctl button:hover{background:#F1F5F9}
+ .ctl button.p{background:var(--dark);color:#fff;border-color:var(--dark)}
+ .read{font-size:12px;color:var(--mut);margin-top:9px;font-variant-numeric:tabular-nums}
+ .read b{color:var(--ink)}
+</style></head><body><div class="wrap">
+<h1>Search bar — one line, grows sideways</h1>
+<p class="sub">Working preview. Add filters and watch the bar widen; past its limit the extras fold into a dropdown. Nothing in the app has changed.</p>
+<h2>1 · What you asked to change</h2>
+<div class="card">
+<ul style="margin:0">
+<li>The bar <b>must not get taller</b>. It did — tokens wrapped onto a second line and pushed the date control down with them.</li>
+<li>It should <b>widen</b> instead, as filters are added.</li>
+<li>Once it hits its width limit, the extras go into a <b>dropdown</b>.</li>
+<li>Removing one lets it <b>shrink back gradually</b>, not snap.</li>
+</ul>
+</div>
+
+<h2>2 · Try it — press the ⧩ funnel</h2>
+<div class="card" style="padding:12px">
+  <div class="toolbar" id="tb1">
+    <button class="tab">+ Create job</button>
+    <button class="tab">Plan calendar</button>
+    <button class="tab on">All jobs</button>
+    <div id="bar">
+      <span class="ico">🔍</span>
+      <span id="toks"></span>
+      <input id="q" placeholder="Search items">
+      <button class="funnel" id="fn" onclick="openFunnel(event)">⧩ <span id="fnl">Filter</span></button>
+    </div>
+    <span class="dates" id="dates1">
+      <span class="lbl">Dates</span>
+      <input type="date" value="2026-08-08"><span style="color:#cbd5e1">→</span><input type="date">
+      <span style="font-size:11.5px;color:#64748B">51+ jobs</span>
+    </span>
+  </div>
+  <div class="read" id="read"></div>
+</div>
+<p style="font-size:12.5px;color:#64748B;margin:2px 4px 0">
+  The funnel, the column list and the tick-lists behave exactly as they do in the app today — only what the bar
+  <em>does</em> with the filters is new.</p>
+
+<div id="drop"></div><span id="meas"></span>
+
+<h2>3 · The rule</h2>
+<div class="card">
+<ul style="margin:0">
+<li><b>Height is fixed at 34px.</b> <code>min-height</code> and <code>max-height</code> are both set and tokens never wrap, so nothing below the toolbar can be pushed down.</li>
+<li><b>Width is animated.</b> The bar is given an exact pixel width whenever the filters change, over 0.22s. Adding grows it, removing shrinks it — the same motion in reverse.</li>
+<li><b>The limit is the room actually left</b> on the toolbar, measured, not a fixed number — so it behaves on a wide monitor and a small laptop alike, and the date control never moves.</li>
+<li><b>Past the limit the newest filters fold</b> into a <code>+N</code> chip; press it and they are listed, each with its own ×.</li>
+<li><b>Removing one pulls a hidden one back in</b>, so the bar is always as full as it can be.</li>
+</ul>
+</div>
+
+<h2>4 · The one thing you have to choose</h2>
+<div class="note">
+<p style="margin:0 0 9px">Add three or four filters above and you will see it: the bar folds almost immediately. That is not the bar being mean — it is arithmetic. On a 1500px screen the toolbar has about 1240px. The tabs take ~406 and the date control ~374, which leaves the bar <b>~446px</b>, and 446px holds the icon, the typing space, the funnel and about <b>two</b> filters.</p>
+<p style="margin:0 0 9px">Here is the same bar with the dates on their own line instead. Add filters to it and compare — it holds about <b>five</b>.</p>
+</div>
+<div class="card" style="padding:12px">
+  <div class="toolbar" id="tb2">
+    <button class="tab">+ Create job</button>
+    <button class="tab">Plan calendar</button>
+    <button class="tab on">All jobs</button>
+    <div id="bar2">
+      <span class="ico">🔍</span>
+      <span id="toks2"></span>
+      <input id="q2" placeholder="Search items">
+      <button class="funnel" id="fn2" onclick="openFunnel(event,2)">⧩ <span id="fnl2">Filter</span></button>
+    </div>
+  </div>
+  <div class="dates" id="dates2" style="margin:8px 0 0;justify-content:flex-end">
+    <span class="lbl">Dates</span>
+    <input type="date" value="2026-08-08"><span style="color:#cbd5e1">→</span><input type="date">
+    <span style="font-size:11.5px;color:#64748B">51+ jobs</span>
+  </div>
+  <div class="read" id="read2"></div>
+</div>
+
+<div class="card">
+<p style="margin:0 0 6px"><b>So pick one:</b></p>
+<ul style="margin:0">
+<li><b>A — dates on the toolbar</b> (the top one, what you asked for). Folds after about two filters. The dropdown carries the rest and nothing on screen ever moves.</li>
+<li><b>B — dates on their own line</b> (the bottom one). About five filters visible, but the row you wanted gone comes back.</li>
+<li><b>C — dates on the toolbar until the bar needs the room</b>, then they drop to the next line. Both, at the cost of the date control moving as you add filters.</li>
+</ul>
+</div>
+
+<div class="note ok">
+<b>Two smaller ones.</b> Should the <b>newest</b> filters fold, with the oldest staying visible — as built here — or the reverse? And the bar always keeps 56px for typing, which is why it folds rather than squeezing the search box; say if you would rather it squeezed.
+</div>
+<p style="color:#64748B;font-size:12.5px;margin-top:30px;border-top:1px solid #e2e8f0;padding-top:11px">Preview only — the app still has the wrapping bar. Tell me A, B or C and I will build it.</p></div><script>
+/* Two independent toolbars, so the only difference between them is where the dates sit.
+   Everything else — the funnel, the column list, the tick-lists — is the app's own. */
+const FIELDS = [
+  { k: 'sit',    lb: 'Situation',    vals: [['Overdue', 21], ['To accept', 4], ['Carried forward', 9], ['On hold', 1], ['Not assigned', 0]] },
+  { k: 'type',   lb: 'Type',         vals: [['PM', 41], ['CM', 22], ['Breakdown', 14], ['Improve', 1]] },
+  { k: 'plant',  lb: 'Plant',        vals: [['BFLFP', 78]] },
+  { k: 'status', lb: 'Job status',   vals: [['Reported', 43], ['Completed', 22], ['In progress', 13]] },
+  { k: 'wait',   lb: 'Waiting on',   vals: [['Tech: to start', 43], ['Reporter: to accept', 42], ['Accepted', 22]] },
+  { k: 'lead',   lb: 'Lead tech',    vals: [['Kanya', 56], ['Mark', 18], ['Choke', 4]] },
+  { k: 'trade',  lb: 'Trade',        vals: [['Mechanical', 12], ['Process', 6], ['Other', 9]] },
+  { k: 'prio',   lb: 'Priority',     vals: [['1', 61], ['2', 15], ['3', 2]] },
+  { k: 'plan',   lb: 'Planned date', vals: [['2026-09-07', 27], ['2026-09-05', 18], ['2026-09-04', 33]] },
+  { k: 'mach',   lb: 'Machine',      text: true },
+  { k: 'asset',  lb: 'Asset code',   text: true },
+  { k: 'jid',    lb: 'Job ID',       text: true }
+];
+const F = { 1: [], 2: [] };                       // filters on each bar, oldest first
+let MENU = null, MENUBAR = 1;
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const ids = n => n === 2
+  ? { bar: 'bar2', toks: 'toks2', fn: 'fn2', fnl: 'fnl2', read: 'read2' }
+  : { bar: 'bar',  toks: 'toks',  fn: 'fn',  fnl: 'fnl',  read: 'read' };
+
+const tokHtml = (f, i, n) =>
+  `<span class="tok"><b>${esc(f.lb)}</b>${esc(f.val)}<button onclick="dropF(${n},${i})" title="remove">×</button></span>`;
+
+function widthOf(html) {
+  const m = $('meas');
+  m.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px">${html}</span>`;
+  const w = m.firstChild.getBoundingClientRect().width;
+  m.innerHTML = '';
+  return Math.ceil(w);
+}
+const ICON = 26, INPUT_MIN = 56, GAP = 4, PAD = 6;
+
+function render(n) {
+  const I = ids(n), L = F[n];
+  const bar = $(I.bar), toks = $(I.toks), fn = $(I.fn);
+  fn.className = 'funnel' + (L.length ? ' on' : '');
+  $(I.fnl).textContent = L.length ? String(L.length) : 'Filter';
+  bar.className = L.length ? 'act' : '';
+
+  // Whatever the tabs and the date control do not take. Measured, so the bar can never
+  // push them off the row or make it taller.
+  const row = bar.parentElement.getBoundingClientRect();
+  let used = 0;
+  [...bar.parentElement.children].forEach(c => { if (c !== bar) used += c.getBoundingClientRect().width + 8; });
+  const funnelW = fn.getBoundingClientRect().width || 74;
+  const MAXW = Math.max(280, Math.floor(row.width - used - 24));
+  const MINW = Math.min(320, MAXW);
+
+  const wid = L.map((f, i) => widthOf(tokHtml(f, i, n)));
+  const moreW = widthOf('<span class="more">+9 more ▾</span>');
+  let fit = 0, sum = 0;
+  const budget = MAXW - ICON - INPUT_MIN - funnelW - PAD;
+  for (let i = 0; i < L.length; i++) {
+    const rest = L.length - (i + 1);
+    if (sum + wid[i] + GAP + (rest > 0 ? moreW + GAP : 0) > budget) break;
+    sum += wid[i] + GAP; fit++;
+  }
+  const hidden = L.length - fit;
+  toks.innerHTML = L.slice(0, fit).map((f, i) => tokHtml(f, i, n)).join('')
+    + (hidden ? `<button class="more" onclick="openMore(event,${n})">+${hidden} more ▾</button>` : '');
+
+  const contentW = ICON + sum + (hidden ? moreW + GAP : 0) + INPUT_MIN + funnelW + PAD;
+  const w = Math.round(Math.max(MINW, Math.min(MAXW, contentW)));
+  bar.style.width = w + 'px';
+  $(I.read).innerHTML = `bar <b>${w}px</b> of a possible <b>${MAXW}px</b> &nbsp;·&nbsp; height <b>34px</b>`
+    + ` (never changes) &nbsp;·&nbsp; <b>${fit}</b> shown, <b>${hidden}</b> folded &nbsp;·&nbsp; <b>${L.length}</b> on`;
+}
+const draw = () => { render(1); render(2); };
+
+/* ── the funnel, exactly the two-step it is in the app ────────────────────────── */
+function put(html, anchor) {
+  close();
+  const d = document.createElement('div');
+  d.id = 'menu';
+  d.style.cssText = 'position:absolute;z-index:60;background:#fff;border:1px solid #e2e8f0;border-radius:9px;'
+    + 'box-shadow:0 10px 30px rgba(15,23,42,.16);padding:6px;min-width:230px;max-height:330px;overflow:auto';
+  d.innerHTML = html;
+  document.body.appendChild(d);
+  const r = anchor.getBoundingClientRect();
+  d.style.left = Math.max(6, Math.min(r.left + window.scrollX, window.innerWidth - 260)) + 'px';
+  d.style.top = (r.bottom + window.scrollY + 6) + 'px';
+  MENU = d;
+}
+function close() { if (MENU) { MENU.remove(); MENU = null; } }
+document.addEventListener('click', e => {
+  if (MENU && !e.target.closest('#menu') && !e.target.closest('.funnel') && !e.target.closest('.more')) close();
+  if ($('drop') && !e.target.closest('#drop') && !e.target.closest('.more')) $('drop').style.display = 'none';
+});
+const MI = 'display:flex;width:100%;gap:8px;align-items:center;border:none;background:none;text-align:left;'
+  + 'font-size:12.5px;padding:6px 8px;border-radius:6px;cursor:pointer;color:#16202c;font-family:inherit';
+const MH = 'font-size:10.5px;color:#94A3B8;text-transform:uppercase;letter-spacing:.05em;padding:5px 8px 3px';
+
+function openFunnel(ev, n) {
+  ev.stopPropagation(); MENUBAR = n || 1;
+  put(`<div style="${MH}">Filter on which column?</div>` + FIELDS.map(f =>
+    `<button style="${MI}" onclick="pick('${f.k}',event)">${f.lb}
+       <span style="margin-left:auto;color:#94A3B8;font-size:11px">${f.text ? 'text' : f.vals.length + ' values'}</span>
+     </button>`).join(''), ev.currentTarget);
+}
+function pick(k, ev) {
+  ev.stopPropagation();
+  const n = MENUBAR, f = FIELDS.find(x => x.k === k);
+  const anchor = $(ids(n).fn);
+  if (f.text) {
+    put(`<div style="${MH}">${f.lb} contains</div>
+      <input id="tq" style="width:100%;font:inherit;font-size:12.5px;padding:6px 8px;border:1px solid #e2e8f0;border-radius:6px"
+        placeholder="type and press Enter">`, anchor);
+    const q = MENU.querySelector('#tq'); q.focus();
+    q.onkeydown = e => { if (e.key === 'Enter' && q.value.trim()) { addF(n, f.lb, `“${q.value.trim()}”`); close(); } };
+    return;
+  }
+  const on = F[n].filter(x => x.k === k).map(x => x.val);
+  put(`<div style="${MH}">${f.lb} — tick any</div>` + f.vals.map(([v, c]) =>
+    `<button style="${MI}" onclick="tick('${k}','${esc(v)}',event)">
+       <span style="width:13px;color:#1D4ED8">${on.includes(v) ? '✓' : ''}</span>
+       <span style="flex:1">${esc(v)}</span>
+       <span style="color:#94A3B8;font-size:11px">${c}</span></button>`).join('')
+    + `<div style="border-top:1px solid #eef1f4;margin-top:5px;padding-top:5px">
+         <button style="${MI}" onclick="close()"><b>Done</b></button></div>`, anchor);
+}
+function tick(k, v, ev) {
+  ev.stopPropagation();
+  const n = MENUBAR, f = FIELDS.find(x => x.k === k);
+  const i = F[n].findIndex(x => x.k === k && x.val === v);
+  if (i >= 0) F[n].splice(i, 1); else F[n].push({ k, lb: f.lb, val: v });
+  draw(); pick(k, ev);
+}
+function addF(n, lb, val) { F[n].push({ k: 'txt' + F[n].length, lb, val }); draw(); }
+function dropF(n, i) { F[n].splice(i, 1); draw(); if ($('drop').style.display === 'block') $('drop').style.display = 'none'; }
+
+/* the +N chip */
+function openMore(ev, n) {
+  ev.stopPropagation(); close();
+  const d = $('drop'), I = ids(n);
+  const shown = $(I.toks).querySelectorAll('.tok').length;
+  const hid = F[n].slice(shown);
+  if (!hid.length) { d.style.display = 'none'; return; }
+  d.innerHTML = `<div style="font-size:10.5px;color:#94A3B8;text-transform:uppercase;letter-spacing:.05em;padding:4px 7px">
+      ${hid.length} more filter${hid.length > 1 ? 's' : ''}</div>`
+    + hid.map((f, k) => `<div class="row"><b style="font-weight:600;color:#1D4ED8">${esc(f.lb)}</b>
+        <span>${esc(f.val)}</span><button onclick="dropF(${n},${shown + k})">×</button></div>`).join('');
+  const r = ev.currentTarget.getBoundingClientRect();
+  d.style.left = (r.left + window.scrollX) + 'px';
+  d.style.top = (r.bottom + window.scrollY + 6) + 'px';
+  d.style.display = 'block';
+}
+window.addEventListener('resize', draw);
+draw();
+</script></body></html>

@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PM approval → planner · preview</title>
+<style>
+  :root{
+    --navy:#1E293B; --hbg:#202020; --bg:#F1F5F9; --bd:#D9E6F2;
+    --or:#1B75BC; --orange:#F97316; --green:#43A047; --red:#DC2626;
+    --amber:#D97706; --gray:#5C789A;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Prompt',system-ui,-apple-system,'Segoe UI',sans-serif;
+       background:#EEF2F7;color:var(--navy);line-height:1.55;padding:0 0 60px}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+  header.top{background:var(--hbg);color:#fff;padding:22px 0 20px;margin-bottom:26px}
+  header.top .wrap{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  header.top h1{font-size:21px;font-weight:600}
+  header.top .tag{font-size:12px;color:#F97316;border:1px solid rgba(249,115,22,.5);
+        border-radius:999px;padding:3px 11px;letter-spacing:.4px}
+  header.top p{font-size:13px;color:#CBD5E1;flex:1 1 100%;margin-top:4px}
+  h2{font-size:17px;margin:34px 0 12px;padding-bottom:7px;border-bottom:2px solid var(--bd)}
+  h3{font-size:14px;margin:20px 0 8px;color:#334155}
+  p,li{font-size:14px}
+  ul,ol{margin:8px 0 8px 20px}
+  li{margin:4px 0}
+  code{background:#E2E8F0;border-radius:4px;padding:1px 5px;font-size:12.5px;
+       font-family:ui-monospace,Menlo,Consolas,monospace}
+  .card{background:#fff;border:1px solid var(--bd);border-radius:12px;padding:16px 18px;margin:12px 0}
+  table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--bd);
+        border-radius:12px;overflow:hidden;font-size:13.5px}
+  th,td{padding:9px 12px;border-bottom:1px solid #E8EEF6;text-align:left;vertical-align:top}
+  th{background:#F8FAFC;font-weight:600;font-size:12.5px;color:#475569}
+  tr:last-child td{border-bottom:none}
+  .now{color:#B45309}
+  .new{color:#15803D;font-weight:600}
+  .pill{display:inline-block;font-size:11.5px;border-radius:999px;padding:2px 9px;font-weight:600}
+  .pill.pm{background:#DCFCE7;color:#166534}
+  .pill.cm{background:#DBEAFE;color:#1E40AF}
+  .pill.bd{background:#FEE2E2;color:#991B1B}
+  .pill.imp{background:#F3E8FF;color:#6B21A8}
+
+  /* phone mockups */
+  .screens{display:flex;gap:26px;flex-wrap:wrap;margin-top:16px}
+  .screen{width:330px}
+  .screen .cap{font-size:12.5px;color:var(--gray);margin-top:10px}
+  .screen .cap b{color:var(--navy)}
+  .phone{border:8px solid #1e3454;border-radius:34px;overflow:hidden;background:var(--bg);
+         box-shadow:0 14px 34px rgba(15,42,76,.22)}
+  .ph-head{background:var(--hbg);color:#fff;padding:9px 12px;display:flex;align-items:center;
+           justify-content:center;font-size:13.5px;font-weight:600;letter-spacing:.3px}
+  .ph-head span{color:var(--orange)}
+  .ph-body{padding:10px;min-height:392px}
+  .tabs{display:flex;background:#E6ECF4;border-radius:10px;padding:3px;gap:3px;margin-bottom:9px}
+  .tabs div{flex:1;text-align:center;font-size:11.5px;padding:7px 2px;border-radius:8px;color:#5C789A}
+  .tabs div.on{background:#fff;color:var(--orange);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .badge{display:inline-block;background:var(--red);color:#fff;border-radius:999px;
+         font-size:10px;padding:0 5px;margin-left:3px;font-weight:700}
+  .jc{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:9px 10px;margin-bottom:8px}
+  .jc .code{font-size:12.5px;font-weight:700}
+  .jc .no{font-size:11.5px;color:var(--orange);font-weight:700}
+  .jc .meta{font-size:10.5px;color:#94A3B8;margin-top:2px}
+  .jc .chips{margin-top:5px;display:flex;gap:4px;flex-wrap:wrap}
+  .chip{font-size:10px;border-radius:999px;padding:2px 7px;background:#EFF6FF;color:#1E40AF}
+  .chip.g{background:#DCFCE7;color:#166534}
+  .chip.a{background:#FEF3C7;color:#92400E}
+  .daterow{background:#FFF3E9;border-radius:8px;padding:5px 9px;font-size:11.5px;
+           font-weight:600;margin:6px 0;color:#9A3412}
+  .fld{background:#F1F5F9;border:1px solid var(--bd);border-radius:8px;padding:7px 9px;
+       font-size:12px;margin-bottom:7px}
+  .lbl{font-size:10.5px;color:#64748B;margin-bottom:3px}
+  .btnrow{display:flex;gap:6px;margin-top:9px}
+  .btn{flex:1;text-align:center;border-radius:9px;padding:10px 4px;font-size:12.5px;font-weight:700;color:#fff}
+  .btn.rej{background:var(--amber)}
+  .btn.app{background:#22C55E}
+  .note{background:#F0F9FF;border:1px solid #BAE6FD;border-radius:9px;padding:8px 10px;
+        font-size:11.5px;color:#075985;margin-top:8px}
+  .note.warn{background:#FEF9F0;border-color:#FDE68A;color:#92400E}
+  .nav{background:var(--hbg);display:flex;padding:7px 0 8px}
+  .nav div{flex:1;text-align:center;font-size:9.5px;color:#8FA3BC}
+  .nav div.on{color:var(--orange)}
+  .new-flag{display:inline-block;background:#15803D;color:#fff;font-size:9.5px;
+            border-radius:4px;padding:1px 6px;margin-left:5px;vertical-align:middle;font-weight:700}
+  .q{background:#fff;border:1px solid var(--bd);border-left:4px solid var(--orange);
+     border-radius:10px;padding:13px 16px;margin:10px 0}
+  .q b{display:block;font-size:14px;margin-bottom:4px}
+  .q .rec{font-size:13px;color:#166534;margin-top:6px}
+  .files{font-size:13px}
+  .files li{margin:7px 0}
+  footer{margin-top:40px;font-size:12px;color:var(--gray);text-align:center}
+</style>
+</head>
+<body>
+
+<header class="top"><div class="wrap">
+  <h1>ตรวจรับงาน PM → ผู้วางแผน / PM acceptance moves to the planner</h1>
+  <span class="tag">PREVIEW — no code changed yet</span>
+  <p>BFLFP CMMS · mockup for review before implementation · 7 Sep 2026</p>
+</div></header>
+
+<div class="wrap">
+
+<h2>1 · The rule, before and after</h2>
+
+<table>
+  <tr>
+    <th style="width:14%">Job type</th>
+    <th style="width:22%">Who raises it</th>
+    <th style="width:32%">Accepts it today</th>
+    <th style="width:32%">Accepts it after the change</th>
+  </tr>
+  <tr>
+    <td><span class="pill pm">PM</span><br><code>PRM-</code></td>
+    <td>PM-Auto, under the planner/admin account</td>
+    <td class="now">Any operator in the factory — the queue has a fallback for jobs no operator raised, and every PM lands in it</td>
+    <td class="new">ผู้วางแผน / planner (or admin) only</td>
+  </tr>
+  <tr>
+    <td><span class="pill cm">CM</span><br><code>PRD-</code></td>
+    <td>Reporter — machine can still run</td>
+    <td>The reporter who raised it ✔</td>
+    <td class="new">Unchanged — the reporter who raised it</td>
+  </tr>
+  <tr>
+    <td><span class="pill bd">BD</span><br><code>BKD-</code></td>
+    <td>Reporter — machine stopped</td>
+    <td>The reporter who raised it ✔</td>
+    <td class="new">Unchanged — the reporter who raised it</td>
+  </tr>
+  <tr>
+    <td><span class="pill imp">IMP</span><br><code>PRD-</code></td>
+    <td>Planner (improvement work)</td>
+    <td class="now">Any operator</td>
+    <td class="new">Planner — same queue as PM <span style="font-weight:400;color:#64748B">(confirm below)</span></td>
+  </tr>
+</table>
+
+<div class="card">
+  <h3 style="margin-top:0">Why PM behaves this way today</h3>
+  <p>The Pending-approval query has a deliberate escape hatch: <em>a job with no operator behind it stays
+  open to every operator, so it can never end up with nobody able to accept it.</em> Every PM job is
+  generated under the planner/admin account, so it always takes that branch. And the server-side guard
+  starts with <code>if u["role"] != "operator": 403</code> — so a planner cannot accept anything at all
+  right now, in any screen.</p>
+</div>
+
+<h2>2 · What the screens look like</h2>
+
+<div class="screens">
+
+  <!-- 1: planner pending list -->
+  <div class="screen">
+    <div class="phone">
+      <div class="ph-head">BFLFP <span>· CMMS</span></div>
+      <div class="ph-body">
+        <div class="tabs">
+          <div>แผนงาน</div>
+          <div class="on">รอตรวจรับ <span class="badge">3</span></div>
+          <div>งานทั้งหมด</div>
+        </div>
+        <div class="daterow">▾ 7 กันยายน 2569 &nbsp;·&nbsp; PM 3 งาน</div>
+        <div class="jc">
+          <div class="code">W01MX01 · เครื่องผสม (Mixer) #1</div>
+          <div class="no">PRM-2609-001 · PM ตามรอบ 7 วัน</div>
+          <div class="meta">ช่าง: สมชาย (Somchai) · เสร็จ 09:26 · 8/8 รายการ</div>
+          <div class="chips"><span class="chip g">เสร็จ · รอตรวจรับ</span><span class="chip a">NG 1 รายการ</span></div>
+        </div>
+        <div class="jc">
+          <div class="code">W01RT01 · หม้อฆ่าเชื้อ (Retort) #1</div>
+          <div class="no">PRM-2609-004 · PM ตามรอบ 30 วัน</div>
+          <div class="meta">ช่าง: สมศักดิ์ (Somsak) · เสร็จ 11:40 · 12/12 รายการ</div>
+          <div class="chips"><span class="chip g">เสร็จ · รอตรวจรับ</span></div>
+        </div>
+        <div class="jc">
+          <div class="code">W01AC01 · ปั๊มลมสกรู (Air compressor) #1</div>
+          <div class="no">PRM-2609-006 · PM ตามรอบ 7 วัน</div>
+          <div class="meta">ช่าง: สมชาย (Somchai) · เสร็จ 14:02 · 6/6 รายการ</div>
+          <div class="chips"><span class="chip g">เสร็จ · รอตรวจรับ</span></div>
+        </div>
+      </div>
+      <div class="nav"><div>แผนงาน</div><div class="on">รอตรวจรับ</div><div>Dashboard</div><div>แชท</div><div>อื่นๆ</div></div>
+    </div>
+    <div class="cap"><b>New — planner</b><span class="new-flag">NEW</span><br>
+      A <b>รอตรวจรับ</b> tab under Planning, PM only, with a badge and a push when a technician submits.
+      The NG count is on the card so the planner sees which sheets found something before opening them.</div>
+  </div>
+
+  <!-- 2: planner job detail -->
+  <div class="screen">
+    <div class="phone">
+      <div class="ph-head">BFLFP <span>· CMMS</span></div>
+      <div class="ph-body">
+        <div class="fld" style="background:#0F2B4C;color:#fff;border-color:#0F2B4C;text-align:center;font-weight:600">
+          Job No: PRM-2609-001 &nbsp;·&nbsp; PM · Weekly</div>
+        <div class="lbl">🔒 รหัสเครื่อง</div>
+        <div class="fld">W01MX01 · เครื่องผสม (Mixer) #1</div>
+        <div class="lbl">🔒 ช่างผู้ปฏิบัติงาน</div>
+        <div class="fld">สมชาย (Somchai) · 08:12 – 09:26</div>
+        <div class="lbl">🔒 ใบตรวจเช็ค</div>
+        <div class="fld">Weekly · ตอบครบ 8/8 · <b style="color:#B91C1C">NG 1 รายการ</b><br>
+          <span style="font-size:11px;color:#64748B">5. อัดจาระบีตลับลูกปืน — จาระบีแห้ง มีเสียงที่ตลับลูกปืน</span></div>
+        <div class="lbl">🔒 รายงานการทำงาน</div>
+        <div class="fld">PM 7 วัน ครบทุกรายการ · อัดจาระบีแล้ว ขอเปลี่ยนตลับลูกปืนรอบหน้า</div>
+        <div class="btnrow">
+          <div class="btn rej">✕ ตีกลับ</div>
+          <div class="btn app">✓ ตรวจรับ + เซ็น</div>
+        </div>
+        <div class="note">ลายเซ็นจะบันทึกในช่อง <b>ผู้อนุมัติ</b> ของใบ PM — เดิมช่องนี้สงวนไว้ให้ผู้วางแผนอยู่แล้ว</div>
+      </div>
+      <div class="nav"><div>แผนงาน</div><div class="on">รอตรวจรับ</div><div>Dashboard</div><div>แชท</div><div>อื่นๆ</div></div>
+    </div>
+    <div class="cap"><b>New — planner accepts a PM</b><span class="new-flag">NEW</span><br>
+      Same two buttons the reporter has, on the planner's job screen. Reject still demands a reason and
+      sends the job back to <b>ตีกลับ</b> for the technician.</div>
+  </div>
+
+  <!-- 3: reporter pending, PM gone -->
+  <div class="screen">
+    <div class="phone">
+      <div class="ph-head">BFLFP <span>· CMMS</span></div>
+      <div class="ph-body">
+        <div class="tabs">
+          <div>รายงาน</div>
+          <div class="on">รออนุมัติ <span class="badge">1</span></div>
+          <div>อนุมัติแล้ว</div>
+        </div>
+        <div class="daterow">▾ 7 กันยายน 2569 &nbsp;·&nbsp; ทั้งหมด 1</div>
+        <div class="jc">
+          <div class="code">W01SM01 · เครื่องปิดฝากระป๋อง (Can seamer) #1</div>
+          <div class="no">PRD-2608-001 · สั่นผิดปกติ</div>
+          <div class="meta">7 กันยายน 2569 · ผู้แจ้ง: โอเปอเรเตอร์ไลน์ 1</div>
+          <div class="chips"><span class="chip g">เสร็จ · รอตรวจรับ</span><span class="chip">เครื่องกล</span></div>
+        </div>
+        <div class="note">เห็นเฉพาะงานที่ตัวเองแจ้ง — งาน PM ย้ายไปให้ผู้วางแผนตรวจรับแล้ว<br>
+          <span style="color:#0369A1">Only your own reports. PM jobs now go to the planner.</span></div>
+      </div>
+      <div class="nav"><div class="on">ของฉัน</div><div>ผลผลิต</div><div>แชท</div><div>อื่นๆ</div></div>
+    </div>
+    <div class="cap"><b>Changed — reporter</b><br>
+      The tab keeps only CM and BD raised by this person. Today the same tab also shows every PM job
+      in the factory, which is what you want gone.</div>
+  </div>
+
+  <!-- 4: technician wording -->
+  <div class="screen">
+    <div class="phone">
+      <div class="ph-head">BFLFP <span>· CMMS</span></div>
+      <div class="ph-body">
+        <div class="fld" style="background:#0F2B4C;color:#fff;border-color:#0F2B4C;text-align:center;font-weight:600">
+          Job No: PRM-2609-001</div>
+        <div class="jc" style="background:#F0F9FF;border-color:#BAE6FD">
+          <div style="font-size:12.5px;font-weight:700;color:#075985">✓ ส่งงานแล้ว — รอผู้วางแผนตรวจรับ</div>
+          <div style="font-size:10.5px;color:#0369A1;margin-top:3px">เริ่มงานใหม่ไม่ได้ · ถ้าต้องแก้เพิ่ม ให้ผู้วางแผนตีกลับงานนี้</div>
+        </div>
+        <div style="height:10px"></div>
+        <div class="fld" style="background:#0F2B4C;color:#fff;border-color:#0F2B4C;text-align:center;font-weight:600">
+          Job No: PRD-2608-001</div>
+        <div class="jc" style="background:#F0F9FF;border-color:#BAE6FD">
+          <div style="font-size:12.5px;font-weight:700;color:#075985">✓ ส่งงานแล้ว — รอผู้แจ้งตรวจรับ</div>
+          <div style="font-size:10.5px;color:#0369A1;margin-top:3px">เริ่มงานใหม่ไม่ได้ · ถ้าต้องแก้เพิ่ม ให้ผู้แจ้งตีกลับงานนี้</div>
+        </div>
+        <div class="note warn">One line of wording, two versions: a PM waits for the planner, a
+          CM/BD waits for the reporter. Today both say <b>ผู้แจ้ง</b>, which will be wrong for PM.</div>
+      </div>
+      <div class="nav"><div class="on">งานของฉัน</div><div>แชท</div><div>อื่นๆ</div></div>
+    </div>
+    <div class="cap"><b>Changed — technician</b><br>
+      Also the <b>รอตรวจรับ</b> tab label and the timeline row "ตรวจรับ" should name the right person.</div>
+  </div>
+
+</div>
+
+<h2>3 · Three things to confirm before I code it</h2>
+
+<div class="q">
+  <b>1. Which planner accepts a PM?</b>
+  Any planner in that factory, or only the one who released the job?
+  <div class="rec">→ Recommend: <b>any planner or admin in that factory</b>. One planner on leave must not
+  freeze a week of PM sheets — that is the same reasoning behind the fallback that exists today.</div>
+</div>
+
+<div class="q">
+  <b>2. IMP (improvement) jobs — planner or reporter?</b>
+  They are raised by the planner, so under a strict "whoever raised it accepts it" rule they go to the planner queue.
+  <div class="rec">→ Recommend: <b>planner queue, same as PM</b>. Say the word if IMP should stay with the operator.</div>
+</div>
+
+<div class="q">
+  <b>3. A CM/BD whose reporter has left the company (inactive account)?</b>
+  Today an operator-raised job is locked to that person; if the account is gone, nobody can accept it.
+  <div class="rec">→ Recommend: keep the lock, but let <b>any operator in the factory</b> accept when the
+  reporter's account is inactive. Small guard, prevents a stuck job.</div>
+</div>
+
+<h2>4 · What I would change</h2>
+
+<div class="card">
+<ul class="files">
+  <li><code>server/jobs.py</code> — <b>signoff endpoint</b>: replace the operator-only gate with a
+    by-jobtype rule. PM/IMP → planner or admin; CM/BD → the reporter (with the inactive-account fallback).
+    The 403 message keeps its bilingual shape.</li>
+  <li><code>server/jobs.py</code> — <b><code>view=toapprove</code></b>: exclude PM/IMP from the operator
+    list, and drop the "no operator behind it" fallback that pulls PM in. Add
+    <code>view=pmapprove</code> for the planner: <code>status='ServiceCompleted' AND jobtype IN ('PM','IMP')</code>.</li>
+  <li><code>server/jobs.py</code> — <b>badge counts and push</b>: the completion push on the
+    <code>ServiceCompleted</code> PATCH currently notifies operators; PM should notify planners instead.</li>
+  <li><code>server/jobs.py</code> line ~967 — the <code>sign_appr</code> media guard says planner/admin
+    only, while the operator signoff writes that column directly. Once approval is split the two must agree,
+    or a reporter's acceptance signature will hit a 403 the day someone routes it through that endpoint.</li>
+  <li><code>static/index.html</code> — planner nav gets a <b>รอตรวจรับ</b> tab with badge + lamp; the
+    planner job screen gets the ตีกลับ / ตรวจรับ+เซ็น pair (reuse <code>opApprove</code> / <code>opReject</code>,
+    renamed); the technician's submitted-status line and the operator tab text branch on job type.</li>
+  <li><b>Existing rows</b>: any PM already sitting in <code>ServiceCompleted</code> moves queue the moment
+    this ships — it leaves every operator's tab and appears in the planner's. Nothing is rewritten in the
+    database, so this is reversible by reverting the code.</li>
+  <li><b>Videos</b>: technician chapter 2 (the submitted-status slide) and reporter chapter 4 need
+    re-shooting; the reporter script line "PM jobs also appear here" comes out.</li>
+</ul>
+</div>
+
+<div class="card" style="background:#FFF9F0;border-color:#FDE68A">
+  <h3 style="margin-top:0">Not in scope unless you say so</h3>
+  <ul>
+    <li>A manager or QA counter-signature on the PM sheet after the planner accepts.</li>
+    <li>Auto-accepting a PM with no NG items — tempting, but it would put a signature on a sheet nobody read.</li>
+    <li>Letting the planner accept CM/BD "on behalf of" a reporter who is on another shift.</li>
+  </ul>
+</div>
+
+<footer>BFLFP CMMS · preview only — nothing in <code>server/</code> or <code>static/</code> has been modified</footer>
+
+</div>
+</body>
+</html>

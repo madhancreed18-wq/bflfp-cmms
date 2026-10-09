@@ -1,8 +1,10 @@
 fastapi
 uvicorn
+watchfiles
 sqlalchemy
 pywebpush
 reportlab
 pillow
+openpyxl
 # production database (uncomment when moving to PostgreSQL):
 # psycopg2-binary

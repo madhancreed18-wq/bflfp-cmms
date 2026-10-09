@@ -1,0 +1,306 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Plan vs actual timeline</title>
+<style>
+ :root{color-scheme:light;
+   --surface-1:#fcfcfb; --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#84837c;
+   --grid:#e7e7e2; --plan:#2a78d6; --actual:#eb6834;
+   --good:#0E7A70; --crit:#B3261E; --ghost:#c3c8d0;
+   --page:#f6f8fa; --card:#fff; --line:#e2e8f0; --ink:#16202c; --dim:#64748B;
+   --chip:#eef2f6; --thead:#F8FAFC; --rowline:#eef1f4;
+   --noteBg:#fffbeb; --noteLn:#fcd34d; --okBg:#f0fdf4; --okLn:#86efac;
+   --pDoneBg:#DCFCE7;--pDoneFg:#166534;--pRunBg:#DBEAFE;--pRunFg:#1D4ED8;--pSoonBg:#F1F5F9;--pSoonFg:#475569}
+ @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;
+   --surface-1:#1a1a19; --text-primary:#fff; --text-secondary:#c3c2b7; --text-muted:#8f8e86;
+   --grid:#33322e; --plan:#3987e5; --actual:#d95926; --good:#3fae9f; --crit:#e66767; --ghost:#4b5563;
+   --page:#111110; --card:#1a1a19; --line:#33322e; --ink:#f2f1ea; --dim:#8f8e86;
+   --chip:#26251f; --thead:#201f1b; --rowline:#2b2a25;
+   --noteBg:#231f10; --noteLn:#8a6d17; --okBg:#12241a; --okLn:#2f6b45;
+   --pDoneBg:#13351f;--pDoneFg:#7fd6a0;--pRunBg:#13263f;--pRunFg:#8ab8ee;--pSoonBg:#26251f;--pSoonFg:#a9a89e}}
+ *{box-sizing:border-box}
+ body{margin:0;font:14px/1.55 -apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--page)}
+ .wrap{max-width:1180px;margin:0 auto;padding:22px 18px 70px}
+ h1{font-size:22px;margin:0 0 3px}.sub{color:var(--dim);margin:0 0 20px;font-size:13px}
+ h2{font-size:16px;margin:28px 0 8px;padding-bottom:5px;border-bottom:2px solid var(--line)}
+ .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin:12px 0}
+ ul{margin:6px 0;padding-left:20px}li{margin:4px 0}
+ code{background:var(--chip);padding:1px 5px;border-radius:4px;font-size:12.5px}
+ .note{background:var(--noteBg);border:1px solid var(--noteLn);border-radius:8px;padding:11px 14px;margin:14px 0;font-size:13px}
+ .ok{background:var(--okBg);border-color:var(--okLn)}
+ .tiles{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 14px}
+ .tile{flex:1;min-width:140px;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:9px 12px}
+ .tile b{display:block;font-size:20px;line-height:1.25;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+ .tile > span{font-size:11px;color:var(--dim)}
+ .legend{display:flex;gap:18px;align-items:center;font-size:12px;color:var(--text-secondary);margin:0 0 6px 4px;flex-wrap:wrap}
+ .legend i{display:inline-block;width:15px;height:8px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+ table{border-collapse:collapse;width:100%;font-size:12.5px}
+ th,td{padding:5px 8px;border-bottom:1px solid var(--rowline);text-align:left;white-space:nowrap}
+ th{background:var(--thead);font-size:11px;color:var(--dim);font-weight:600}
+ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+ .scroll{overflow-x:auto}
+ .pill{font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:999px}
+ .p-done{background:var(--pDoneBg);color:var(--pDoneFg)}.p-run{background:var(--pRunBg);color:var(--pRunFg)}
+ .p-soon{background:var(--pSoonBg);color:var(--pSoonFg)}
+ svg{display:block;max-width:100%}
+ .tip{position:absolute;pointer-events:none;background:#0b0b0b;color:#fff;font-size:11.5px;
+      padding:6px 9px;border-radius:6px;opacity:0;transition:opacity .12s;white-space:pre;z-index:20;
+      border:1px solid #3a3a36}
+</style></head><body><div class="wrap viz-root">
+<h1>Plan against actual, task by task</h1>
+<p class="sub">The other half of the S-curve. The curve says the project is ahead; this says which tasks are, and which are not.</p>
+<h2>1 · Why this and not just the S-curve</h2>
+<div class="card">
+<p style="margin:0 0 8px">The S-curve gave one number for the whole project: <b>+53 hours ahead</b>. It is true, and it hides two things a supervisor needs before Monday:</p>
+<ul style="margin:0">
+<li><b>Which tasks slipped.</b> A project can be ahead overall while the one task everything else waits on is a week late.</li>
+<li><b>Whether the finish date still holds.</b> Hours earned say nothing about dates; only the tasks at the end of the chain do.</li>
+</ul>
+<p style="margin:8px 0 0">Two bars per row answer both. The upper bar is the <b>baseline</b> — what was agreed on day one, which never moves. The lower is what actually happened.</p>
+</div>
+
+<h2>2 · The timeline</h2>
+<div class="tiles" id="tiles"></div>
+<div class="legend">
+  <span><i style="background:var(--plan)"></i>Plan (baseline)</span>
+  <span><i style="background:var(--actual)"></i>Actual</span>
+  <span><i style="background:transparent;border:1.5px dashed var(--ghost)"></i>Not started — still on plan</span>
+  <span><i style="background:transparent;border:1.5px dashed var(--crit)"></i>Not started — already pushed late</span>
+  <span style="color:var(--text-muted)">· the number on the right is days early (−) or late (+) against the baseline</span>
+</div>
+<div class="card" style="padding:12px 8px 8px"><div class="scroll"><div id="gantt"></div></div></div>
+
+<h2>3 · What it is telling you</h2>
+<div class="card" id="story"></div>
+
+<h2>4 · The same thing as numbers</h2>
+<div class="card" style="padding:0;overflow:hidden"><div class="scroll"><table id="ttab"></table></div></div>
+
+<h2>5 · What it costs to build</h2>
+<div class="card">
+<p style="margin:0 0 8px">Three things, and two of them the app already records:</p>
+<ul style="margin:0 0 10px">
+<li><code>date_start</code>, <code>date_end</code> — the <b>baseline</b>, set once when the project is approved and then locked. A baseline that gets quietly edited is not a baseline, so changing it is a deliberate act that says who moved it and why.</li>
+<li><b>Actual start</b> is already recorded: it is <code>started_at</code>, stamped when the technician presses Start. <b>Actual finish</b> is <code>done_at</code>. Neither needs a new field or a new habit.</li>
+<li><code>waits_for</code> — <b>the one genuinely new field</b>: which task this one cannot start before. One dropdown per task, filled in once when the project is written.</li>
+</ul>
+<p style="margin:0 0 8px"><b>So the actual bar draws itself.</b> The only things anybody types are the baseline and the order of the work, once each.</p>
+<p style="margin:0"><b>And <code>waits_for</code> is not optional detail — it is the whole forecast.</b> Without it, a task that has not started keeps its original dates no matter how late the task before it ran, every un-started row reads "on time", and the chart cheerfully reports a handover date that cannot happen. With it, the 5 days lost on the foundations arrive at the handover row where somebody can still do something about them.</p>
+</div>
+
+<div class="note">
+<b>One decision.</b> When a task finishes late, does the baseline for everything after it move with it? Two honest answers:
+<ul style="margin:6px 0 0">
+<li><b>No — the baseline is frozen.</b> Every later task keeps its original dates and the slip shows up as a growing red tail. Brutal, and it is what a review meeting needs.</li>
+<li><b>Yes — re-plan on demand.</b> A "re-baseline" button shifts the remaining tasks and records that it happened. Kinder, but a project that is re-baselined every fortnight always looks on time.</li>
+</ul>
+My recommendation: frozen by default, with re-baseline as a deliberate button that stamps who pressed it — so the history of the slip survives.
+</div>
+
+<div class="note ok">
+<b>Both charts, one page.</b> This and the S-curve are the same data seen twice: the curve for the trend, the timeline for the detail. They belong on the same project screen, curve on top, timeline under it.
+</div>
+<script>
+const PROJ = {
+  code: "PRJ-2609-001",
+  name: "ติดตั้งไลน์บรรจุ L7 / New bagging line L7 — install and commission",
+  area: "TOWER B · Floor 1–2", owner: "Kanya",
+  start: "2026-09-07", finish: "2026-11-14", today: "2026-10-09"
+};
+/* id, task, PLAN start, PLAN finish, ACTUAL start, ACTUAL finish (null = still running
+   or not begun), planned hours, % done, who, waits-for.
+   The baseline is what was agreed on day one and never moves — that is the whole point
+   of a baseline. The actual row is what the crew did. "waits for" is the one extra thing
+   somebody has to type: without it a late task cannot push the tasks behind it, and the
+   finish date on the chart is a lie of omission. */
+const TASKS = [
+  ["T1","แบบและอนุมัติ / Design and approval",              "2026-09-07","2026-09-19","2026-09-07","2026-09-22", 48,100,"Kanya", null],
+  ["T2","สั่งของ — สายพาน มอเตอร์ / Order belts and motors","2026-09-14","2026-10-10","2026-09-14","2026-10-06", 16,100,"Kanya","T1"],
+  ["T3","รื้อของเดิม / Strip out the old line",             "2026-09-21","2026-09-30","2026-09-23","2026-10-02", 72,100,"Mark", "T1"],
+  ["T4","ฐานและโครงสร้าง / Foundations and steelwork",      "2026-09-28","2026-10-17","2026-10-01",null,        120, 40,"Mark", "T3"],
+  ["T5","ติดตั้งสายพาน / Install conveyors",                "2026-10-12","2026-10-31","2026-10-06",null,        160, 10,"Mark", "T4"],
+  ["T6","งานไฟฟ้าและตู้คอนโทรล / Electrical and panel",     "2026-10-19","2026-11-04",null,      null,        100,  0,"Choke","T5"],
+  ["T7","ระบบลม / Compressed air pipework",                 "2026-10-19","2026-10-28",null,      null,         40,  0,"Mark", "T5"],
+  ["T8","เครื่องชั่งและตรวจโลหะ / Weigher and metal detector","2026-10-26","2026-11-04",null,     null,         56,  0,"Choke","T6"],
+  ["T9","ทดสอบเดินเครื่อง / Dry run and commissioning",     "2026-11-02","2026-11-10",null,      null,         64,  0,"Kanya","T8"],
+  ["T10","อบรมและส่งมอบ / Training and handover",           "2026-11-09","2026-11-14",null,      null,         24,  0,"Kanya","T9"]
+];
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const D = s => new Date(s + "T00:00:00");
+const DAY = 864e5, dd = (a, b) => Math.round((D(b) - D(a)) / DAY);
+const addD = (s, n) => new Date(+D(s) + n * DAY).toISOString().slice(0, 10);
+const fmt = s => D(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+const later = (a, b) => (a > b ? a : b);
+const TODAY = PROJ.today;
+const BY = {}; TASKS.forEach(t => BY[t[0]] = t);
+
+/* ── the forecast ────────────────────────────────────────────────────────────
+   Three rules, in this order, and nothing cleverer — anything cleverer would be a
+   number the app invented rather than one the data supports.
+     finished        → the date it actually finished.
+     running         → elapsed so far, scaled up by how much is done.
+     not started yet → it cannot start before the task it waits for is forecast to end,
+                       keeping the gap (or the overlap) the plan gave it, then it takes
+                       as long as the plan said.
+   Rule 3 is the one that matters: it is what carries a slip down the chain to the
+   handover date instead of letting it vanish. */
+const FC = {};                                   // id → {s, f}
+function fc(t) {
+  const id = t[0]; if (FC[id]) return FC[id];
+  FC[id] = { s: t[2], f: t[3] };                 // guard against a circular "waits for"
+  const [, , ps, pf, as, af, , p, , dep] = t;
+  const len = Math.max(1, dd(ps, pf));
+  let s, f;
+  if (af) { s = as; f = af; }
+  else if (as) {
+    s = as;
+    const elapsed = Math.max(1, dd(as, TODAY));
+    f = addD(as, p > 0 ? Math.max(elapsed, Math.round(elapsed * 100 / p)) : len);
+  } else {
+    s = ps;
+    if (dep && BY[dep]) {
+      const lag = dd(BY[dep][3], ps);            // planned gap (negative = planned overlap)
+      s = later(ps, addD(fc(BY[dep]).f, lag));
+    }
+    f = addD(s, len);
+  }
+  return (FC[id] = { s, f });
+}
+TASKS.forEach(fc);
+const startOf = t => fc(t).s;
+const endOf = t => fc(t).f;
+const slipOf = t => dd(t[3], endOf(t));               // + late, − early, against baseline
+const ownSlip = t => (t[4] ? slipOf(t) : 0);          // slip this task earned itself
+const pushed = t => !t[4] && slipOf(t) > 0;           // slip it inherited from the chain
+
+/* project window has to cover the forecast too, or a late tail runs off the chart */
+const P0 = D(PROJ.start);
+const LAST = TASKS.reduce((m, t) => later(endOf(t), m), PROJ.finish);
+const P1 = D(LAST), SPAN = Math.max(1, Math.round((P1 - P0) / DAY));
+const W = 1060, ML = 236, MR = 58;
+const x = s => ML + (Math.round((D(s) - P0) / DAY) / SPAN) * (W - ML - MR);
+const MONTHS = (() => { const out = [PROJ.start]; const d = new Date(P0.getFullYear(), P0.getMonth() + 1, 1);
+  while (d <= P1) { out.push(d.toISOString().slice(0, 10)); d.setMonth(d.getMonth() + 1); }
+  return out; })();
+const MLBL = m => D(m).toLocaleDateString('en-GB', { month: 'short' });
+const state = t => t[5] ? 'done' : t[4] ? 'run' : 'soon';
+
+/* ── the headline: does the finish date still hold? ── */
+const projForecast = TASKS.reduce((m, t) => later(endOf(t), m), PROJ.start);
+const projSlip = dd(PROJ.finish, projForecast);
+const ownN = TASKS.filter(t => ownSlip(t) > 0).length;
+const pushN = TASKS.filter(pushed).length;
+const worst = TASKS.filter(t => t[4]).sort((a, b) => slipOf(b) - slipOf(a))[0];
+const bad = projSlip > 0;
+$('tiles').innerHTML = [
+  [fmt(PROJ.finish), 'Baseline finish'],
+  [`<span style="color:${bad ? 'var(--crit)' : 'var(--good)'}">${fmt(projForecast)}</span>`, 'Forecast finish'],
+  [`<span style="color:${bad ? 'var(--crit)' : projSlip < 0 ? 'var(--good)' : 'var(--text-secondary)'}">${
+      projSlip > 0 ? '+' + projSlip + ' d' : projSlip < 0 ? projSlip + ' d' : 'on the day'}</span>`,
+   projSlip > 0 ? 'Later than the baseline' : projSlip < 0 ? 'Earlier than the baseline' : 'On the baseline'],
+  [`${ownN} / ${TASKS.length}`, 'Late on their own work'],
+  [`${pushN} / ${TASKS.length}`, 'Pushed late by the chain'],
+  [esc(worst[0]) + ' · ' + (slipOf(worst) > 0 ? '+' : '') + slipOf(worst) + ' d', 'Worst slip so far']
+].map(([v, l]) => `<div class="tile"><b>${v}</b><span>${l}</span></div>`).join('');
+
+/* ── the two-bar timeline ── */
+(() => {
+  const RH = 34, H = 42 + TASKS.length * RH + 18;
+  let g = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img"
+    aria-label="Plan against actual, one pair of bars per task"><rect width="${W}" height="${H}" fill="var(--surface-1)"/>`;
+  MONTHS.forEach(m => { g += `<line x1="${x(m)}" y1="26" x2="${x(m)}" y2="${H - 16}" stroke="var(--grid)" stroke-width="1"/>
+    <text x="${x(m) + 4}" y="18" font-size="11" fill="var(--text-muted)">${MLBL(m)}</text>`; });
+  g += `<line x1="${x(PROJ.finish)}" y1="26" x2="${x(PROJ.finish)}" y2="${H - 16}" stroke="var(--plan)"
+    stroke-width="1.5" stroke-dasharray="2 3" opacity=".7"/>`;
+  TASKS.forEach((t, i) => {
+    const [id, nm, ps, pf, as, af, w, p, who, dep] = t;
+    const y = 36 + i * RH, s = slipOf(t);
+    const px0 = x(ps), px1 = Math.max(px0 + 5, x(pf));
+    g += `<text x="8" y="${y + 13}" font-size="11.5" fill="var(--text-secondary)">${esc(nm.split(' / ')[1] || nm).slice(0, 33)}</text>`;
+    /* baseline on top — thin, so the actual reads as the louder of the two */
+    g += `<rect x="${px0}" y="${y + 1}" width="${px1 - px0}" height="7" rx="3" fill="var(--plan)" opacity=".85"/>`;
+    g += `<rect class="hh" x="${px0}" y="${y - 2}" width="${px1 - px0}" height="12" fill="transparent"
+       data-t="${esc(nm)}&#10;PLAN  ${fmt(ps)} → ${fmt(pf)}  ·  ${w} h${dep ? '  ·  waits for ' + dep : ''}"/>`;
+    /* actual below it — a 2px surface gap keeps the two fills apart */
+    const ae = endOf(t), a0 = startOf(t), ax0 = x(a0), ax1 = Math.max(ax0 + 5, x(ae));
+    if (as) {
+      g += `<rect x="${ax0}" y="${y + 12}" width="${ax1 - ax0}" height="9" rx="4" fill="var(--actual)" opacity="${af ? 1 : .45}"/>`;
+      if (!af && p > 0)   /* the solid part of a running bar is what is actually done */
+        g += `<rect x="${ax0}" y="${y + 12}" width="${Math.max(4, (ax1 - ax0) * p / 100)}" height="9" rx="4" fill="var(--actual)"/>`;
+      g += `<rect class="hh" x="${ax0}" y="${y + 10}" width="${ax1 - ax0}" height="13" fill="transparent"
+         data-t="${esc(nm)}&#10;ACTUAL  ${fmt(as)} → ${af ? fmt(af) : 'forecast ' + fmt(ae)}  ·  ${p}% done  ·  ${esc(who)}"/>`;
+    } else {
+      /* not begun: a hollow bar, sitting where the chain now says it will land */
+      g += `<rect x="${ax0}" y="${y + 12}" width="${ax1 - ax0}" height="9" rx="4" fill="none"
+         stroke="${s > 0 ? 'var(--crit)' : 'var(--ghost)'}" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+      g += `<rect class="hh" x="${ax0}" y="${y + 10}" width="${ax1 - ax0}" height="13" fill="transparent"
+         data-t="${esc(nm)}&#10;NOT STARTED  ·  ${esc(who)}&#10;forecast ${fmt(a0)} → ${fmt(ae)}${
+           s > 0 ? '&#10;pushed ' + s + ' days by ' + (dep || 'the chain') : ''}"/>`;
+    }
+    /* the slip, in words, on the right — never colour alone */
+    const col = s > 0 ? 'var(--crit)' : s < 0 ? 'var(--good)' : 'var(--text-muted)';
+    g += `<text x="${W - MR + 6}" y="${y + 16}" font-size="11" font-weight="600" fill="${col}">${
+      s > 0 ? '+' + s + ' d' : s < 0 ? s + ' d' : 'on time'}</text>`;
+  });
+  g += `<line x1="${x(TODAY)}" y1="24" x2="${x(TODAY)}" y2="${H - 16}" stroke="var(--actual)" stroke-width="2" stroke-dasharray="4 3"/>
+    <text x="${x(TODAY) + 5}" y="${H - 4}" font-size="10.5" fill="var(--actual)">today ${fmt(TODAY)}</text>
+    <text x="${x(PROJ.finish) + 5}" y="${H - 4}" font-size="10.5" fill="var(--plan)">baseline finish</text></svg>`;
+  $('gantt').innerHTML = g;
+})();
+
+/* ── read the chart out loud, so the point is not left to the reader ── */
+(() => {
+  const own = TASKS.filter(t => ownSlip(t) > 0).sort((a, b) => slipOf(b) - slipOf(a));
+  const early = TASKS.filter(t => slipOf(t) < 0);
+  const tail = TASKS.filter(t => !t[4]).slice(-1)[0];
+  $('story').innerHTML =
+    `<p style="margin:0 0 8px">The S-curve said <b>+53 hours ahead</b>. The timeline says handover lands <b style="color:${
+      bad ? 'var(--crit)' : 'var(--good)'}">${projSlip > 0 ? projSlip + ' days late' : projSlip < 0 ? Math.abs(projSlip) + ' days early' : 'on the day'}</b> — `
+    + `${fmt(projForecast)} against a baseline of ${fmt(PROJ.finish)}. Both are true: hours were earned early on tasks that were easy to get at, `
+    + `while the ones that gate the finish ran long.</p>`
+    + `<ul style="margin:0">`
+    + own.slice(0, 3).map(t => `<li><b>${esc(t[1].split(' / ')[1] || t[1])}</b> — planned to end ${fmt(t[3])}, `
+        + (t[5] ? `finished ${fmt(t[5])}` : `now forecast ${fmt(endOf(t))}`) + `, <b style="color:var(--crit)">+${slipOf(t)} days</b>.</li>`).join('')
+    + (early.length ? `<li>${early.length} task${early.length > 1 ? 's' : ''} came in early — `
+        + early.map(t => esc(t[1].split(' / ')[1] || t[1]) + ' ' + slipOf(t) + ' d').join(', ') + `.</li>` : '')
+    + (pushN ? `<li><b>${pushN} tasks have not started and are already late</b>, not through any fault of their own — `
+        + `the task each one waits for now ends later than the plan said. That is the ${projSlip} days arriving at `
+        + `<b>${esc(tail[1].split(' / ')[1] || tail[1])}</b>.</li>` : '')
+    + `<li><b>The one thing to do on Monday:</b> ${esc(own[0] ? own[0][1].split(' / ')[1] || own[0][1] : 'the running work')} is `
+    + `where the chain is being held. Time recovered anywhere else does not move the handover date.</li>`
+    + `</ul>`;
+})();
+
+/* ── the table: identity and slip in words ── */
+(() => {
+  const LB = { done: ['Done', 'p-done'], run: ['Running', 'p-run'], soon: ['Not started', 'p-soon'] };
+  const rows = TASKS.map(t => {
+    const [id, nm, ps, pf, as, af, w, p, who, dep] = t, s = slipOf(t), st = state(t);
+    const col = s > 0 ? 'var(--crit)' : s < 0 ? 'var(--good)' : 'var(--text-muted)';
+    return `<tr><td>${id}</td><td style="white-space:normal">${esc(nm)}</td>
+      <td>${dep || '—'}</td>
+      <td>${fmt(ps)} → ${fmt(pf)}</td>
+      <td>${as ? fmt(as) + ' → ' + (af ? fmt(af) : '…') : '—'}</td>
+      <td>${af ? '' : fmt(startOf(t)) + ' → ' + fmt(endOf(t))}</td>
+      <td class="n" style="color:${col};font-weight:600">${s > 0 ? '+' + s : s < 0 ? s : '0'} d</td>
+      <td>${as ? 'its own work' : s > 0 ? 'waiting on ' + dep : '—'}</td>
+      <td class="n">${w}</td><td class="n">${p}%</td><td>${esc(who)}</td>
+      <td><span class="pill ${LB[st][1]}">${LB[st][0]}</span></td></tr>`;
+  }).join('');
+  $('ttab').innerHTML = `<thead><tr><th>#</th><th>Task</th><th>Waits for</th><th>Plan (baseline)</th><th>Actual</th>
+      <th>Forecast</th><th class="n">Slip</th><th>Slip from</th><th class="n">Hours</th><th class="n">Done</th><th>Who</th><th>State</th></tr></thead>
+    <tbody>${rows}</tbody>`;
+})();
+
+/* ── hover ── */
+(() => {
+  const tip = document.createElement('div'); tip.className = 'tip'; document.body.appendChild(tip);
+  document.addEventListener('mousemove', e => {
+    const t = e.target.closest && e.target.closest('[data-t]');
+    if (!t) { tip.style.opacity = 0; return; }
+    tip.textContent = t.getAttribute('data-t'); tip.style.opacity = 1;
+    tip.style.left = Math.min(e.pageX + 14, window.innerWidth - 300) + 'px';
+    tip.style.top = (e.pageY + 14) + 'px';
+  });
+})();
+</script></div></body></html>

@@ -1,16 +1,33 @@
-# BFLFP CMMS — LAN HTTPS (no Cloudflare, data stays in the building)
-# Run:  caddy run --config deploy\Caddyfile
-# Phones must install Caddy's root certificate once:
-#   it is created at %AppData%\Caddy\pki\authorities\local\root.crt
-#   send that file to each phone -> open -> install as CA certificate.
+# BFLFP CMMS — LAN HTTPS reference (no Cloudflare; data stays in the building)
+#
+# EASIEST: don't edit this file — run:  python deploy\start_caddy.py
+#   (it auto-detects your LAN IP, generates deploy\Caddyfile.local, and
+#    launches Caddy). Or just double-click "Start HTTPS (Caddy).bat".
+#
+# To run THIS reference file by hand instead:
+#     caddy run --config deploy\Caddyfile
+#
+# Either way, each phone must trust Caddy's root CA once — full steps in
+# deploy\HTTPS-SETUP.md. The CA file is created at:
+#     %AppData%\Caddy\pki\authorities\local\root.crt
 
+# Global options: don't bind port 80 (commonly blocked/reserved on Windows) —
+# phones open https:// directly, so the HTTP->HTTPS redirect isn't needed.
+{
+	auto_https disable_redirects
+}
+
+# 1) Friendly hostname — works only if your wifi/router provides mDNS,
+#    or you add a DNS / hosts entry for bflfp.local -> the PC's IP.
 https://bflfp.local {
 	tls internal
 	reverse_proxy localhost:8000
 }
 
-# Optional: also answer on the notebook's LAN IP (replace with your IP)
-# https://192.168.1.50 {
-# 	tls internal
-# 	reverse_proxy localhost:8000
-# }
+# 2) The PC's LAN IP — most reliable for phones. Replace 192.168.1.50 with
+#    YOUR IP (run `ipconfig`). Tip: give this PC a DHCP reservation so the
+#    IP never changes — or just use start_caddy.py, which fills it in for you.
+https://192.168.1.50 {
+	tls internal
+	reverse_proxy localhost:8000
+}

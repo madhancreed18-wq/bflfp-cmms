@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reports page — document-style ideas</title>
+<style>
+  :root{--navy:#1E293B;--hbg:#202020;--bd:#D9E6F2;--or:#1B75BC;--orange:#F97316;
+        --green:#16A34A;--red:#DC2626;--amber:#D97706;--gray:#5C789A;
+        --ink:#333;--rule:#D6D6D6;--head:#EFEFEF;--link:#1155CC}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Prompt',system-ui,-apple-system,'Segoe UI',sans-serif;background:#EEF2F7;
+       color:var(--navy);line-height:1.55;padding:0 0 70px}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+  header.top{background:var(--hbg);color:#fff;padding:22px 0 20px;margin-bottom:24px}
+  header.top .wrap{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  header.top h1{font-size:21px;font-weight:600}
+  header.top .tag{font-size:12px;color:#F97316;border:1px solid rgba(249,115,22,.5);
+        border-radius:999px;padding:3px 11px;letter-spacing:.4px}
+  header.top p{font-size:13px;color:#CBD5E1;flex:1 1 100%;margin-top:4px}
+  h2{font-size:18px;margin:38px 0 6px;padding-bottom:7px;border-bottom:2px solid var(--bd)}
+  h2 .num{color:var(--orange)}
+  p,li{font-size:14px}
+  ul{margin:7px 0 7px 20px}
+  li{margin:3px 0}
+  code{background:#E2E8F0;border-radius:4px;padding:1px 5px;font-size:12.5px;
+       font-family:ui-monospace,Menlo,Consolas,monospace}
+  .lede{font-size:14px;color:#475569;margin:2px 0 12px}
+  .card{background:#fff;border:1px solid var(--bd);border-radius:12px;padding:15px 18px;margin:12px 0}
+  .pros{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px}
+  .pros div{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:11px 14px;font-size:13px}
+  .pros b{display:block;margin-bottom:3px;font-size:12.5px;letter-spacing:.3px}
+  .pros .good b{color:#166534}.pros .bad b{color:#9A3412}
+  @media(max-width:820px){.pros{grid-template-columns:1fr}}
+  .rec{background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:13px 16px;font-size:13.5px;color:#14532D}
+
+  /* ── the paper look, from your reference ─────────────────────── */
+  .sheet{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:26px 30px;margin:10px 0 4px;
+         box-shadow:0 10px 26px rgba(15,42,76,.09);color:var(--ink)}
+  .sheet .hd{display:flex;align-items:flex-start;gap:16px;margin-bottom:18px}
+  .sheet .hd .sp{flex:1}
+  .sheet h3{font-size:19px;font-weight:600;color:#222;letter-spacing:.2px}
+  .sheet .sub{font-size:12px;color:#777;margin-top:2px}
+  .sheet .doc{font-size:11px;color:#999;text-align:right;line-height:1.7}
+  .btnrow{display:flex;gap:7px}
+  .pb{font-size:11.5px;border:1px solid #CFCFCF;background:#fff;border-radius:4px;padding:5px 12px;color:#444}
+  .pb.pri{background:var(--or);border-color:var(--or);color:#fff}
+  dtbl,table.doc{width:100%}
+  table.doc{border-collapse:collapse;font-size:12.5px;width:100%}
+  table.doc th{background:var(--head);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);
+      padding:9px 10px;text-align:left;font-weight:600;color:#444;font-size:12px;white-space:nowrap}
+  table.doc td{border-bottom:1px solid #ECECEC;padding:11px 10px;vertical-align:top;color:var(--ink)}
+  table.doc tr:hover td{background:#FAFBFD}
+  .num{text-align:right;white-space:nowrap}
+  .blue{color:var(--or)}
+  .lnk{color:var(--link);text-decoration:underline;font-size:12px}
+  .d2{line-height:1.25}
+  .d2 small{display:block;color:#777;font-size:11px}
+  tr.tot td{border-top:2px solid var(--rule);border-bottom:none;font-weight:700;padding-top:12px;background:#fff}
+  tr.tot td.lb{text-align:right;color:#555;font-weight:600}
+  tr.sec td{background:#F7F9FB;font-weight:700;font-size:12px;color:#334155;border-bottom:1px solid var(--rule)}
+  tr.sub td{border-top:1px solid var(--rule);font-weight:600;color:#555;background:#fff}
+  .thumb{width:34px;height:26px;border-radius:3px;border:1px solid #DDD;object-fit:cover;display:inline-block;
+         background:linear-gradient(135deg,#dfe6ee,#c3ced9)}
+  .st{font-size:11px;border-radius:3px;padding:1px 7px;white-space:nowrap}
+  .st.done{background:#E7F6EC;color:#166534}
+  .st.acc{background:#EDE9FE;color:#5B21B6}
+  .st.doing{background:#FEF3C7;color:#92400E}
+  .st.open{background:#F1F5F9;color:#64748B}
+  .mut{color:#999}
+  .filters{display:flex;gap:8px;align-items:center;margin-bottom:14px;font-size:12px;color:#666;flex-wrap:wrap}
+  .fsel{border:1px solid #CFCFCF;border-radius:4px;padding:4px 9px;background:#fff;font-size:12px;color:#333}
+  footer{margin-top:44px;font-size:12px;color:var(--gray);text-align:center}
+</style>
+</head>
+<body>
+
+<header class="top"><div class="wrap">
+  <h1>Reports page — four more ideas, in the statement style you sent</h1>
+  <span class="tag">PREVIEW — no code changed</span>
+  <p>BFLFP CMMS · hairline rules, grey header, right-aligned figures, a Total row, a View link per line</p>
+</div></header>
+
+<div class="wrap">
+
+<div class="card">
+  <p>What your reference does that the CMMS Reports page does not: it reads as <b>a document</b>, not a
+  screen — one grey header rule, no boxes, figures aligned on the right, a <b>Total</b> line that closes
+  the page, and a quiet <b>View</b> link where the evidence lives. Four ways to bring that here.</p>
+</div>
+
+<!-- ══════════════ E ══════════════ -->
+<h2><span class="num">Option E</span> · The report itself, as a statement</h2>
+<p class="lede">Open a day and read the document in the page — line items and a Total, exactly like your reference. What prints is what you see.</p>
+
+<div class="sheet">
+  <div class="hd">
+    <div><h3>รายงานการซ่อมบำรุงประจำวัน / Daily maintenance report</h3>
+      <div class="sub">BFLFP · วันศุกร์ที่ 5 กันยายน 2569 · issued 17:49 by techfp1</div></div>
+    <div class="sp"></div>
+    <div class="doc">F-SP-ENG02-06 Rev.01<br>0509-1749</div>
+    <div class="btnrow"><span class="pb">⤓ PDF</span><span class="pb pri">🖨 Print</span></div>
+  </div>
+  <table class="doc">
+    <tr><th>#</th><th>Job no</th><th>Machine</th><th>Type</th><th>Technician</th>
+      <th class="num">Time</th><th class="num">Downtime</th><th>Status</th><th>Photo</th></tr>
+    <tr><td>1</td><td>PRM-2609-031</td><td class="d2">W01MX01<small>เครื่องผสม (Mixer) #1</small></td>
+      <td>PM</td><td>สมชาย</td><td class="num">1:48</td><td class="num mut">—</td>
+      <td><span class="st done">เสร็จ</span></td><td><span class="thumb"></span> <a class="lnk">View</a></td></tr>
+    <tr><td>2</td><td>PRM-2609-032</td><td class="d2">W01LP01<small>เครื่องบรรจุซอง</small></td>
+      <td>PM</td><td>ประยุทธ</td><td class="num">0:55</td><td class="num mut">—</td>
+      <td><span class="st acc">รอตรวจรับ</span></td><td><span class="thumb"></span> <a class="lnk">View</a></td></tr>
+    <tr><td>3</td><td>BKD-2609-006</td><td class="d2">W01SM01<small>เครื่องปิดฝากระป๋อง</small></td>
+      <td>BD</td><td>สมศักดิ์</td><td class="num">2:30</td><td class="num blue">3:10</td>
+      <td><span class="st doing">กำลังทำ</span></td><td><span class="thumb"></span> <a class="lnk">View</a></td></tr>
+    <tr><td>4</td><td>PRD-2609-014</td><td class="d2">W01LB01<small>เครื่องติดฉลาก #1</small></td>
+      <td>CM</td><td class="mut">—</td><td class="num mut">—</td><td class="num mut">—</td>
+      <td><span class="st open">ยังไม่เริ่ม</span></td><td class="mut">—</td></tr>
+    <tr><td>5</td><td>PRM-2609-033</td><td class="d2">W01CH01<small>ตู้แช่ทำความเย็น</small></td>
+      <td>PM</td><td>วิชัย</td><td class="num">0:40</td><td class="num mut">—</td>
+      <td><span class="st done">เสร็จ</span></td><td><span class="thumb"></span> <a class="lnk">View</a></td></tr>
+    <tr class="tot"><td colspan="5" class="lb">Total · 51 jobs (5 shown)</td>
+      <td class="num">18:42</td><td class="num blue">6:25</td>
+      <td colspan="2" class="mut" style="font-weight:400;font-size:11.5px">1 done · 10 doing · 16 to accept · 24 not started</td></tr>
+  </table>
+</div>
+<div class="pros">
+  <div class="good"><b>WHY IT WORKS</b>This is the closest match to your reference, and it is the thing people actually want off this page — the day's record, readable without downloading. Time and downtime totals make the sheet answer "how much work was that", which the PDF already prints but the screen never showed.</div>
+  <div class="bad"><b>THE COST</b>It is a second rendering of a document the PDF already produces, so the two must not drift — build it from the same query the PDF uses, never a parallel one.</div>
+</div>
+
+<!-- ══════════════ F ══════════════ -->
+<h2><span class="num">Option F</span> · The list of reports, as a register</h2>
+<p class="lede">The smallest change of all: keep today's list, restyle it as a document, add the Total line and the View link. No new screens.</p>
+
+<div class="sheet">
+  <div class="hd">
+    <div><h3>Maintenance reports</h3>
+      <div class="sub">What was actually finished each day, kept as it went out · BFLFP</div></div>
+    <div class="sp"></div>
+    <div class="btnrow"><span class="pb">⤓ Excel</span><span class="pb pri">🖨 Issue today</span></div>
+  </div>
+  <div class="filters">
+    <span>Show</span><span class="fsel">Daily report ▾</span>
+    <span>Month</span><span class="fsel">All ▾</span>
+    <span>Issued by</span><span class="fsel">Anyone ▾</span>
+    <span style="flex:1"></span><span class="mut">8 documents · 2 working days with no report</span>
+  </div>
+  <table class="doc">
+    <tr><th>#</th><th>For day</th><th>Report</th><th class="num">Jobs</th><th class="num">Done</th>
+      <th class="num">Doing</th><th class="num">To accept</th><th class="num">Not started</th>
+      <th>Issued</th><th>By</th><th>Document</th></tr>
+    <tr><td>1</td><td class="d2">05 Sep<small>2026 · Fri</small></td><td>0509-1749</td>
+      <td class="num">51</td><td class="num">1</td><td class="num">10</td><td class="num">16</td>
+      <td class="num blue">24</td><td class="d2">17:49<small>same day</small></td><td>techfp1</td>
+      <td><a class="lnk">View</a></td></tr>
+    <tr><td>2</td><td class="d2">04 Sep<small>2026 · Thu</small></td><td>0509-0813</td>
+      <td class="num">26</td><td class="num">2</td><td class="num">4</td><td class="num">6</td>
+      <td class="num blue">14</td><td class="d2">08:13<small style="color:#B91C1C">next morning</small></td><td>techfp1</td>
+      <td><a class="lnk">View</a></td></tr>
+    <tr><td>3</td><td class="d2">03 Sep<small>2026 · Wed</small></td><td>0309-1514</td>
+      <td class="num">12</td><td class="num">3</td><td class="num">0</td><td class="num">0</td>
+      <td class="num blue">9</td><td class="d2">15:14<small>same day</small></td><td>techfp2</td>
+      <td><a class="lnk">View</a></td></tr>
+    <tr><td>4</td><td class="d2">02 Sep<small>2026 · Tue</small></td><td>0209-1156</td>
+      <td class="num">9</td><td class="num">1</td><td class="num">0</td><td class="num">3</td>
+      <td class="num blue">5</td><td class="d2">11:56<small>same day</small></td><td>techfp1</td>
+      <td><a class="lnk">View</a></td></tr>
+    <tr><td>5</td><td class="d2">29 Aug<small>2026 · Sat</small></td><td>2908-1327</td>
+      <td class="num mut">0</td><td class="num mut">0</td><td class="num mut">0</td><td class="num mut">0</td>
+      <td class="num mut">0</td><td class="d2">13:27<small>same day</small></td><td>dom</td>
+      <td><a class="lnk">View</a></td></tr>
+    <tr class="tot"><td colspan="3" class="lb">Total · 8 reports</td>
+      <td class="num">101</td><td class="num">9</td><td class="num">14</td><td class="num">25</td>
+      <td class="num blue">53</td><td colspan="3"></td></tr>
+  </table>
+</div>
+<div class="pros">
+  <div class="good"><b>WHY IT WORKS</b>Every number here is already stored on the row — <code>done_n · doing_n · accept_n · open_n</code> — so the four status columns and the Total line cost nothing but markup. The Techs column of zeros is gone, the two date columns become one with the issued time beneath, and a late report says so.</div>
+  <div class="bad"><b>THE COST</b>Eleven columns is a wide table; below about 1000px it needs to drop Doing and To accept. Still leaves the lower half of the screen empty unless it is paired with the preview pane from Option A.</div>
+</div>
+
+<!-- ══════════════ G ══════════════ -->
+<h2><span class="num">Option G</span> · A month on one page, with subtotals</h2>
+<p class="lede">Every day a section, its jobs beneath it, a subtotal per day and a grand total at the foot — a bank statement for the month. One document to hand an auditor.</p>
+
+<div class="sheet">
+  <div class="hd">
+    <div><h3>Maintenance register · September 2026</h3>
+      <div class="sub">BFLFP · every job closed this month, by the day it was reported on</div></div>
+    <div class="sp"></div>
+    <div class="btnrow"><span class="pb">⤓ Excel</span><span class="pb">⤓ PDF</span><span class="pb pri">🖨 Print month</span></div>
+  </div>
+  <table class="doc">
+    <tr><th>#</th><th>Job no</th><th>Machine</th><th>Type</th><th>Technician</th>
+      <th class="num">Time</th><th class="num">Downtime</th><th>Accepted by</th><th>Document</th></tr>
+
+    <tr class="sec"><td colspan="9">Friday 5 September 2026 &nbsp;·&nbsp; report 0509-1749 issued 17:49 by techfp1</td></tr>
+    <tr><td>1</td><td>PRM-2609-031</td><td>W01MX01 เครื่องผสม</td><td>PM</td><td>สมชาย</td>
+      <td class="num">1:48</td><td class="num mut">—</td><td>คุณวางแผน</td><td><a class="lnk">View</a></td></tr>
+    <tr><td>2</td><td>BKD-2609-006</td><td>W01SM01 เครื่องปิดฝา</td><td>BD</td><td>สมศักดิ์</td>
+      <td class="num">2:30</td><td class="num blue">3:10</td><td>โอเปอเรเตอร์ไลน์ 1</td><td><a class="lnk">View</a></td></tr>
+    <tr class="sub"><td colspan="5" style="text-align:right">Friday 5 September · 2 jobs</td>
+      <td class="num">4:18</td><td class="num blue">3:10</td><td colspan="2"></td></tr>
+
+    <tr class="sec"><td colspan="9">Thursday 4 September 2026 &nbsp;·&nbsp; report 0509-0813 issued <span style="color:#B91C1C">next morning</span></td></tr>
+    <tr><td>3</td><td>PRM-2609-028</td><td>W01AC01 ปั๊มลมสกรู</td><td>PM</td><td>วิชัย</td>
+      <td class="num">0:52</td><td class="num mut">—</td><td>คุณวางแผน</td><td><a class="lnk">View</a></td></tr>
+    <tr><td>4</td><td>PRD-2609-012</td><td>W01CH01 ตู้แช่</td><td>CM</td><td>ประยุทธ</td>
+      <td class="num">1:35</td><td class="num blue">1:05</td><td>โอเปอเรเตอร์ไลน์ 1</td><td><a class="lnk">View</a></td></tr>
+    <tr class="sub"><td colspan="5" style="text-align:right">Thursday 4 September · 2 jobs</td>
+      <td class="num">2:27</td><td class="num blue">1:05</td><td colspan="2"></td></tr>
+
+    <tr class="sec" style="background:#FEF6F6"><td colspan="9" style="color:#991B1B">Saturday 6 September 2026 · 7 jobs closed · <b>no report was issued</b></td></tr>
+
+    <tr class="tot"><td colspan="5" class="lb">September total · 43 jobs · 5 reports · 2 days missed</td>
+      <td class="num">61:20</td><td class="num blue">18:45</td><td colspan="2"></td></tr>
+  </table>
+</div>
+<div class="pros">
+  <div class="good"><b>WHY IT WORKS</b>One print for a month, in the shape QA reads: jobs under their day, a subtotal per day, missing days called out in the flow rather than in a separate panel. Hours and downtime add up across the month without anybody opening a spreadsheet.</div>
+  <div class="bad"><b>THE COST</b>Long — a busy month is several hundred rows, so it needs the day sections collapsible on screen (open when printed). It is a derived view, not a filed document, so it must never be mistaken for the issued report.</div>
+</div>
+
+<!-- ══════════════ H ══════════════ -->
+<h2><span class="num">Option H</span> · Evidence register — the photo is the point</h2>
+<p class="lede">Your reference keeps an image column for the receipt. Here the receipt is the before/after photo and the signature, so the row shows them instead of linking away.</p>
+
+<div class="sheet">
+  <div class="hd">
+    <div><h3>Repair forms · ใบแจ้งซ่อม</h3>
+      <div class="sub">25 filed · every closed repair, with what was found, what was done and who accepted it</div></div>
+    <div class="sp"></div>
+    <div class="btnrow"><span class="pb">⤓ Excel</span><span class="pb pri">🖨 Print selected</span></div>
+  </div>
+  <table class="doc">
+    <tr><th>#</th><th>Date</th><th>Job no</th><th>Machine</th><th>Symptom → what was done</th>
+      <th class="num">Time</th><th>Before</th><th>After</th><th>Signed</th><th></th></tr>
+    <tr><td>1</td><td class="d2">05 Sep<small>2026</small></td><td>BKD-2609-006</td>
+      <td class="d2">W01SM01<small>เครื่องปิดฝากระป๋อง</small></td>
+      <td class="d2">สั่นผิดปกติ<small>เปลี่ยนตลับลูกปืนและขันน็อตฐานมอเตอร์</small></td>
+      <td class="num">2:30</td><td><span class="thumb"></span></td><td><span class="thumb"></span></td>
+      <td class="d2">✔ ช่าง<small>✔ ผู้แจ้ง</small></td><td><a class="lnk">View</a></td></tr>
+    <tr><td>2</td><td class="d2">04 Sep<small>2026</small></td><td>PRD-2609-012</td>
+      <td class="d2">W01CH01<small>ตู้แช่ทำความเย็น</small></td>
+      <td class="d2">น้ำหยดจากท่อ<small>เปลี่ยนซีลและทดสอบรั่ว</small></td>
+      <td class="num">1:35</td><td><span class="thumb"></span></td><td><span class="thumb"></span></td>
+      <td class="d2">✔ ช่าง<small>✔ ผู้แจ้ง</small></td><td><a class="lnk">View</a></td></tr>
+    <tr><td>3</td><td class="d2">03 Sep<small>2026</small></td><td>PRD-2609-009</td>
+      <td class="d2">W01LB01<small>เครื่องติดฉลาก #1</small></td>
+      <td class="d2">ฉลากติดไม่ตรง<small>ตั้งศูนย์ชุดจับขวดใหม่</small></td>
+      <td class="num">0:48</td><td><span class="thumb"></span></td>
+      <td><span class="mut" style="font-size:11px">no after-photo</span></td>
+      <td class="d2">✔ ช่าง<small style="color:#B91C1C">รอผู้แจ้ง</small></td><td><a class="lnk">View</a></td></tr>
+    <tr class="tot"><td colspan="5" class="lb">Total · 25 forms · 3 missing an after-photo · 2 awaiting a requester signature</td>
+      <td class="num">38:15</td><td colspan="4"></td></tr>
+  </table>
+</div>
+<div class="pros">
+  <div class="good"><b>WHY IT WORKS</b>A repair form is only worth filing if the evidence is on it. Thumbnails make a missing after-photo or an unsigned form visible from the list, which is the QA finding you would otherwise get told about six months later.</div>
+  <div class="bad"><b>THE COST</b>Thumbnails mean loading images in a list — needs small versions, or lazy loading, or both. Applies to Repair forms and PM Reports, not to the daily report tab.</div>
+</div>
+
+<h2>Putting it together</h2>
+<div class="rec">
+  <b>F for the list, E for the document, on one screen.</b> The register styling from F costs almost nothing —
+  every figure is already on the row — and it removes the dead Techs column and the puzzle of "51 jobs, 1 done".
+  E is what fills the empty half: click a line, the statement opens beside it, and what you see is what prints.
+  <br><br>
+  <b>G</b> is a print button, not a screen — worth adding the day an auditor asks for the month.
+  <b>H</b> belongs on the Repair forms and PM Reports tabs, where the photo and the two signatures are the record.
+  <br><br>
+  Combined with the earlier set: <b>A + F + E</b> is one coherent page — register list, statement preview,
+  document styling — and only the inline preview is real new wiring.
+</div>
+
+<footer>BFLFP CMMS · preview only — nothing in <code>server/</code> or <code>static/</code> has been modified</footer>
+
+</div>
+</body>
+</html>

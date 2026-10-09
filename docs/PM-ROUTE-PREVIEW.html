@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PM plan — one building at a time</title>
+<style>
+ :root{--ink:#16202c;--mut:#69788a;--ln:#dfe5ec;--bg:#f6f8fa;--a:#0f766e;--b:#b45309;--red:#b91c1c}
+ *{box-sizing:border-box}
+ body{margin:0;font:15px/1.6 -apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+ .wrap{max-width:1080px;margin:0 auto;padding:26px 20px 70px}
+ h1{font-size:25px;margin:0 0 4px}
+ .sub{color:var(--mut);margin:0 0 26px}
+ h2{font-size:18px;margin:34px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--ln)}
+ h3{font-size:14px;margin:20px 0 7px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em}
+ .card{background:#fff;border:1px solid var(--ln);border-radius:9px;padding:16px 18px;margin:12px 0}
+ table{border-collapse:collapse;width:100%;font-size:13.5px}
+ th,td{padding:6px 9px;border-bottom:1px solid var(--ln);text-align:left;vertical-align:top}
+ th{background:#eef2f6;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut)}
+ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+ .scroll{overflow-x:auto}
+ .A{color:var(--a);font-weight:600}.B{color:var(--b);font-weight:600}
+ .bad{color:var(--red);font-weight:600}
+ .two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+ @media(max-width:800px){.two{grid-template-columns:1fr}}
+ .kpi{display:flex;gap:22px;flex-wrap:wrap;margin:10px 0 0}
+ .kpi div{flex:1;min-width:150px}
+ .kpi b{display:block;font-size:26px;line-height:1.2;font-variant-numeric:tabular-nums}
+ .kpi span{color:var(--mut);font-size:12.5px}
+ .note{background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:12px 15px;margin:14px 0}
+ .ok{background:#f0fdf4;border-color:#86efac}
+ .bar{height:13px;background:#e3e9ef;border-radius:3px;overflow:hidden;display:flex;min-width:120px}
+ .bar i{display:block;height:100%}
+ code{background:#eef2f6;padding:1px 5px;border-radius:4px;font-size:12.5px}
+ .foot{color:var(--mut);font-size:12.5px;margin-top:34px;border-top:1px solid var(--ln);padding-top:12px}
+</style></head><body><div class="wrap">
+
+<h1>PM plan — finish one building before starting the next</h1>
+<p class="sub">Measured against the real BFLPC and BFL registers. Nothing has been changed yet — this is for your decision.</p>
+
+<h2>1 · Why Tower A comes up every day</h2>
+<div class="card">
+<p>Each frequency plans its own route, and the routes do not agree with each other.</p>
+<ul style="margin:8px 0 0 0;padding-left:20px">
+<li><b>Weekly</b> work is dealt across the six working days, building by building — a six-day round that repeats every week.</li>
+<li><b>Monthly</b> work is dealt across the twenty-six working days of the month, building by building — a completely separate round.</li>
+<li><b>Quarterly, half-yearly and yearly</b> are not spread at all. Every machine of that frequency falls on <em>one</em> day.</li>
+</ul>
+<p style="margin-bottom:0">So on any given day the weekly round is in one building and the monthly round is in another. Here is the real BFLPC plan, first two weeks:</p>
+</div>
+
+<div class="scroll"><table>
+<tr><th>Date</th><th class="n">Jobs</th><th>Weekly round is in…</th><th>…while the monthly round is in</th></tr>
+<tr><td>Mon 07 Sep</td><td class="n">88</td><td>Packing 25, Liquid 7, Boiler 6, Extruder 6</td><td class="B">Tower B 20, Boiler 17</td></tr>
+<tr><td>Tue 08 Sep</td><td class="n">90</td><td class="A">Tower A 35, Packing 8, Scrubber 7</td><td class="B">Tower B 15, Warehouse 5, Colour 5, Boiler 5</td></tr>
+<tr><td>Wed 09 Sep</td><td class="n">70</td><td class="A">Tower A 50</td><td>Liquid 13, Extruder 5, Intake A 2</td></tr>
+<tr><td>Thu 10 Sep</td><td class="n">71</td><td class="A">Tower A 28, Tower B 23</td><td>Liquid 20</td></tr>
+<tr><td>Fri 11 Sep</td><td class="n">71</td><td class="B">Tower B 50</td><td>Liquid 20, Packing 1</td></tr>
+<tr><td>Sat 12 Sep</td><td class="n">70</td><td class="B">Tower B 49</td><td>Packing 20</td></tr>
+<tr><td>Mon 14 Sep</td><td class="n">71</td><td>Packing 25, Liquid 7, Boiler 6, Extruder 6</td><td>Packing 14, <span class="A">Tower A 6</span></td></tr>
+<tr><td>Tue 15 Sep</td><td class="n">70</td><td class="A">Tower A 35, Packing 8, Scrubber 7</td><td class="A">Tower A 20</td></tr>
+<tr><td>Wed 16 Sep</td><td class="n">71</td><td class="A">Tower A 50</td><td class="A">Tower A 21</td></tr>
+</table></div>
+<p style="color:var(--mut);font-size:13px">Over four weeks: <b>Tower B on 20 of 24 days, Tower A on 16 of 24</b>. Four days send the crew to eight or more buildings.</p>
+
+<h2>2 · A second problem, larger than the first</h2>
+<div class="note">
+<p style="margin:0 0 8px"><b>Quarterly, half-yearly and yearly PM is not spread over anything.</b> Every quarterly machine falls on the same day, three months after the start date. The plan looks calm for six months and then cannot be worked.</p>
+<div class="scroll"><table style="background:#fff">
+<tr><th>Plant</th><th class="n">A normal day</th><th class="n">07 Dec 2026</th><th class="n">08 Mar 2027</th><th class="n">07 Sep 2027</th></tr>
+<tr><td>BFLPC</td><td class="n">70</td><td class="n bad">219</td><td class="n bad">459</td><td class="n bad">429</td></tr>
+<tr><td>BFL</td><td class="n">37</td><td class="n bad">338</td><td class="n bad">370</td><td class="n bad">347</td></tr>
+</table></div>
+<p style="margin:8px 0 0;font-size:13.5px">459 jobs in one day against a normal 70. Nobody has hit these days yet because both plants started PM this month.</p>
+</div>
+
+<h2>3 · The proposal</h2>
+<div class="card">
+<p style="margin-top:0"><b>One route for the whole day, shared by every frequency.</b></p>
+<ol style="margin:8px 0 0;padding-left:20px">
+<li>Add up how much work each building really carries per week — a weekly machine counts 1, a monthly machine counts &frac14;, a quarterly &frac1;&frasl;&#8321;&#8323;, and so on.</li>
+<li>Walk the buildings in order and cut that total into six equal days. A building bigger than a day runs over into the next day and no further; a building too small to fill a day shares it with its neighbours.</li>
+<li>Every job — whatever its frequency — is placed on a day that already belongs to its building. Long-cycle work is then spread across the weeks of its own cycle <em>inside that day</em>, so a quarterly machine still comes round every quarter, but on the Wednesday the crew is already in Tower A.</li>
+</ol>
+<p style="margin-bottom:0">Nothing about how often a machine is serviced changes. Drag-and-drop moves, holidays and the Sunday-off rule all keep working as they do today.</p>
+</div>
+
+<h2>4 · What the week would look like</h2>
+<div class="two">
+<div>
+<h3>BFLPC — 771 machines</h3>
+<div class="scroll"><table>
+<tr><th>Day</th><th class="n">Jobs</th><th>Where the crew is</th></tr>
+<tr><td>Mon</td><td class="n">76–79</td><td>the small buildings together — Boiler, Liquid, Extruder, Packing, Compressor, Canteen</td></tr>
+<tr><td>Tue</td><td class="n">77–80</td><td class="A">Tower A 51 · Packing 19 · Scrubber 7</td></tr>
+<tr><td>Wed</td><td class="n">76–78</td><td class="A">Tower A — all day, nothing else</td></tr>
+<tr><td>Thu</td><td class="n">77</td><td><span class="A">Tower A 23</span> then <span class="B">Tower B 54</span></td></tr>
+<tr><td>Fri</td><td class="n">77–78</td><td class="B">Tower B — all day</td></tr>
+<tr><td>Sat</td><td class="n">77</td><td class="B">Tower B — all day</td></tr>
+</table></div>
+</div>
+<div>
+<h3>BFL — 718 machines</h3>
+<div class="scroll"><table>
+<tr><th>Day</th><th class="n">Jobs</th><th>Where the crew is</th></tr>
+<tr><td>Mon</td><td class="n">45–47</td><td>the small buildings together — GR, DG, Boiler, OZ, PM01, EX</td></tr>
+<tr><td>Tue</td><td class="n">46</td><td class="A">TA01 — all day</td></tr>
+<tr><td>Wed</td><td class="n">45–48</td><td class="A">TA01 — all day</td></tr>
+<tr><td>Thu</td><td class="n">44–47</td><td class="B">TB01 — all day</td></tr>
+<tr><td>Fri</td><td class="n">45–46</td><td class="B">TB01 — all day</td></tr>
+<tr><td>Sat</td><td class="n">45–47</td><td>TC01 — all day</td></tr>
+</table></div>
+</div>
+</div>
+<p style="color:var(--mut);font-size:13px">The shape repeats every week, so a technician learns it: Wednesday is Tower A, Friday is Tower B. Tower A and Tower B share Thursday only because Tower A's remainder is too small to fill it — which is exactly the case you described.</p>
+
+<h2>5 · The numbers, before and after</h2>
+<div class="scroll"><table>
+<tr><th>Over a full year (327 working days)</th><th class="n">BFLPC now</th><th class="n">BFLPC proposed</th><th class="n">BFL now</th><th class="n">BFL proposed</th></tr>
+<tr><td>Jobs on a normal day</td><td class="n">70</td><td class="n">77</td><td class="n">37</td><td class="n">45</td></tr>
+<tr><td>Jobs on the worst day</td><td class="n bad">459</td><td class="n"><b>80</b></td><td class="n bad">370</td><td class="n"><b>48</b></td></tr>
+<tr><td>Days in one building only</td><td class="n">48</td><td class="n"><b>109</b></td><td class="n">50</td><td class="n"><b>163</b></td></tr>
+<tr><td>Days touching 8 buildings or more</td><td class="n">53</td><td class="n"><b>35</b></td><td class="n">16</td><td class="n">28</td></tr>
+<tr><td>Days sent to both towers</td><td class="n">138</td><td class="n"><b>54</b></td><td class="n">141</td><td class="n"><b>55</b></td></tr>
+</table></div>
+<div class="note ok"><p style="margin:0">The day count is a little higher — 77 instead of 70 — because the quarterly and yearly work that used to pile onto three days a year is now carried evenly. The same work, no peak.</p></div>
+
+<h2>6 · Honest limitations</h2>
+<div class="card">
+<ul style="margin:0;padding-left:20px">
+<li><b>Monday stays mixed.</b> Boiler, Liquid Room, Extruder, Canteen and the compressor room together only add up to one day's work, so they share it. On BFL that Monday round grows from 16 days a year to 28 — it is the price of taking those little rooms out of every other day, and it is one planned round rather than a stray job here and there.</li>
+<li><b>It levels by machine count, not by minutes.</b> A day is 77 <em>jobs</em>, not 77 equal jobs. If you want it balanced by checklist length instead, that is a small change once the estimated minutes are on the checklists.</li>
+<li><b>A machine's building comes from its location field.</b> BFL still mixes <code>WH</code> and <code>Ware House</code> as two buildings; tidying those in the register tightens the route.</li>
+<li><b>Jobs already created keep their dates.</b> The new route applies from the day it is switched on forward; nothing that has been planned or worked is disturbed.</li>
+</ul>
+</div>
+
+<p class="foot">Measured 07 Sep 2026 by running the real scheduler and the proposed one against the BFLPC (771 machines with a checklist) and BFL (718) registers, over 327 working days.</p>
+</div></body></html>

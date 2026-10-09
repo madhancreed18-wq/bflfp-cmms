@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Manage → Users — UI options</title>
+<style>
+ *{box-sizing:border-box}
+ body{margin:0;background:#EEF1F5;color:#16202c;font:14px/1.55 "Segoe UI",system-ui,"Noto Sans Thai",sans-serif}
+ .wrap{max-width:1400px;margin:0 auto;padding:26px 18px 80px}
+ h1{font-size:22px;margin:0 0 4px}
+ .sub{color:#64748B;font-size:13.5px;margin:0 0 8px}
+ h2{font-size:16px;margin:38px 0 4px;padding-top:24px;border-top:2px solid #cbd5e1}
+ h2 .n{display:inline-block;background:#1E293B;color:#fff;border-radius:5px;font-size:11.5px;padding:2px 8px;margin-right:9px;vertical-align:2px}
+ .rec{background:#DCFCE7;color:#15803D;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;border-radius:999px;margin-left:8px;vertical-align:3px}
+ .why{color:#475569;font-size:13px;margin:6px 0 16px;max-width:88ch}
+ .why b{color:#0F172A}
+ /* problem strip */
+ .probs{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin:16px 0 4px}
+ .prob{background:#fff;border:1px solid #d9e0e8;border-left:3px solid #DC2626;border-radius:9px;padding:11px 13px}
+ .prob b{display:block;font-size:12.8px;margin-bottom:3px}
+ .prob span{font-size:12px;color:#64748B}
+ /* app chrome */
+ .app{background:#F5F7FA;border:1px solid #cbd5e1;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(15,23,42,.06)}
+ .apptop{background:#fff;border-bottom:1px solid #e3e8ee;padding:9px 14px;display:flex;align-items:center;gap:9px}
+ .tabs{display:flex;gap:6px}
+ .tab{font-size:12.5px;padding:6px 12px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;color:#334155}
+ .tab.on{background:#1E293B;color:#fff;border-color:#1E293B;font-weight:600}
+ .tab .c{opacity:.65;font-size:11px;margin-left:4px}
+ .appbody{padding:14px}
+ /* plant bar */
+ .plantbar{display:flex;align-items:center;gap:7px;flex-wrap:wrap;background:#fff;border:1px solid #dbe2ea;border-radius:10px;padding:8px 11px;margin-bottom:11px}
+ .plantbar .lb{font-size:11.5px;color:#64748B;margin-right:2px}
+ .pc{font-size:12.5px;padding:5px 12px;border-radius:999px;border:1px solid #e2e8f0;background:#fff;color:#334155;display:flex;align-items:center;gap:7px}
+ .pc .dot{width:8px;height:8px;border-radius:50%}
+ .pc.on{background:#1E293B;color:#fff;border-color:#1E293B;font-weight:600}
+ .pc .c{opacity:.6;font-size:11px}
+ .d-fp{background:#2563EB}.d-bfl{background:#0E9F6E}.d-pc{background:#B45309}.d-all{background:#7C3AED}
+ .filt{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:11px}
+ .sel{font-size:12.5px;border:1px solid #dbe2ea;border-radius:8px;padding:6px 9px;background:#fff;color:#1E293B}
+ .search{display:flex;align-items:center;gap:6px;border:1px solid #dbe2ea;border-radius:8px;padding:5px 10px;background:#fff;min-width:200px;font-size:12.5px;color:#94A3B8}
+ .spacer{flex:1}
+ .cnt{font-size:11.5px;color:#94A3B8}
+ .btn{font-size:12.5px;border-radius:8px;padding:7px 13px;border:1px solid #cbd5e1;background:#fff;font-weight:600;color:#334155}
+ .btn.b{background:#1B75BC;border-color:#1B75BC;color:#fff}
+ .btn.g{background:#15803D;border-color:#15803D;color:#fff}
+ /* table */
+ .tbl{background:#fff;border:1px solid #dbe2ea;border-radius:11px;overflow:hidden}
+ table{border-collapse:collapse;width:100%;font-size:12.5px}
+ th{background:#1E293B;color:#fff;font-size:11px;font-weight:600;text-align:left;padding:8px 10px;white-space:nowrap}
+ td{border-top:1px solid #edf1f5;padding:8px 10px;vertical-align:middle}
+ tr.grp td{background:#F1F5F9;font-weight:700;font-size:11.5px;color:#334155;padding:6px 10px}
+ tr.zeb td{background:#FAFBFC}
+ .av{width:26px;height:26px;border-radius:50%;color:#fff;font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;margin-right:8px;vertical-align:-8px}
+ .nm{font-weight:600}
+ .role{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
+ .r-adm{background:#EDE9FE;color:#6D28D9}.r-mgr{background:#FEF3C7;color:#92400E}
+ .r-pln{background:#DBEAFE;color:#1D4ED8}.r-tec{background:#E0F2FE;color:#0369A1}
+ .r-opr{background:#DCFCE7;color:#15803D}.r-eng{background:#FCE7F3;color:#9D174D}
+ .plant{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:5px;white-space:nowrap}
+ .p-fp{background:#EFF6FF;color:#1D4ED8}.p-bfl{background:#ECFDF5;color:#047857}
+ .p-pc{background:#FFF7ED;color:#B45309}.p-all{background:#F5F3FF;color:#6D28D9}
+ code.u{background:#F1F5F9;border:1px solid #e2e8f0;border-radius:5px;padding:1px 6px;font-size:11.5px;color:#0F172A}
+ .via{color:#64748B;font-size:11.5px}
+ .none{color:#CBD5E1;font-size:11.5px}
+ .shared{font-size:10px;background:#FEF3C7;color:#92400E;border-radius:4px;padding:1px 5px;margin-left:5px}
+ .dot-ok{width:7px;height:7px;border-radius:50%;background:#22C55E;display:inline-block;margin-right:5px}
+ .dot-no{width:7px;height:7px;border-radius:50%;background:#CBD5E1;display:inline-block;margin-right:5px}
+ /* drawer */
+ .drawer{position:relative;background:#fff;border:1px solid #dbe2ea;border-radius:11px;padding:14px;margin-top:0}
+ .drawer h4{margin:0 0 2px;font-size:15px}
+ .drawer .m{color:#64748B;font-size:12px;margin:0 0 12px}
+ .kv{display:grid;grid-template-columns:118px 1fr;gap:6px 10px;font-size:12.5px}
+ .kv .k{color:#64748B}
+ .split{display:grid;grid-template-columns:1fr 320px;gap:14px;align-items:start}
+ /* two-pane B */
+ .panes{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+ .pane{background:#fff;border:1px solid #dbe2ea;border-radius:11px;overflow:hidden}
+ .paneh{padding:10px 13px;border-bottom:1px solid #e9eef3;display:flex;align-items:center;gap:8px}
+ .paneh b{font-size:13.5px}
+ .sticky{background:#EEF2F7;font-size:11px;font-weight:700;color:#475569;padding:5px 13px;border-top:1px solid #e3e8ee;border-bottom:1px solid #e3e8ee;letter-spacing:.03em}
+ .prow{padding:8px 13px;border-top:1px solid #f1f5f9;display:flex;align-items:center;gap:9px;font-size:12.5px}
+ .prow .meta{color:#64748B;font-size:11.5px}
+ /* tree C */
+ .treewrap{display:grid;grid-template-columns:236px 1fr;gap:14px;align-items:start}
+ .tree{background:#fff;border:1px solid #dbe2ea;border-radius:11px;padding:8px;font-size:12.5px}
+ .tnode{padding:6px 9px;border-radius:7px;display:flex;align-items:center;gap:7px}
+ .tnode.on{background:#1E293B;color:#fff;font-weight:600}
+ .tnode .c{margin-left:auto;font-size:11px;opacity:.6}
+ .tkid{padding-left:24px;font-size:12px;color:#475569}
+ /* compare */
+ table.cmp{border-collapse:collapse;width:100%;background:#fff;border:1px solid #d9e0e8;border-radius:11px;overflow:hidden;font-size:13px;margin-top:8px}
+ table.cmp th{background:#1E293B;color:#fff;text-align:left;font-size:11.5px;padding:8px 11px}
+ table.cmp td{border-top:1px solid #e6e9ee;padding:10px 11px;vertical-align:top}
+ table.cmp td:first-child{font-weight:600;white-space:nowrap}
+ .ask{background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:13px 15px;margin-top:20px;font-size:13px}
+ .ask b{color:#92400E}
+ .cap{font-size:11.5px;color:#94A3B8;margin-top:7px}
+</style></head><body><div class="wrap">
+
+<h1>Manage → Users, with three plants in it</h1>
+<p class="sub">Three layouts for the same data. Nothing built — this is to look at and choose from.</p>
+
+<div class="probs">
+  <div class="prob"><b>The plant is the last word on the line</b><span>The thing that actually splits this data — BFLFP · BFL · BFLPC — is a small blue word at the end of each row. 39 accounts scroll past in one list.</span></div>
+  <div class="prob"><b>One human, two lists</b><span>“signs in as tech1”, “reports through sup1”, “no login linked” — the link between the two panels is written out as a sentence, so it can only be read one row at a time.</span></div>
+  <div class="prob"><b>A third of the screen says nothing</b><span>Preview sits empty until something is clicked, and it is empty most of the time.</span></div>
+  <div class="prob"><b>Nothing lines up</b><span>Name, username, role and plant run together in prose. Two people with the same role cannot be compared without reading both lines word by word.</span></div>
+</div>
+
+<!-- ══════════════ A ══════════════ -->
+<h2><span class="n">A</span> Plant first, then one list of people<span class="rec">recommended</span></h2>
+<p class="why">Pick the plant at the top; everything below belongs to it. Then <b>one row per human</b> — because a login and a person are the same person seen twice. The account becomes a <b>column</b>, so “who has no login”, “who shares tech1” and “who reports through sup1” are all answerable by looking down a column instead of reading sentences. Preview stops being a permanent empty third and opens only when you click someone.</p>
+
+<div class="app">
+  <div class="apptop">
+    <div class="tabs"><span class="tab on">Users <span class="c">57</span></span><span class="tab">Machines <span class="c">1671</span></span><span class="tab">Problem types <span class="c">105</span></span><span class="tab">Logs</span></div>
+  </div>
+  <div class="appbody">
+    <div class="plantbar">
+      <span class="lb">โรงงาน / Plant</span>
+      <span class="pc"><span class="dot d-all"></span>ทุกโรงงาน · All <span class="c">57</span></span>
+      <span class="pc on"><span class="dot d-fp"></span>BFLFP <span class="c">21</span></span>
+      <span class="pc"><span class="dot d-bfl"></span>BFL <span class="c">24</span></span>
+      <span class="pc"><span class="dot d-pc"></span>BFLPC <span class="c">12</span></span>
+      <span class="spacer"></span>
+      <span class="btn b">+ เพิ่มคน / Add person</span>
+    </div>
+    <div class="filt">
+      <span class="sel">หน้าที่ / Role · ทั้งหมด (21) ▾</span>
+      <span class="sel">การเข้าระบบ / Login · ทุกแบบ ▾</span>
+      <span class="sel">หน่วยงาน / Department · ทั้งหมด ▾</span>
+      <span class="search">🔍 ค้นหาชื่อ หรือ username / search</span>
+      <span class="spacer"></span>
+      <span class="cnt">21 คน / people · BFLFP</span>
+    </div>
+
+    <div class="split">
+      <div class="tbl">
+        <table>
+          <tr><th style="width:26%">ชื่อ / Name</th><th>หน้าที่ / Role</th><th>โรงงาน</th><th style="width:20%">เข้าระบบด้วย / Signs in as</th><th>หน่วยงาน / Dept · Trade</th><th>ใช้งาน</th></tr>
+          <tr><td><span class="av" style="background:#7C3AED">ผ</span><span class="nm">ผู้ดูแลระบบ (Admin)</span></td><td><span class="role r-adm">admin</span></td><td><span class="plant p-all">ทุกโรงงาน</span></td><td><code class="u">admin1</code></td><td class="none">—</td><td><span class="dot-ok"></span>active</td></tr>
+          <tr class="zeb"><td><span class="av" style="background:#9D174D">ผ</span><span class="nm">ผู้จัดการโรงงาน (Manager)</span></td><td><span class="role r-eng">engcenter</span></td><td><span class="plant p-fp">BFLFP</span></td><td><code class="u">manager1</code></td><td class="none">—</td><td><span class="dot-ok"></span>active</td></tr>
+          <tr><td><span class="av" style="background:#92400E">Y</span><span class="nm">Yok</span></td><td><span class="role r-mgr">manager</span></td><td><span class="plant p-fp">BFLFP</span></td><td><code class="u">fpmgr1</code></td><td class="none">—</td><td><span class="dot-ok"></span>active</td></tr>
+          <tr class="zeb"><td><span class="av" style="background:#92400E">a</span><span class="nm">apichat</span></td><td><span class="role r-mgr">manager</span></td><td><span class="plant p-fp">BFLFP</span></td><td><code class="u">fpmgr2</code></td><td class="none">—</td><td><span class="dot-ok"></span>active</td></tr>
+          <tr><td><span class="av" style="background:#1D4ED8">ค</span><span class="nm">คุณวางแผน (Planner)</span></td><td><span class="role r-pln">planner</span></td><td><span class="plant p-fp">BFLFP</span></td><td><code class="u">planner1</code></td><td class="none">—</td><td><span class="dot-ok"></span>active</td></tr>
+          <tr class="zeb"><td><span class="av" style="background:#0369A1">K</span><span class="nm">Kanya</span></td><td><span class="role r-tec">technician</span></td><td><span class="plant p-fp">BFLFP</span></td><td><code class="u">tech1</code><span class="shared">shared ×3</span></td><td>Mechanical</td><td><span class="dot-ok"></span>active</td></tr>
+          <tr><td><span class="av" style="background:#0369A1">C</span><span class="nm">Choke</span></td><td><span class="role r-tec">technician</span></td><td><span class="plant p-fp">BFLFP</span></td><td><code class="u">tech1</code><span class="shared">shared ×3</span></td><td>Electrical</td><td><span class="dot-ok"></span>active</td></tr>
+          <tr class="zeb"><td><span class="av" style="background:#0369A1">M</span><span class="nm">Mark</span></td><td><span class="role r-tec">technician</span></td><td><span class="plant p-fp">BFLFP</span></td><td><code class="u">tech1</code><span class="shared">shared ×3</span></td><td>Mechanical</td><td><span class="dot-ok"></span>active</td></tr>
+          <tr><td><span class="av" style="background:#15803D">B</span><span class="nm">Benz</span></td><td><span class="role r-opr">operator</span></td><td><span class="plant p-fp">BFLFP</span></td><td class="via">ผ่าน / via <code class="u">sup1</code></td><td>Production</td><td><span class="dot-ok"></span>active</td></tr>
+          <tr class="zeb"><td><span class="av" style="background:#15803D">D</span><span class="nm">Dom</span></td><td><span class="role r-opr">operator</span></td><td><span class="plant p-fp">BFLFP</span></td><td class="via">ผ่าน / via <code class="u">dom</code></td><td>Production</td><td><span class="dot-ok"></span>active</td></tr>
+          <tr><td><span class="av" style="background:#15803D">T</span><span class="nm">Tom</span></td><td><span class="role r-opr">operator</span></td><td><span class="plant p-fp">BFLFP</span></td><td class="via">ผ่าน / via <code class="u">tom</code></td><td>Production</td><td><span class="dot-ok"></span>active</td></tr>
+          <tr class="zeb"><td><span class="av" style="background:#94A3B8">c</span><span class="nm">coating</span></td><td><span class="role r-opr">operator</span></td><td><span class="plant p-fp">BFLFP</span></td><td><span class="none">ไม่มีบัญชี / no login</span></td><td>Production</td><td><span class="dot-no"></span>no access</td></tr>
+        </table>
+      </div>
+
+      <div class="drawer">
+        <h4>Kanya</h4>
+        <p class="m">technician · BFLFP · Mechanical</p>
+        <div class="kv">
+          <span class="k">เข้าระบบด้วย</span><span><code class="u">tech1</code> · shared with Choke, Mark</span>
+          <span class="k">โรงงาน / Plant</span><span>BFLFP</span>
+          <span class="k">หน่วยงาน</span><span>Mechanical</span>
+          <span class="k">งานที่ทำอยู่</span><span>4 open · 38 done this month</span>
+          <span class="k">ทีม / Crew</span><span>Crew A (lead)</span>
+          <span class="k">ลายเซ็น</span><span class="none">ยังไม่ได้ตั้ง / not set</span>
+        </div>
+        <div class="filt" style="margin:12px 0 0"><span class="btn">แก้ไข / Edit</span><span class="btn">ย้ายโรงงาน / Move plant</span></div>
+      </div>
+    </div>
+    <div class="cap">The panel on the right appears only after a click. With nothing selected the table takes the full width.</div>
+  </div>
+</div>
+
+<!-- ══════════════ B ══════════════ -->
+<h2><span class="n">B</span> Keep the two panes — group each by plant</h2>
+<p class="why">The smallest change from what you have. Both lists stay, but each is <b>cut into plant sections with a sticky heading</b>, and the plant chips at the top filter both at once. It fixes the scrolling problem and touches nothing else — but a login and the person behind it are still in different columns, so “who shares tech1” is still a sentence you read one row at a time.</p>
+
+<div class="app">
+  <div class="appbody">
+    <div class="plantbar">
+      <span class="lb">โรงงาน / Plant</span>
+      <span class="pc on"><span class="dot d-all"></span>ทุกโรงงาน · All <span class="c">57</span></span>
+      <span class="pc"><span class="dot d-fp"></span>BFLFP <span class="c">21</span></span>
+      <span class="pc"><span class="dot d-bfl"></span>BFL <span class="c">24</span></span>
+      <span class="pc"><span class="dot d-pc"></span>BFLPC <span class="c">12</span></span>
+      <span class="spacer"></span><span class="search">🔍 search both lists</span>
+    </div>
+    <div class="panes">
+      <div class="pane">
+        <div class="paneh"><b>Login accounts</b> <span class="cnt">39</span><span class="spacer"></span><span class="btn b" style="padding:5px 10px">+ Add account</span></div>
+        <div class="sticky">◆ ทุกโรงงาน / ALL PLANTS · 5</div>
+        <div class="prow"><span class="av" style="background:#7C3AED">ผ</span><div><b>ผู้ดูแลระบบ (Admin)</b><div class="meta"><code class="u">admin1</code> · <span class="role r-adm">admin</span></div></div></div>
+        <div class="prow"><span class="av" style="background:#92400E">N</span><div><b>Nathawut</b><div class="meta"><code class="u">planner5</code> · <span class="role r-mgr">manager</span></div></div></div>
+        <div class="sticky">◆ BFLFP · 12</div>
+        <div class="prow"><span class="av" style="background:#9D174D">ผ</span><div><b>ผู้จัดการโรงงาน (Manager)</b><div class="meta"><code class="u">manager1</code> · <span class="role r-eng">engcenter</span></div></div></div>
+        <div class="prow"><span class="av" style="background:#92400E">Y</span><div><b>Yok</b><div class="meta"><code class="u">fpmgr1</code> · <span class="role r-mgr">manager</span></div></div></div>
+        <div class="sticky">◆ BFLPC · 14</div>
+        <div class="prow"><span class="av" style="background:#92400E">E</span><div><b>Earth</b><div class="meta"><code class="u">planner3</code> · <span class="role r-mgr">manager</span></div></div></div>
+        <div class="prow"><span class="av" style="background:#92400E">k</span><div><b>k'bee</b><div class="meta"><code class="u">sukanya</code> · <span class="role r-mgr">manager</span></div></div></div>
+      </div>
+      <div class="pane">
+        <div class="paneh"><b>People</b> <span class="cnt">18</span><span class="spacer"></span><span class="btn b" style="padding:5px 10px">+ Technician</span><span class="btn g" style="padding:5px 10px">+ Operator</span></div>
+        <div class="sticky">◆ BFLFP · 6</div>
+        <div class="prow"><span class="av" style="background:#0369A1">C</span><div><b>Choke</b><div class="meta"><span class="role r-tec">technician</span> Electrical · signs in as <code class="u">tech1</code></div></div></div>
+        <div class="prow"><span class="av" style="background:#15803D">B</span><div><b>Benz</b><div class="meta"><span class="role r-opr">operator</span> Production · via <code class="u">sup1</code></div></div></div>
+        <div class="sticky">◆ BFL · 11</div>
+        <div class="prow"><span class="av" style="background:#15803D">e</span><div><b>extruder</b><div class="meta"><span class="role r-opr">operator</span> Production · via <code class="u">extruder</code></div></div></div>
+        <div class="prow"><span class="av" style="background:#94A3B8">c</span><div><b>coating</b><div class="meta"><span class="role r-opr">operator</span> Production · <span class="none">no login</span></div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ C ══════════════ -->
+<h2><span class="n">C</span> A directory — plant and role down the side</h2>
+<p class="why">The left rail is the whole company: plant, then the roles inside it, each with its own count. Click <b>BFLFP → ช่าง / Technicians</b> and the table is exactly those people. Best of the three if a fourth plant is coming or the roles keep growing, because the rail absorbs it without a redesign — but it costs a permanent 236px of width, which the first layout gives back to the table.</p>
+
+<div class="app">
+  <div class="appbody">
+    <div class="treewrap">
+      <div class="tree">
+        <div class="tnode"><b>ทุกโรงงาน / All plants</b><span class="c">57</span></div>
+        <div class="tnode on"><span class="dot d-fp" style="width:8px;height:8px;border-radius:50%"></span>BFLFP<span class="c">21</span></div>
+        <div class="tnode tkid">ผู้จัดการ / Managers<span class="c">3</span></div>
+        <div class="tnode tkid">ผู้วางแผน / Planners<span class="c">2</span></div>
+        <div class="tnode tkid" style="background:#EFF6FF;border-radius:7px">ช่าง / Technicians<span class="c">3</span></div>
+        <div class="tnode tkid">ผู้แจ้ง / Operators<span class="c">13</span></div>
+        <div class="tnode"><span class="dot d-bfl" style="width:8px;height:8px;border-radius:50%"></span>BFL<span class="c">24</span></div>
+        <div class="tnode"><span class="dot d-pc" style="width:8px;height:8px;border-radius:50%"></span>BFLPC<span class="c">12</span></div>
+        <div style="border-top:1px solid #eef1f4;margin:8px 0 4px"></div>
+        <div class="tnode" style="color:#B45309">⚠ ไม่มีบัญชี / no login<span class="c">4</span></div>
+        <div class="tnode" style="color:#B45309">⚠ ปิดใช้งาน / inactive<span class="c">2</span></div>
+      </div>
+      <div class="tbl">
+        <table>
+          <tr><th style="width:28%">ชื่อ / Name</th><th>เข้าระบบด้วย</th><th>หน่วยงาน / Trade</th><th>ทีม / Crew</th><th>งานเปิดอยู่</th><th>ใช้งาน</th></tr>
+          <tr><td><span class="av" style="background:#0369A1">K</span><span class="nm">Kanya</span></td><td><code class="u">tech1</code><span class="shared">×3</span></td><td>Mechanical</td><td>Crew A (lead)</td><td>4</td><td><span class="dot-ok"></span>active</td></tr>
+          <tr class="zeb"><td><span class="av" style="background:#0369A1">C</span><span class="nm">Choke</span></td><td><code class="u">tech1</code><span class="shared">×3</span></td><td>Electrical</td><td>Crew A</td><td>2</td><td><span class="dot-ok"></span>active</td></tr>
+          <tr><td><span class="av" style="background:#0369A1">M</span><span class="nm">Mark</span></td><td><code class="u">tech1</code><span class="shared">×3</span></td><td>Mechanical</td><td>Crew B (lead)</td><td>6</td><td><span class="dot-ok"></span>active</td></tr>
+        </table>
+        <div style="padding:9px 11px;border-top:1px solid #edf1f5;font-size:11.5px;color:#94A3B8">BFLFP · ช่าง / Technicians · 3 คน — all three share one login, which is why per-technician workload never separates</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- compare -->
+<h2>Side by side</h2>
+<table class="cmp">
+  <tr><th style="width:16%">Layout</th><th style="width:30%">What it fixes</th><th>What it costs</th><th style="width:11%">Work</th></tr>
+  <tr><td>A · Plant bar + one list <span class="rec" style="margin:0">pick</span></td>
+      <td>Plant becomes the first choice, not the last word. One row per person, so login / no login / shared login is a column you scan. Empty Preview gone.</td>
+      <td>The two “+ Add” buttons merge into one <b>+ Add person</b>, and the account fields move inside that form. That is a real change to how you add someone.</td><td>medium</td></tr>
+  <tr><td>B · Two panes, grouped</td>
+      <td>The scroll. Plant chips filter both lists at once, sticky headings tell you where you are.</td>
+      <td>Everything else stays as it is — a login and its person still sit in different columns, and Preview is still empty most of the time.</td><td>small</td></tr>
+  <tr><td>C · Directory rail</td>
+      <td>Everything A fixes, plus role counts per plant standing in the open, and a place for “no login” and “inactive” to be seen rather than hunted.</td>
+      <td>236px of permanent width, and one more click to reach a person. Only pays off with more plants or more roles.</td><td>medium+</td></tr>
+</table>
+
+<div class="ask">
+  <b>One thing the mock-up made obvious.</b> All three BFLFP technicians sign in as <code class="u">tech1</code>. That is why per-technician workload never separates — the app can see three people, but only one of them ever presses Start. Worth a separate conversation from this page.
+  <div style="margin-top:9px">Tell me <b>A, B or C</b> and I'll build it the usual way — sandbox first, tested, then onto the server.</div>
+</div>
+
+<p style="margin-top:20px;color:#94A3B8;font-size:11.5px">Preview only · drawn from the screenshot; names and counts are yours, a few rows are filled in to show the shape · BFLFP CMMS</p>
+</div></body></html>

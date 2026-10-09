@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Checklist Edit Preview</title>
+<style>
+:root{--blue:#2563EB;--orange:#EA6A0A;--green:#16A34A;--red:#DC2626;--ink:#1F2937;--ink2:#334155;--mut:#64748B;--line:#E5E9F0;--bg:#F4F6F9;--card:#fff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 "Segoe UI",system-ui,-apple-system,sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:18px 16px 60px}
+h1{font-size:20px;margin:0 0 4px}
+.sub{color:var(--mut);font-size:13px;margin-bottom:18px}
+.step{display:flex;align-items:center;gap:10px;margin:26px 0 10px}
+.step .n{width:26px;height:26px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px;flex:none}
+.step h2{font-size:16px;margin:0}
+.step .tag{font-size:11px;color:var(--mut);border:1px solid var(--line);border-radius:20px;padding:1px 9px;background:#fff}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px}
+.btn{font:inherit;font-size:13px;border:1px solid #CBD5E1;background:#fff;color:var(--ink2);border-radius:7px;padding:5px 12px;cursor:pointer;white-space:nowrap}
+.btn:hover{background:#F1F5F9}
+.btn.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.pri:hover{background:#1D4ED8}
+.btn.org{background:var(--orange);border-color:var(--orange);color:#fff}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.sm{padding:3px 8px;font-size:12px}
+.btn.danger{color:var(--red);border-color:#FECACA}
+.btn:disabled{opacity:.45;cursor:default}
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.grow{flex:1 1 auto}
+.muted{color:var(--mut);font-size:12px}
+.th-en{display:block;color:#94A3B8;font-size:11px;line-height:1.3}
+.pill{display:inline-block;font-size:11px;border-radius:20px;padding:1px 8px;font-weight:600}
+.xls{border-collapse:collapse;width:100%;background:#fff;min-width:860px}
+.xls td,.xls th{border:1px solid #8a94a6;padding:4px 6px;vertical-align:middle;font-size:12.5px;line-height:1.4}
+.xls th{background:#f1f4f8;font-weight:600;text-align:center}
+.xls td.seq{text-align:center;font-weight:700;width:38px}
+.xls td.tick{text-align:center;width:34px}
+.scroll{overflow:auto}
+.banner{display:flex;gap:10px;align-items:flex-start;background:#FFF7ED;border:1px solid #FED7AA;border-radius:9px;padding:9px 12px;font-size:13px;color:#7C2D12;margin-bottom:10px}
+.banner.blue{background:#EFF6FF;border-color:#BFDBFE;color:#1E3A8A}
+.banner.green{background:#F0FDF4;border-color:#BBF7D0;color:#14532D}
+input.cell,select.cell{font:inherit;font-size:12.5px;width:100%;border:1px solid #CBD5E1;border-radius:5px;padding:4px 6px;background:#fff}
+input.cell:focus,select.cell:focus{outline:2px solid #93C5FD;border-color:var(--blue)}
+tr.changed td{background:#FFFBEB}
+tr.added td{background:#F0FDF4}
+tr.removed td{background:#F8FAFC;color:#94A3B8}
+tr.removed td .txt{text-decoration:line-through}
+.fchips{display:flex;gap:4px;flex-wrap:wrap}
+.fchip{border:1px solid #CBD5E1;border-radius:5px;padding:2px 7px;font-size:11.5px;cursor:pointer;background:#fff;color:var(--ink2)}
+.fchip.on{font-weight:700;border-color:#1F2937}
+.savebar{position:sticky;bottom:10px;display:flex;align-items:center;gap:10px;background:#1F2937;color:#fff;border-radius:10px;padding:9px 14px;margin-top:10px;box-shadow:0 6px 20px rgba(15,23,42,.25)}
+.savebar .btn{border-color:#475569;background:#334155;color:#fff}
+.savebar .btn.pri{background:var(--blue);border-color:var(--blue)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:820px){.two{grid-template-columns:1fr}}
+.kv{display:flex;justify-content:space-between;border-bottom:1px solid #F1F5F9;padding:5px 0;font-size:13px}
+.kv b{font-variant-numeric:tabular-nums}
+.hist{font-size:12.5px;border-left:3px solid var(--line);padding:4px 0 4px 10px;margin:6px 0}
+.old{color:var(--red);text-decoration:line-through}
+.new{color:var(--green)}
+.q{background:#fff;border:1px dashed #94A3B8;border-radius:9px;padding:10px 14px;margin:8px 0;font-size:13px}
+.q b{color:var(--ink)}
+dialog{border:none;border-radius:12px;padding:0;width:min(520px,94vw);box-shadow:0 20px 50px rgba(15,23,42,.35)}
+dialog::backdrop{background:rgba(15,23,42,.45)}
+.dh{background:#1F2937;color:#fff;padding:11px 16px;font-weight:700}
+.db{padding:14px 16px;font-size:13px}
+.df{display:flex;justify-content:flex-end;gap:8px;padding:10px 16px;border-top:1px solid var(--line)}
+.rec td{font-size:12.5px}
+.ok{color:var(--green);font-weight:700}
+.ng{color:var(--red);font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Preview: edit PM checklists safely</h1>
+  <div class="sub">Mock-up for review before building. Nothing here touches the real system. Example: BFL · sheet BUCKET ELEVATOR. Thai text is shown with its English meaning underneath.</div>
+
+  <!-- ───────────── 1. the sheet ───────────── -->
+  <div class="step"><span class="n">1</span><h2>PM sheet screen: new "Edit checklist" button</h2><span class="tag">Planner + Admin only</span></div>
+
+  <div class="card">
+    <div class="bar">
+      <button class="btn sm">‹ Machine list</button>
+      <b style="font-size:15px">กระพ้อ A08BE01</b><span class="muted">bucket elevator · A08BE01 · sheet: BUCKET ELEVATOR</span>
+      <span class="grow"></span>
+      <button class="btn sm" onclick="toggleHist()">🕘 History</button>
+      <button class="btn sm">🖨 Print</button>
+      <button class="btn sm org" id="editBtn" onclick="setEdit(true)">✏️ Edit checklist</button>
+    </div>
+  </div>
+
+  <div id="editBanner" class="banner" style="display:none">
+    <span style="font-size:18px">⚠️</span>
+    <div><b>You are editing the BUCKET ELEVATOR sheet, used by 22 machines</b> (A08BE01, A08BE02, A10BE03 … C06BE02).<br>
+    Changes apply to all 22 from their next PM job. Finished PM records never change.</div>
+  </div>
+
+  <div id="histBox" class="card" style="display:none">
+    <b style="font-size:13px">Change history · BUCKET ELEVATOR</b>
+    <div class="hist"><span class="muted">planner1 · 12 Sep 2026 10:42 · edited #8</span><br>
+      <span class="old">ตรวจสอบระดับน้ำมันเกียร์</span> → <span class="new">ตรวจสอบระดับน้ำมันเกียร์ และรอยรั่ว</span>
+      <span class="th-en">check gear oil level → check gear oil level and leaks</span></div>
+    <div class="hist"><span class="muted">admin1 · 05 Sep 2026 15:10 · uploaded master file</span><br>14 items · 0 changed</div>
+  </div>
+
+  <div class="card scroll">
+    <table class="xls" id="sheet"></table>
+    <div id="addRow" style="display:none;margin-top:10px">
+      <button class="btn sm" onclick="addItem()">➕ Add item</button>
+      <span class="muted" style="margin-left:6px">A new item is added at the end. Use ▲ ▼ to move it into place.</span>
+    </div>
+    <div style="margin-top:8px" class="muted" id="legend"></div>
+  </div>
+
+  <div id="saveBar" class="savebar" style="display:none">
+    <span id="saveCount">No changes</span>
+    <span class="grow"></span>
+    <button class="btn" onclick="cancelEdit()">Cancel</button>
+    <button class="btn pri" id="saveBtn" onclick="openConfirm()" disabled>Save changes</button>
+  </div>
+
+  <!-- ───────────── 2. confirm ───────────── -->
+  <div class="step"><span class="n">2</span><h2>Save: confirm what changes</h2><span class="tag">Pops up when you press Save</span></div>
+  <div class="card">
+    <div class="muted" style="margin-bottom:6px">Press <b>✏️ Edit checklist</b> above, change something, then <b>Save changes</b> to see this dialog for real. It lists every change before anything is written:</div>
+    <div class="kv"><span>✏️ Wording changed</span><b>#8 gear oil level → + leaks</b></div>
+    <div class="kv"><span>➕ Added</span><b>#15 check guard / cover (monthly · check)</b></div>
+    <div class="kv"><span>🗑️ Removed</span><b>none</b></div>
+    <div class="kv"><span>Machines affected</span><b>22</b></div>
+    <div class="kv"><span>Finished PM records</span><b class="ok">unchanged</b></div>
+  </div>
+
+  <!-- ───────────── 3. records stay whole ───────────── -->
+  <div class="step"><span class="n">3</span><h2>Finished PM records keep the wording that was answered</h2><span class="tag">Safety fix</span></div>
+  <div class="two">
+    <div class="card">
+      <div class="bar"><b style="font-size:13px">PM record · PRM-2609-014 · A08BE01</b><span class="grow"></span><span class="pill" style="background:#DCFCE7;color:#166534">Done 09 Sep</span></div>
+      <table class="xls rec" style="min-width:0;margin-top:8px">
+        <tr><th>#</th><th style="text-align:left">Item (as it was on 09 Sep)</th><th>Result</th></tr>
+        <tr><td class="seq">7</td><td>ตรวจสอบสภาพ มอเตอร์เกียร์<span class="th-en">check gear motor condition</span></td><td class="tick ok">OK</td></tr>
+        <tr><td class="seq">8</td><td>ตรวจสอบระดับน้ำมันเกียร์<span class="th-en">check gear oil level</span>
+          <span class="pill" style="background:#EFF6FF;color:#1D4ED8;margin-top:3px">wording since changed</span></td><td class="tick ng">NG</td></tr>
+        <tr><td class="seq">9</td><td>ตรวจเช็ค สภาพเฟืองขับและเฟืองตาม<span class="th-en">check drive & driven sprockets</span></td><td class="tick ok">OK</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <b style="font-size:13px">How it works</b>
+      <ul style="margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--ink2)">
+        <li><b>Today:</b> a saved OK/NG answer points to the checklist item. Re-uploading the Excel deletes and recreates the items, so past answers lose their item (FP live: 481 answers at risk).</li>
+        <li><b>New:</b> each answer also stores the item's wording, number and frequency at the moment it was answered.</li>
+        <li>Records, PM report PDFs and the PM report list read that stored wording, so they never change.</li>
+        <li>Existing 481 FP answers get their wording copied in on first start, <b>before</b> any upload can touch them.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ───────────── 4. excel upload ───────────── -->
+  <div class="step"><span class="n">4</span><h2>Excel master upload: keeps unchanged items, reports the difference</h2><span class="tag">Safety fix</span></div>
+  <div class="card">
+    <div class="banner green" style="margin-bottom:8px"><span style="font-size:18px">✅</span><div><b>Upload finished · BFL · SD-SP-ENG02-01 master 2026</b></div></div>
+    <div class="two">
+      <div>
+        <div class="kv"><span>Sheets</span><b>51</b></div>
+        <div class="kv"><span>Items unchanged (kept as they are)</span><b>355</b></div>
+        <div class="kv"><span>Wording or frequency changed</span><b>3</b></div>
+        <div class="kv"><span>New items</span><b>1</b></div>
+        <div class="kv"><span>Items no longer in the file (hidden from future PM)</span><b>0</b></div>
+        <div class="kv"><span>Finished PM records</span><b class="ok">untouched</b></div>
+      </div>
+      <div>
+        <div class="banner" style="margin:0"><span style="font-size:18px">⚠️</span>
+          <div><b>2 items were edited in the app since the last upload</b> and this file has the old wording:<br>
+          BUCKET ELEVATOR #8 · FIRE PUMP #3<br>
+          <span class="muted" style="color:#7C2D12">The file wins. Update the Excel too, or re-apply the edit in the app.</span></div></div>
+      </div>
+    </div>
+    <div class="muted" style="margin-top:8px">An item is matched by <b>sheet + item number + wording</b>. Same wording = same item (kept, answers stay linked). Changed wording at the same number = "changed". A number not in the file any more = hidden, never deleted.</div>
+  </div>
+
+  <!-- ───────────── 5. questions ───────────── -->
+  <div class="step"><span class="n">5</span><h2>Please decide before I build</h2></div>
+  <div class="q"><b>A. PM job already started when the sheet is edited.</b><br>
+    Proposal: a job that has started keeps the list it started with; jobs not yet started get the new list. So a technician mid-round is never suddenly blocked by a new item.</div>
+  <div class="q"><b>B. Who can edit.</b><br>
+    Proposal: <b>planner</b> (only their own factory) and <b>admin</b> (the factory selected at login). Manager and technician: view only.</div>
+  <div class="q"><b>C. Excel vs app.</b><br>
+    Proposal: both allowed; the last one saved wins, and the upload warns (as in step 4) when it overwrites an in-app edit.</div>
+</div>
+
+<dialog id="dlg">
+  <div class="dh">Save changes to BUCKET ELEVATOR?</div>
+  <div class="db" id="dlgBody"></div>
+  <div class="df"><button class="btn" onclick="dlg.close()">Back</button><button class="btn pri" onclick="doSave()">Save for 22 machines</button></div>
+</dialog>
+
+<script>
+const FORMC={weekly:['#FFC000','#000'],monthly:['#FF0000','#fff'],q3m:['#00B050','#fff'],m6:['#00B0F0','#000'],yearly:['#7030A0','#fff'],each_op:['#FFFF00','#000']};
+const FLBL={weekly:'Weekly',monthly:'1 month',q3m:'3 months',m6:'6 months',yearly:'Yearly',each_op:'Every run'};
+const COLS=[['w1','weekly'],['w2','weekly'],['w3','weekly'],['w4','weekly'],['w5','weekly'],['1M','monthly'],['3M','q3m'],['6M','m6'],['1Y','yearly']];
+const METH={'เช็ค':'check','ทำ':'do','วัด':'measure'};
+const BASE=[
+ ['ตรวจสอบสภาพ ข้อต่อสายพานและสภาพสายพาน','check belt joints and belt condition','เช็ค','monthly'],
+ ['ตรวจสอบสภาพ ความตึงสายพานกระพ้อ','check bucket belt tension','เช็ค','monthly'],
+ ['ตรวจสอบสภาพ ลูกกระพ้อ','check the buckets','เช็ค','monthly'],
+ ['ตรวจสอบสภาพ เพลาขับและตาม','check drive and driven shafts','เช็ค','monthly'],
+ ['ตรวจสอบสภาพ ลิ้น/แผ่นกันย้อน','check backstop flap / plate','เช็ค','monthly'],
+ ['ตรวจสอบสภาพ ยางหุ้ม Roller หัวกระพ้อ','check head roller rubber lagging','เช็ค','monthly'],
+ ['ตรวจสอบสภาพ มอเตอร์เกียร์','check gear motor condition','เช็ค','monthly'],
+ ['ตรวจสอบระดับน้ำมันเกียร์','check gear oil level','เช็ค','monthly'],
+ ['ตรวจเช็ค สภาพเฟืองขับและเฟืองตาม','check drive & driven sprockets','เช็ค','monthly'],
+ ['ปรับ อไลน์เม้นท์และความตึงของโซ่','adjust chain alignment and tension','ทำ','monthly'],
+ ['หยอด น้ำมันโซ่','oil the chain','ทำ','monthly'],
+ ['อัดจารบี ลูกปืน (หัว/ท้าย)','grease bearings (head / tail)','ทำ','monthly'],
+ ['ขันแน่นขั้วมอเตอร์','tighten motor terminals','ทำ','q3m'],
+ ['เปลี่ยนถ่ายน้ำมันเกียร์','change gear oil','ทำ','m6']];
+let items, draft, EDIT=false, nextId=100;
+function fresh(){items=BASE.map((b,i)=>({id:i+1,item:b[0],en:b[1],method:b[2],freq:b[3],removed:false}));}
+fresh();
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function clone(a){return a.map(x=>({...x}));}
+function stateOf(it){
+  if(it.isNew)return 'added';
+  if(it.removed)return 'removed';
+  const o=items.find(x=>x.id===it.id);
+  return (o&&(o.item!==it.item||o.freq!==it.freq||o.method!==it.method))?'changed':'';
+}
+function draw(){
+  const list=EDIT?draft:items.filter(x=>!x.removed);
+  let seq=0;
+  const head=`<tr><th>#</th><th style="text-align:left;min-width:300px">รายการตรวจเช็ค<span class="th-en">check item</span></th>
+    ${COLS.map(c=>`<th>${c[0].startsWith('w')?'W'+c[0][1]:c[0]}</th>`).join('')}
+    <th>วิธีการ<span class="th-en">method</span></th>${EDIT?'<th style="min-width:118px">Edit</th>':''}</tr>`;
+  const rows=list.map((it,idx)=>{
+    const st=EDIT?stateOf(it):'';const fc=FORMC[it.freq]||FORMC.each_op;
+    const n=it.removed?'–':++seq;
+    const ticks=COLS.map(c=>{const on=c[1]===it.freq;return `<td class="tick" style="${on?'background:'+fc[0]:''}">${on?`<b style="color:${fc[1]}">✓</b>`:''}</td>`;}).join('');
+    if(!EDIT)return `<tr><td class="seq" style="background:${fc[0]};color:${fc[1]}">${n}</td>
+      <td><span class="txt">${esc(it.item)}</span><span class="th-en">${esc(it.en)}</span></td>${ticks}
+      <td style="text-align:center">${esc(it.method)}<span class="th-en">${METH[it.method]||''}</span></td></tr>`;
+    if(it.removed)return `<tr class="removed"><td class="seq">–</td><td><span class="txt">${esc(it.item)}</span><span class="th-en">${esc(it.en)} · removed from future PM</span></td>
+      <td colspan="10" style="text-align:center">hidden from future PM · past records keep it</td>
+      <td style="text-align:center"><button class="btn sm" onclick="undoRemove(${it.id})">↩ Undo</button></td></tr>`;
+    const chips=Object.keys(FORMC).map(f=>`<span class="fchip ${it.freq===f?'on':''}" style="${it.freq===f?'background:'+FORMC[f][0]+';color:'+FORMC[f][1]:''}" onclick="setF(${it.id},'${f}')">${FLBL[f]}</span>`).join('');
+    return `<tr class="${st}"><td class="seq" style="background:${fc[0]};color:${fc[1]}">${n}</td>
+      <td><input class="cell" value="${esc(it.item)}" oninput="setT(${it.id},this.value)" placeholder="type the check item">
+        <span class="th-en">${it.isNew?'new item':esc(it.en)}${st==='changed'?' · <b style="color:#B45309">changed</b>':''}${st==='added'?' · <b style="color:#15803D">new</b>':''}</span>
+        <div class="fchips" style="margin-top:4px">${chips}</div></td>
+      ${ticks}
+      <td style="width:108px"><select class="cell" onchange="setM(${it.id},this.value)">
+        ${Object.keys(METH).map(m=>`<option value="${m}" ${m===it.method?'selected':''}>${m} / ${METH[m]}</option>`).join('')}</select></td>
+      <td style="text-align:center;white-space:nowrap">
+        <button class="btn sm ghost" title="move up" onclick="mv(${idx},-1)">▲</button><button class="btn sm ghost" title="move down" onclick="mv(${idx},1)">▼</button>
+        <button class="btn sm danger" title="remove" onclick="rm(${it.id})">🗑️</button></td></tr>`;
+  }).join('');
+  document.getElementById('sheet').innerHTML=head+rows;
+  document.getElementById('legend').innerHTML=Object.keys(FLBL).map(f=>`<span style="display:inline-flex;align-items:center;gap:4px;margin-right:12px"><span style="width:16px;height:11px;background:${FORMC[f][0]};border:1px solid #999;display:inline-block"></span>${FLBL[f]}</span>`).join('');
+  if(EDIT){const n=changes();document.getElementById('saveCount').textContent=n.total?`${n.total} change${n.total>1?'s':''} not saved`:'No changes yet';document.getElementById('saveBtn').disabled=!n.total;}
+}
+function changes(){const c={changed:[],added:[],removed:[]};let seq=0;
+  draft.forEach(it=>{if(!it.removed)seq++;const s=stateOf(it);if(s==='changed')c.changed.push([seq,it]);if(s==='added'&&it.item.trim())c.added.push([seq,it]);if(s==='removed')c.removed.push(it);});
+  c.total=c.changed.length+c.added.length+c.removed.length;return c;}
+const byId=id=>draft.find(x=>x.id===id);
+function setT(id,v){byId(id).item=v;refreshMeta();}
+function refreshMeta(){const n=changes();document.getElementById('saveCount').textContent=n.total?`${n.total} change${n.total>1?'s':''} not saved`:'No changes yet';document.getElementById('saveBtn').disabled=!n.total;}
+function setF(id,f){byId(id).freq=f;draw();}
+function setM(id,m){byId(id).method=m;draw();}
+function rm(id){const it=byId(id);if(it.isNew){draft=draft.filter(x=>x.id!==id);}else it.removed=true;draw();}
+function undoRemove(id){byId(id).removed=false;draw();}
+function mv(i,d){const j=i+d;if(j<0||j>=draft.length)return;[draft[i],draft[j]]=[draft[j],draft[i]];draw();}
+function addItem(){draft.push({id:nextId++,item:'',en:'',method:'เช็ค',freq:'monthly',isNew:true,removed:false});draw();
+  const ins=document.querySelectorAll('#sheet input.cell');if(ins.length)ins[ins.length-1].focus();}
+function setEdit(on){EDIT=on;draft=clone(items);
+  ['editBanner','addRow','saveBar'].forEach(k=>document.getElementById(k).style.display=on?'':'none');
+  document.getElementById('editBtn').style.display=on?'none':'';draw();}
+function cancelEdit(){setEdit(false);}
+function openConfirm(){const c=changes();const L=[];
+  c.changed.forEach(([n,it])=>{const o=items.find(x=>x.id===it.id);L.push(`<div class="hist">✏️ <b>#${n}</b> <span class="old">${esc(o.item)}</span> → <span class="new">${esc(it.item)}</span>${o.freq!==it.freq?` · ${FLBL[o.freq]} → ${FLBL[it.freq]}`:''}${o.method!==it.method?` · ${o.method} → ${it.method}`:''}</div>`);});
+  c.added.forEach(([n,it])=>L.push(`<div class="hist">➕ <b>#${n}</b> <span class="new">${esc(it.item)}</span> · ${FLBL[it.freq]} · ${it.method} / ${METH[it.method]}</div>`));
+  c.removed.forEach(it=>L.push(`<div class="hist">🗑️ <span class="old">${esc(it.item)}</span> <span class="th-en">${esc(it.en)}</span></div>`));
+  document.getElementById('dlgBody').innerHTML=L.join('')+`<div class="banner blue" style="margin:10px 0 0"><span>ℹ️</span><div>Applies to <b>22 machines</b> from their next PM job.<br>PM jobs already started keep their list · finished PM records do not change.</div></div>`;
+  dlg.showModal();}
+function doSave(){items=clone(draft).filter(x=>!(x.isNew&&!x.item.trim())).map(x=>({...x,isNew:false,en:x.en||'(new item)'}));
+  dlg.close();setEdit(false);
+  const h=document.getElementById('histBox');h.style.display='';
+  h.insertAdjacentHTML('beforeend',`<div class="hist"><span class="muted">you · just now</span><br>saved in preview (nothing real was changed)</div>`);}
+function toggleHist(){const h=document.getElementById('histBox');h.style.display=h.style.display==='none'?'':'none';}
+draw();
+</script>
+</body>
+</html>

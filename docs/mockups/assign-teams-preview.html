@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Team Assignment</title>
+<style>
+:root{
+  --blue:#2563EB;--orange:#EA6A0A;--green:#16A34A;--red:#DC2626;
+  --dark:#1E293B;--ink:#1F2937;--mut:#64748B;--fai:#94A3B8;
+  --bd:#e2e8f0;--bg:#F1F5F9;--card:#fff;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Thai",sans-serif;font-size:14px;line-height:1.45}
+.wrap{max-width:1180px;margin:0 auto;padding:22px 18px 60px}
+h1{font-size:19px;margin:0 0 4px}
+.sub{color:var(--mut);font-size:13px;margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px}
+.btn{font:inherit;font-size:13px;padding:6px 12px;border:1px solid #cbd5e1;background:#fff;border-radius:7px;cursor:pointer;color:var(--ink)}
+.btn:hover{background:#f8fafc}
+.btn.dark{background:var(--dark);border-color:var(--dark);color:#fff}
+.btn.dark:hover{background:#0f172a}
+.btn.pri{background:var(--orange);border-color:var(--orange);color:#fff}
+.btn.pri:hover{filter:brightness(1.06)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.tag{font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:20px;letter-spacing:.02em}
+
+/* ---------- calendar behind ---------- */
+.calhead{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--bd)}
+.calhead b{font-size:14px}
+.hint{margin-left:auto;font-size:12px;color:var(--orange);font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(7,1fr)}
+.dow{font-size:11px;color:var(--mut);padding:6px;text-align:center;font-weight:600}
+.day{min-height:84px;border:1px solid #eef1f4;padding:4px 5px;cursor:pointer;background:#fff;position:relative}
+.day.out{background:#fafafa;color:#cbd5e1}
+.day .n{font-size:12px;text-align:right;color:#334155}
+.day.out .n{color:#cbd5e1}
+.day:hover{background:#FFF7ED}
+.chip{font-size:10.5px;margin-top:2px;padding:1px 5px;border-radius:4px;color:#fff;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.more{font-size:10px;color:var(--fai);margin-top:1px}
+.dbl{outline:2px dashed var(--orange);outline-offset:-3px}
+
+/* ---------- modal ---------- */
+.ov{position:fixed;inset:0;background:rgba(15,23,42,.5);display:none;align-items:center;justify-content:center;padding:18px;z-index:50}
+.ov.on{display:flex}
+.modal{background:#fff;border-radius:12px;width:100%;max-width:1240px;height:min(93vh,860px);
+  display:flex;flex-direction:column;box-shadow:0 24px 70px rgba(2,6,23,.4);overflow:hidden}
+.mhead{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--bd);background:var(--dark);color:#fff}
+.mhead b{font-size:15px}
+.mhead .dt{font-size:12.5px;color:#cbd5e1}
+.lay{margin-left:auto;background:rgba(255,255,255,.14);border:none;color:#fff;border-radius:7px;
+  font:inherit;font-size:12px;padding:5px 11px;cursor:pointer}
+.lay:hover{background:rgba(255,255,255,.24)}
+.x{background:rgba(255,255,255,.12);border:none;color:#fff;border-radius:7px;
+  width:28px;height:28px;cursor:pointer;font-size:15px;line-height:1}
+.body{flex:1;display:grid;grid-template-columns:1.25fr 1fr;grid-template-rows:1fr;min-height:0}
+.body.vert{grid-template-columns:1fr;grid-template-rows:minmax(0,1.12fr) minmax(0,1fr)}
+.pane{display:flex;flex-direction:column;min-height:0}
+.body>.pane+.pane{border-left:1px solid var(--bd)}
+.body.vert>.pane+.pane{border-left:none;border-top:2px solid var(--bd)}
+.ph{display:flex;align-items:center;gap:8px;padding:0 13px;min-height:50px;border-bottom:1px solid var(--bd);background:#f8fafc;flex:none}
+.ph b{font-size:13px}
+.ph .c{font-size:11.5px;color:var(--mut)}
+.scroll{flex:1;overflow:auto;padding:11px 13px;min-height:0}
+
+/* teams */
+.team{border:1px solid var(--bd);border-radius:10px;margin-bottom:11px;overflow:hidden;background:#fff}
+.team.over{border-color:var(--orange);box-shadow:0 0 0 3px rgba(234,106,10,.16)}
+.th{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid #f1f5f9}
+.dot{width:10px;height:10px;border-radius:3px;flex:none}
+.th b{font-size:13px}
+.th .n{font-size:11px;color:var(--mut);margin-left:auto}
+.mini{background:none;border:none;cursor:pointer;color:var(--fai);font-size:13px;padding:2px 4px;border-radius:5px}
+.mini:hover{background:#f1f5f9;color:var(--ink)}
+.mem{display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px}
+.who{display:inline-flex;align-items:center;gap:6px;background:#f1f5f9;border-radius:20px;padding:2px 9px 2px 2px;font-size:12px}
+.av{width:22px;height:22px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;
+  font-size:10.5px;font-weight:700;flex:none}
+.lead{color:var(--orange);cursor:pointer;font-size:12px}
+.drop{min-height:56px;padding:8px 10px;background:#fbfdff;border-top:1px dashed #e2e8f0}
+.drop.empty{display:flex;align-items:center;justify-content:center;color:var(--fai);font-size:12px;font-style:italic}
+
+/* job cards */
+.jgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:7px}
+.job{border:1px solid var(--bd);border-radius:8px;padding:7px 9px;background:#fff;cursor:grab;
+  display:flex;gap:8px;align-items:flex-start}
+.job:active{cursor:grabbing}
+.job.drag{opacity:.4}
+.job .bar{width:3px;align-self:stretch;border-radius:2px;flex:none}
+.job .t1{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.job .id{font-size:11.5px;font-weight:700;color:var(--ink)}
+.job .m{font-size:11.5px;color:var(--mut)}
+.job .d{font-size:11.5px;color:var(--mut);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.job .rm{margin-left:auto;background:none;border:none;color:var(--fai);cursor:pointer;font-size:13px;padding:0 2px}
+.job .rm:hover{color:var(--red)}
+.pool.over{background:#FFF7ED;border-radius:8px}
+.chips{display:flex;gap:5px;flex-wrap:nowrap;margin-left:auto}
+.fc{font-size:11.5px;padding:3px 9px;white-space:nowrap;border-radius:20px;border:1px solid var(--bd);background:#fff;color:var(--mut);cursor:pointer}
+.fc.on{background:var(--dark);border-color:var(--dark);color:#fff}
+.empty{text-align:center;color:var(--fai);font-size:12.5px;padding:26px 10px}
+
+/* footer */
+.foot{display:flex;align-items:center;gap:10px;padding:10px 16px;border-top:1px solid var(--bd);background:#f8fafc}
+.foot .s{font-size:12.5px;color:var(--mut)}
+.foot .r{margin-left:auto;display:flex;gap:8px}
+
+/* picker */
+.pk{background:#fff;border-radius:12px;width:100%;max-width:470px;max-height:82vh;display:flex;flex-direction:column;
+  box-shadow:0 24px 70px rgba(2,6,23,.4);overflow:hidden}
+.pkh{padding:12px 15px;border-bottom:1px solid var(--bd)}
+.pkh b{font-size:14.5px}
+.pkh p{margin:3px 0 0;font-size:12px;color:var(--mut)}
+.pkl{flex:1;overflow:auto;padding:6px 0}
+.row{display:flex;align-items:center;gap:10px;padding:8px 15px;cursor:pointer}
+.row:hover{background:#f8fafc}
+.row.off{opacity:.5;cursor:not-allowed}
+.row.off:hover{background:none}
+.row input{width:16px;height:16px;accent-color:var(--orange);flex:none}
+.row .nm{font-size:13px}
+.row .sk{font-size:11px;color:var(--mut)}
+.row .in{margin-left:auto;font-size:10.5px;font-weight:700;padding:1px 8px;border-radius:20px;background:#f1f5f9;color:var(--mut)}
+
+/* notes */
+.notes{margin-top:22px}
+.notes h2{font-size:15px;margin:0 0 8px}
+.notes .card{padding:14px 16px}
+.notes ul{margin:6px 0 0;padding-left:18px}
+.notes li{margin:5px 0;font-size:13px;color:#334155}
+.q{border-left:3px solid var(--orange);background:#FFF7ED;padding:10px 13px;border-radius:0 8px 8px 0;margin-top:10px}
+.q b{font-size:12.5px}
+code{background:#f1f5f9;padding:1px 5px;border-radius:4px;font-size:12px}
+@media(max-width:820px){.body{grid-template-columns:1fr;grid-template-rows:1fr 1fr}
+  .body>.pane+.pane{border-left:none;border-top:2px solid var(--bd)}
+  .jgrid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Job assignment — interactive preview</h1>
+  <p class="sub">Planning calendar → <b>double-click a day</b> → build teams on the left, drag that day's planned jobs onto them (⇅ in the title bar flips the two panes top/bottom). Everything below is clickable; the data is a sample roster so the team rules are visible.</p>
+
+  <div class="card" style="overflow:hidden">
+    <div class="calhead">
+      <b>Plan calendar · August 2026</b>
+      <span class="c" style="font-size:12px;color:var(--mut)">single click = day list (as today)</span>
+      <span class="hint">◆ double-click 10 or 22 August</span>
+    </div>
+    <div class="grid" id="cal"></div>
+  </div>
+
+  <div class="notes">
+    <h2>How this would work in the real app</h2>
+    <div class="card">
+      <ul>
+        <li><b>Technician list</b> comes from Admin → Users: role <code>technician</code>, active, same factory. No separate roster to maintain.</li>
+        <li><b>A team is a lead + helpers.</b> Dropping a job on Team A writes <code>lead_tech</code> = the ★ member and <code>helpers</code> = the rest — exactly what <code>POST /api/jobs/plan</code> already accepts, so Save is one call per team and no schema change is needed for the assignment itself.</li>
+        <li><b>One technician, one team per day</b> — once picked they're greyed out in the next "Add team" dialog, as you asked.</li>
+        <li><b>Save</b> sets each job to <i>Released</i> and pushes the usual "งานใหม่ถึงคุณ" notification to every member of the team.</li>
+        <li>Jobs can be dragged team → team, or back to the jobs pane to unassign.</li>
+      </ul>
+      <div class="q">
+        <b>Three things to decide before I build it</b>
+        <ul style="margin-top:4px">
+          <li><b>Do teams persist?</b> Rebuilt each day from scratch (simplest), or saved so tomorrow opens with the same teams ready to reuse — that needs one small table, <code>plan_teams</code>.</li>
+          <li><b>Jobs already having a technician</b> (most of 10 Aug are assigned to สมชาย): should they appear pre-placed in that person's team, or sit in the pool until you drop them? Preview shows pre-placed.</li>
+          <li><b>Start/end time per team</b> — worth adding to the team header, or leave times on the individual job?</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- assignment modal -->
+<div class="ov" id="ov">
+  <div class="modal">
+    <div class="mhead">
+      <b>Assign work</b><span class="dt" id="mdate"></span>
+      <button class="lay" id="laybtn" onclick="toggleLay()">⇅ Stack top / bottom</button>
+      <button class="x" onclick="closeModal()">✕</button>
+    </div>
+    <div class="body">
+      <!-- LEFT: teams -->
+      <div class="pane">
+        <div class="ph">
+          <b>Teams</b><span class="c" id="tcount"></span>
+          <span style="flex:1"></span>
+          <button class="btn pri" onclick="openPicker()">+ Add team</button>
+        </div>
+        <div class="scroll" id="teams"></div>
+      </div>
+      <!-- RIGHT: planned jobs -->
+      <div class="pane">
+        <div class="ph"><b>Planned jobs</b><span class="c" id="jcount"></span>
+          <span class="chips" id="chips"></span></div>
+        <div class="scroll pool" id="pool" ondragover="poolOver(event)" ondragleave="poolLeave()" ondrop="poolDrop(event)"></div>
+      </div>
+    </div>
+    <div class="foot">
+      <span class="s" id="stat"></span>
+      <span class="r">
+        <button class="btn" onclick="closeModal()">Cancel</button>
+        <button class="btn dark" onclick="save()">Save &amp; release</button>
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- technician picker -->
+<div class="ov" id="pkov">
+  <div class="pk">
+    <div class="pkh">
+      <b id="pktitle">New team</b>
+      <p>Pick the technicians for this team. Anyone already on a team today is greyed out.</p>
+    </div>
+    <div class="pkl" id="pklist"></div>
+    <div class="foot">
+      <span class="s" id="pkstat">0 selected</span>
+      <span class="r">
+        <button class="btn" onclick="closePicker()">Cancel</button>
+        <button class="btn pri" id="pkok" onclick="createTeam()" disabled>OK</button>
+      </span>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------------- sample data ---------------- */
+const TECHS=[
+  {id:3,name:'สมชาย (Somchai)',skill:'Mechanical · lead'},
+  {id:4,name:'สมศักดิ์ (Somsak)',skill:'Electrical'},
+  {id:31,name:'ศิริโชค (Sirichok)',skill:'Utilities · boiler'},
+  {id:32,name:'ประเสริฐ (Prasert)',skill:'Mechanical'},
+  {id:33,name:'วิชัย (Wichai)',skill:'Electrical · PLC'},
+  {id:34,name:'อนุชา (Anucha)',skill:'General'},
+  {id:35,name:'ธนกร (Thanakorn)',skill:'Welding'},
+  {id:36,name:'กิตติ (Kitti)',skill:'Refrigeration'}
+];
+const TCOL=['#2563EB','#EA6A0A','#16A34A','#7C3AED','#0891B2','#DB2777','#CA8A04','#475569'];
+const JOBS=[
+  {id:4,jobid:'PRD-2608-004',type:'PM',code:'W01RT01',m:'หม้อฆ่าเชื้อ (Retort) #1',d:'PM 30 วัน — checklist 12 items',p:1,tech:3},
+  {id:5,jobid:'PRD-2608-005',type:'PM',code:'W01RT02',m:'หม้อฆ่าเชื้อ (Retort) #2',d:'PM 30 วัน — checklist 12 items',p:1,tech:3},
+  {id:6,jobid:'PRD-2608-006',type:'PM',code:'W01AC01',m:'ปั๊มลมสกรู (Air compressor) #1',d:'PM 7 วัน — checklist 8 items',p:1,tech:3},
+  {id:7,jobid:'PRD-2608-007',type:'PM',code:'W01BL01',m:'หม้อไอน้ำ (Boiler) #1',d:'PM 7 วัน — checklist 10 items',p:1,tech:4},
+  {id:8,jobid:'PRD-2608-008',type:'PM',code:'W01CH01',m:'ตู้แช่ทำความเย็น (Chiller) #1',d:'PM 7 วัน — checklist 9 items',p:1,tech:4},
+  {id:9,jobid:'PRD-2608-009',type:'PM',code:'W01CV01',m:'สายพานลำเลียง (Conveyor) #1',d:'PM 30 วัน — checklist 6 items',p:1,tech:null},
+  {id:11,jobid:'PRD-2608-0011',type:'CM',code:'W01AC01',m:'ปั๊มลมสกรู (Air compressor) #1',d:'Water leak at drain trap',p:2,tech:null},
+  {id:14,jobid:'PRD-2608-0013',type:'CM',code:'W01SM01',m:'เครื่องพันพาเลท เบอร์ 1',d:'Water level sensor fault',p:2,tech:null},
+  {id:15,jobid:'PRD-2608-0014',type:'CM',code:'W01CV01',m:'สายพานลำเลียง (Conveyor) #1',d:'Belt tracking off centre',p:2,tech:null},
+  {id:16,jobid:'PRD-2608-0015',type:'CM',code:'W01RT01',m:'หม้อฆ่าเชื้อ (Retort) #1',d:'Door gasket weeping',p:1,tech:null},
+  {id:18,jobid:'PRD-2608-0017',type:'CM',code:'W01BL01',m:'หม้อไอน้ำ (Boiler) #1',d:'Burner lockout intermittent',p:2,tech:null},
+  {id:24,jobid:'PRD-2608-0021',type:'CM',code:'B02BW01',m:'พัดลมดูดไอ Extruder',d:'Check wiring, motor overheats',p:2,tech:null},
+  {id:26,jobid:'BKD-2608-0004',type:'BD',code:'W01LP01',m:'เครื่องบรรจุซอง (Sachet filler) #1',d:'Filler stopped — no product feed',p:3,tech:null}
+];
+const DAYJOBS={'2026-08-10':JOBS.map(j=>j.id),'2026-08-22':[11,14,16]};
+const TCLR={PM:'#2563EB',CM:'#334155',BD:'#DC2626',IMP:'#7C3AED'};
+
+let TEAMS=[],FILTER='all',DAY='2026-08-10',DRAG=null,PICK=new Set();
+const tech=id=>TECHS.find(t=>t.id===id);
+const job=id=>JOBS.find(j=>j.id===id);
+const inTeam=id=>TEAMS.find(t=>t.members.includes(id));
+const teamOf=jid=>TEAMS.find(t=>t.jobs.includes(jid));
+const ini=n=>{const m=n.match(/\(([A-Za-z])/);return m?m[1].toUpperCase():n.trim().slice(0,1)};
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------------- calendar ---------------- */
+function buildCal(){
+  const dows=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  let h=dows.map(d=>`<div class="dow">${d}</div>`).join('');
+  const first=new Date(2026,7,1),start=new Date(first);
+  start.setDate(1-((first.getDay()+6)%7));
+  for(let i=0;i<35;i++){
+    const d=new Date(start);d.setDate(start.getDate()+i);
+    const iso=d.toISOString().slice(0,10),out=d.getMonth()!==7;
+    const ids=DAYJOBS[iso]||[];
+    const chips=ids.slice(0,3).map(id=>{const j=job(id);
+      return `<div class="chip" style="background:${TCLR[j.type]}">${j.code}</div>`}).join('');
+    h+=`<div class="day${out?' out':''}" ondblclick="openDay('${iso}')" title="${ids.length?'double-click to assign':''}">
+      <div class="n">${d.getDate()}</div>${chips}
+      ${ids.length>3?`<div class="more">+${ids.length-3}</div>`:''}</div>`;
+  }
+  document.getElementById('cal').innerHTML=h;
+}
+
+/* ---------------- modal ---------------- */
+function openDay(iso){
+  if(!(DAYJOBS[iso]||[]).length)return;
+  DAY=iso;TEAMS=[];
+  // pre-place jobs that already carry a technician (see open question #2)
+  const byTech={};
+  (DAYJOBS[iso]).forEach(id=>{const j=job(id);if(j.tech)(byTech[j.tech]=byTech[j.tech]||[]).push(id)});
+  Object.keys(byTech).forEach(tid=>addTeam([+tid],byTech[tid]));
+  document.getElementById('mdate').textContent='· '+new Date(iso).toLocaleDateString('en-GB',
+    {weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('ov').classList.add('on');
+  draw();
+}
+function closeModal(){document.getElementById('ov').classList.remove('on')}
+function toggleLay(){
+  const b=document.querySelector('.body'),v=b.classList.toggle('vert');
+  document.getElementById('laybtn').textContent=v?'⇆ Side by side':'⇅ Stack top / bottom';
+}
+function addTeam(members,jobs){
+  const i=TEAMS.length;
+  TEAMS.push({id:'t'+Date.now()+i,name:'Team '+String.fromCharCode(65+i),color:TCOL[i%TCOL.length],
+    members:members.slice(),lead:members[0],jobs:(jobs||[]).slice()});
+}
+function rename(tid){
+  const t=TEAMS.find(x=>x.id===tid);const v=prompt('Team name',t.name);
+  if(v&&v.trim()){t.name=v.trim();draw()}
+}
+function dropTeam(tid){
+  const t=TEAMS.find(x=>x.id===tid);
+  if(t.jobs.length&&!confirm(t.name+' has '+t.jobs.length+' job(s). Remove the team and send them back to the pool?'))return;
+  TEAMS=TEAMS.filter(x=>x.id!==tid);draw();
+}
+function setLead(tid,uid){const t=TEAMS.find(x=>x.id===tid);t.lead=uid;draw()}
+function kick(tid,uid){
+  const t=TEAMS.find(x=>x.id===tid);
+  if(t.members.length===1)return dropTeam(tid);
+  t.members=t.members.filter(m=>m!==uid);
+  if(t.lead===uid)t.lead=t.members[0];
+  draw();
+}
+
+/* ---------------- picker ---------------- */
+function openPicker(){
+  PICK=new Set();
+  document.getElementById('pktitle').textContent='New team — '+('Team '+String.fromCharCode(65+TEAMS.length));
+  drawPicker();
+  document.getElementById('pkov').classList.add('on');
+}
+function closePicker(){document.getElementById('pkov').classList.remove('on')}
+function drawPicker(){
+  document.getElementById('pklist').innerHTML=TECHS.map(t=>{
+    const busy=inTeam(t.id);
+    return `<label class="row${busy?' off':''}">
+      <input type="checkbox" ${busy?'disabled':''} ${PICK.has(t.id)?'checked':''} onchange="togglePick(${t.id},this.checked)">
+      <span class="av" style="background:${busy?'#cbd5e1':TCOL[TECHS.indexOf(t)%TCOL.length]}">${ini(t.name)}</span>
+      <span><span class="nm">${esc(t.name)}</span><br><span class="sk">${esc(t.skill)}</span></span>
+      ${busy?`<span class="in">in ${esc(busy.name)}</span>`:''}</label>`}).join('');
+  const n=PICK.size;
+  document.getElementById('pkstat').textContent=n+' selected';
+  document.getElementById('pkok').disabled=!n;
+}
+function togglePick(id,on){on?PICK.add(id):PICK.delete(id);drawPicker()}
+function createTeam(){addTeam([...PICK]);closePicker();draw()}
+
+/* ---------------- drag & drop ---------------- */
+function dragStart(e,jid){DRAG=jid;e.dataTransfer.effectAllowed='move';try{e.dataTransfer.setData('text/plain',String(jid))}catch(x){}
+  e.currentTarget.classList.add('drag')}
+function dragEnd(e){DRAG=null;e.currentTarget.classList.remove('drag')}
+function teamOver(e,tid){e.preventDefault();document.getElementById('tm_'+tid).classList.add('over')}
+function teamLeave(tid){const el=document.getElementById('tm_'+tid);if(el)el.classList.remove('over')}
+function teamDrop(e,tid){
+  e.preventDefault();const jid=DRAG;DRAG=null;if(!jid)return;
+  TEAMS.forEach(t=>t.jobs=t.jobs.filter(x=>x!==jid));
+  TEAMS.find(t=>t.id===tid).jobs.push(jid);draw();
+}
+function poolOver(e){if(DRAG){e.preventDefault();document.getElementById('pool').classList.add('over')}}
+function poolLeave(){document.getElementById('pool').classList.remove('over')}
+function poolDrop(e){e.preventDefault();const jid=DRAG;DRAG=null;if(!jid)return;
+  TEAMS.forEach(t=>t.jobs=t.jobs.filter(x=>x!==jid));draw()}
+function unassign(jid){TEAMS.forEach(t=>t.jobs=t.jobs.filter(x=>x!==jid));draw()}
+
+/* ---------------- render ---------------- */
+function jobCard(j,inTeamCard){
+  return `<div class="job" draggable="true" ondragstart="dragStart(event,${j.id})" ondragend="dragEnd(event)">
+    <span class="bar" style="background:${TCLR[j.type]}"></span>
+    <span style="flex:1;min-width:0">
+      <span class="t1">
+        <span class="tag" style="background:${TCLR[j.type]}22;color:${TCLR[j.type]}">${j.type}</span>
+        <span class="id">${esc(j.jobid)}</span>
+        ${j.p===3?'<span class="tag" style="background:#FEE2E2;color:#DC2626">URGENT</span>':
+          j.p===2?'<span class="tag" style="background:#FEF3C7;color:#B45309">HIGH</span>':''}
+      </span>
+      <div class="m">${esc(j.code)} · ${esc(j.m)}</div>
+      <div class="d">${esc(j.d)}</div>
+    </span>
+    ${inTeamCard?`<button class="rm" title="send back to the pool" onclick="unassign(${j.id})">✕</button>`:''}
+  </div>`;
+}
+function draw(){
+  const ids=DAYJOBS[DAY]||[];
+  /* teams */
+  document.getElementById('teams').innerHTML=TEAMS.length?TEAMS.map(t=>`
+    <div class="team" id="tm_${t.id}" ondragover="teamOver(event,'${t.id}')"
+         ondragleave="teamLeave('${t.id}')" ondrop="teamDrop(event,'${t.id}')">
+      <div class="th">
+        <span class="dot" style="background:${t.color}"></span>
+        <b>${esc(t.name)}</b>
+        <button class="mini" title="rename" onclick="rename('${t.id}')">✎</button>
+        <span class="n">${t.members.length} tech · ${t.jobs.length} job${t.jobs.length===1?'':'s'}</span>
+        <button class="mini" title="remove team" onclick="dropTeam('${t.id}')">🗑</button>
+      </div>
+      <div class="mem">${t.members.map(uid=>{const u=tech(uid);
+        return `<span class="who">
+          <span class="av" style="background:${TCOL[TECHS.indexOf(u)%TCOL.length]}">${ini(u.name)}</span>
+          ${esc(u.name)}
+          <span class="lead" title="${t.lead===uid?'lead technician':'make lead'}" onclick="setLead('${t.id}',${uid})">${t.lead===uid?'★':'☆'}</span>
+          <span class="mini" title="remove" onclick="kick('${t.id}',${uid})">✕</span></span>`}).join('')}
+      </div>
+      <div class="drop${t.jobs.length?'':' empty'}">
+        ${t.jobs.length?`<div class="jgrid">${t.jobs.map(id=>jobCard(job(id),true)).join('')}</div>`:'drag jobs here'}
+      </div>
+    </div>`).join(''):
+    `<div class="empty">No teams yet.<br><br>Click <b>+ Add team</b> to pick technicians.</div>`;
+
+  /* pool */
+  const un=ids.filter(id=>!teamOf(id));
+  const shown=un.filter(id=>FILTER==='all'||job(id).type===FILTER);
+  document.getElementById('chips').innerHTML=['all','PM','CM','BD'].map(f=>{
+    const n=f==='all'?un.length:un.filter(id=>job(id).type===f).length;
+    return `<button class="fc${FILTER===f?' on':''}" onclick="FILTER='${f}';draw()">${f==='all'?'All':f} ${n}</button>`}).join('');
+  document.getElementById('pool').innerHTML=shown.length?`<div class="jgrid">${shown.map(id=>jobCard(job(id),false)).join('')}</div>`:
+    `<div class="empty">${un.length?'Nothing of this type left.':'Every job is assigned 🎉'}</div>`;
+
+  /* counters */
+  const asn=ids.length-un.length;
+  document.getElementById('tcount').textContent=TEAMS.length?`· ${TEAMS.length} team${TEAMS.length===1?'':'s'} · ${TEAMS.reduce((a,t)=>a+t.members.length,0)} technicians`:'';
+  document.getElementById('jcount').textContent=`· ${un.length} unassigned`;
+  document.getElementById('stat').innerHTML=`<b>${ids.length}</b> jobs today · <b style="color:var(--green)">${asn}</b> assigned · <b style="color:${un.length?'var(--orange)':'var(--green)'}">${un.length}</b> waiting`;
+}
+
+function save(){
+  if(!TEAMS.length)return alert('Create at least one team first.');
+  const calls=TEAMS.filter(t=>t.jobs.length).map(t=>({
+    endpoint:'POST /api/jobs/plan',
+    job_ids:t.jobs,lead_tech:t.lead,
+    helpers:t.members.filter(m=>m!==t.lead).join(','),
+    planned_date:DAY,status:'Released'}));
+  alert('Preview only — no data is saved.\n\nOn Save the app would send '+calls.length+' request(s):\n\n'+
+    JSON.stringify(calls,null,1).slice(0,900));
+}
+buildCal();
+</script>
+</body>
+</html>

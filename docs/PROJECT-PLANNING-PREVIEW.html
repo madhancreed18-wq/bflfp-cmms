@@ -1,0 +1,284 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Project planning — S-curve and timeline</title>
+<style>
+ .viz-root{color-scheme:light;
+   --surface-1:#fcfcfb; --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#84837c;
+   --grid:#e7e7e2; --series-1:#2a78d6; --series-2:#eb6834;
+   --good:#0E7A70; --warn:#B45309; --crit:#B3261E; --bar:#94a3b8; --bar-done:#2a78d6}
+ @media (prefers-color-scheme:dark){:root:where(:not([data-theme="light"])) .viz-root{color-scheme:dark;
+   --surface-1:#1a1a19; --text-primary:#fff; --text-secondary:#c3c2b7; --text-muted:#8f8e86;
+   --grid:#33322e; --series-1:#3987e5; --series-2:#d95926;
+   --good:#3fae9f; --warn:#d79a3a; --crit:#e66767; --bar:#4b5563; --bar-done:#3987e5}}
+ :root[data-theme="dark"] .viz-root{color-scheme:dark;
+   --surface-1:#1a1a19; --text-primary:#fff; --text-secondary:#c3c2b7; --text-muted:#8f8e86;
+   --grid:#33322e; --series-1:#3987e5; --series-2:#d95926;
+   --good:#3fae9f; --warn:#d79a3a; --crit:#e66767; --bar:#4b5563; --bar-done:#3987e5}
+ *{box-sizing:border-box}
+ body{margin:0;font:14px/1.55 -apple-system,"Segoe UI",Roboto,sans-serif;color:#16202c;background:#f6f8fa}
+ .wrap{max-width:1180px;margin:0 auto;padding:22px 18px 70px}
+ h1{font-size:22px;margin:0 0 3px}.sub{color:#64748B;margin:0 0 20px;font-size:13px}
+ h2{font-size:16px;margin:28px 0 8px;padding-bottom:5px;border-bottom:2px solid #e2e8f0}
+ .card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin:12px 0}
+ ul{margin:6px 0;padding-left:20px}li{margin:4px 0}
+ code{background:#eef2f6;padding:1px 5px;border-radius:4px;font-size:12.5px}
+ .note{background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:11px 14px;margin:14px 0;font-size:13px}
+ .ok{background:#f0fdf4;border-color:#86efac}
+ .tiles{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 14px}
+ .tile{flex:1;min-width:132px;background:#fff;border:1px solid #e8edf2;border-radius:9px;padding:9px 12px}
+ .tile b{display:block;font-size:21px;line-height:1.2;font-variant-numeric:tabular-nums;color:#0F172A}
+ .tile span{font-size:11px;color:#64748B}
+ .legend{display:flex;gap:16px;align-items:center;font-size:12px;color:#52514e;margin:0 0 6px 4px}
+ .legend i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
+ table{border-collapse:collapse;width:100%;font-size:12.5px}
+ th,td{padding:5px 8px;border-bottom:1px solid #eef1f4;text-align:left}
+ th{background:#F8FAFC;font-size:11px;color:#64748B;font-weight:600}
+ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+ .scroll{overflow-x:auto}
+ .pill{font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:999px}
+ .p-done{background:#DCFCE7;color:#166534}.p-run{background:#DBEAFE;color:#1D4ED8}
+ .p-late{background:#FEE2E2;color:#B3261E}.p-soon{background:#F1F5F9;color:#475569}
+ svg{display:block;max-width:100%}
+ .tip{position:absolute;pointer-events:none;background:#0b0b0b;color:#fff;font-size:11.5px;
+      padding:6px 9px;border-radius:6px;opacity:0;transition:opacity .12s;white-space:pre;z-index:20}
+</style></head><body><div class="wrap viz-root">
+<h1>Project planning in the CMMS</h1>
+<p class="sub">A worked preview on one real-shaped project. Nothing in the app has changed — this is what it would look like.</p>
+<h2>1 · What a project needs that a job doesn't have</h2>
+<div class="card">
+<p style="margin:0 0 8px">A PRJ job today is one row with one date. A project is a set of tasks with a start, a finish, a size, and a percentage done. Four things have to exist before any curve can be drawn:</p>
+<ul style="margin:0">
+<li><b>A parent.</b> One PRJ job is the project; its tasks are PRJ jobs pointing at it.</li>
+<li><b>A date range per task</b>, not a single planned date — a task that runs three weeks cannot be a dot on a calendar.</li>
+<li><b>A weight per task.</b> Planned man-hours is the honest one. Without it a two-hour task and a forty-hour task count the same, and the curve lies.</li>
+<li><b>A recorded % complete, dated.</b> This is the only part the app cannot work out for itself — somebody has to say where a task stands, and when they said it. Everything below falls out of those four.</li>
+</ul>
+</div>
+
+<h2>2 · The project page</h2>
+<div class="card" style="padding:14px 16px">
+  <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:3px">
+    <b style="font-size:15px" id="pcode"></b><span style="font-size:14px" id="pname"></span>
+  </div>
+  <p style="margin:0 0 12px;color:#64748B;font-size:12.5px" id="pmeta"></p>
+  <div class="tiles" id="tiles"></div>
+</div>
+
+<h2>3 · Timeline</h2>
+<p style="font-size:12.5px;color:#64748B;margin:0 0 6px 4px">Each bar is a task; the darker fill inside it is how much is done. The dashed line is today.</p>
+<div class="card" style="padding:12px 8px 8px"><div class="scroll"><div id="gantt"></div></div></div>
+
+<h2>4 · S-curve</h2>
+<div class="legend">
+  <span><i style="background:var(--series-1)"></i>Planned</span>
+  <span><i style="background:var(--series-2)"></i>Actual</span>
+  <span style="color:#84837c">· cumulative man-hours earned</span>
+</div>
+<div class="card" style="padding:12px 8px 8px"><div class="scroll"><div id="scurve"></div></div></div>
+<p style="font-size:12.5px;color:#64748B;margin:6px 4px 0" id="svar"></p>
+
+<h2>5 · The tasks behind it</h2>
+<div class="card" style="padding:0;overflow:hidden"><div class="scroll"><table id="ttab"></table></div></div>
+
+<h2>6 · What it would take to build</h2>
+<div class="card">
+<p style="margin:0 0 8px"><b>Database</b> — four columns on <code>jobs</code>, no new tables:</p>
+<ul style="margin:0 0 10px">
+<li><code>parent_id</code> — which project this task belongs to</li>
+<li><code>date_start</code>, <code>date_end</code> — the task's own range (<code>planned_date</code> stays what it is; these are new)</li>
+<li><code>weight_h</code> — planned man-hours</li>
+</ul>
+<p style="margin:0 0 8px"><code>progress</code> already exists on <code>jobs</code>. A small <code>job_progress(job_id, date, pct, by)</code> table records who said what and when — that is the actual curve, and without it there is nothing to plot but today.</p>
+<p style="margin:0 0 8px"><b>Screens</b> — one new page under Planning: the header and tiles above, the timeline, the curve, the task table. Tasks are created and assigned through the machinery that already exists, so the crew's day and the technician's phone need no changes at all.</p>
+<p style="margin:0"><b>Reports</b> — the curve and the timeline print to the same A4 the plan sheet uses, so a project review has a sheet.</p>
+</div>
+
+<div class="note">
+<b>Two decisions before I build it.</b>
+<ul style="margin:6px 0 0">
+<li><b>Weight by man-hours or by cost?</b> Hours suit an in-house job; cost suits one with contractors and materials. Hours is the default above. Both is possible — two curves, one screen — but pick the one that gets updated.</li>
+<li><b>Who updates % complete, and how often?</b> A weekly figure from the project owner is enough for a curve that means something. Daily from technicians sounds better and is usually abandoned by week three.</li>
+</ul>
+</div>
+
+<div class="note ok">
+<b>What this reuses.</b> Tasks are PRJ jobs, so they already have a crew, a machine, photos, a status flow, sign-off, and a place on the assign board and the technician's phone. The project page is a different <em>view</em> of work the app already tracks — not a second system to keep in step.
+</div>
+<p style="color:#64748B;font-size:12.5px;margin-top:30px;border-top:1px solid #e2e8f0;padding-top:11px">Preview only — no code in the app has changed. Answer the two questions in section 6 and I will build it.</p></div><script>
+/* A real-shaped BFLPC project. Weight = planned man-hours; that is what makes an
+   S-curve honest — a two-hour task and a forty-hour task cannot count the same. */
+const PROJ = {
+  code: "PRJ-2609-001",
+  name: "ติดตั้งไลน์บรรจุ L7 / New bagging line L7 — install and commission",
+  area: "TOWER B · Floor 1–2",
+  owner: "Kanya",
+  start: "2026-09-07",
+  finish: "2026-11-14",
+  today: "2026-10-09"
+};
+/* id, task, start, finish, planned hours, % done, who */
+const TASKS = [
+  ["T1",  "แบบและอนุมัติ / Design and approval",              "2026-09-07", "2026-09-19",  48, 100, "Kanya"],
+  ["T2",  "สั่งของ — สายพาน มอเตอร์ / Order belts and motors", "2026-09-14", "2026-10-10",  16, 100, "Kanya"],
+  ["T3",  "รื้อของเดิม / Strip out the old line",              "2026-09-21", "2026-09-30",  72, 100, "Mark"],
+  ["T4",  "ฐานและโครงสร้าง / Foundations and steelwork",       "2026-09-28", "2026-10-17", 120,  75, "Mark"],
+  ["T5",  "ติดตั้งสายพาน / Install conveyors",                 "2026-10-12", "2026-10-31", 160,  20, "Mark"],
+  ["T6",  "งานไฟฟ้าและตู้คอนโทรล / Electrical and panel",      "2026-10-19", "2026-11-04", 100,   0, "Choke"],
+  ["T7",  "ระบบลม / Compressed air pipework",                  "2026-10-19", "2026-10-28",  40,   0, "Mark"],
+  ["T8",  "เครื่องชั่งและตรวจโลหะ / Weigher and metal detector","2026-10-26", "2026-11-04",  56,   0, "Choke"],
+  ["T9",  "ทดสอบเดินเครื่อง / Dry run and commissioning",      "2026-11-02", "2026-11-10",  64,   0, "Kanya"],
+  ["T10", "อบรมและส่งมอบ / Training and handover",             "2026-11-09", "2026-11-14",  24,   0, "Kanya"]
+];
+/* What was actually earned, week by week — this is the only part a CMMS cannot
+   invent: somebody has to record progress, or the actual curve has nothing to plot. */
+const ACTUAL_BY_WEEK = {
+  "2026-09-13": 22, "2026-09-20": 58, "2026-09-27": 96,
+  "2026-10-04": 168, "2026-10-11": 250
+};
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const D = s => new Date(s + "T00:00:00");
+const DAY = 864e5;
+const days = (a, b) => Math.round((D(b) - D(a)) / DAY);
+const fmt = s => D(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+const P0 = D(PROJ.start), P1 = D(PROJ.finish), SPAN = Math.round((P1 - P0) / DAY);
+const TOT = TASKS.reduce((a, t) => a + t[4], 0);
+const EARNED = TASKS.reduce((a, t) => a + t[4] * t[5] / 100, 0);
+
+/* ── planned cumulative: each task's hours spread evenly across its working span.
+      An S-curve is only S-shaped because the middle of a project carries the most
+      work — spreading each task flat and summing is what produces that, and it needs
+      no estimate beyond the dates and hours already entered. ── */
+function plannedAt(d) {
+  let s = 0;
+  for (const [, , st, fi, w] of TASKS) {
+    const n = Math.max(1, days(st, fi));
+    const el = Math.min(n, Math.max(0, Math.round((D(d) - D(st)) / DAY)));
+    s += w * el / n;
+  }
+  return s;
+}
+const WEEKS = (() => { const out = []; let d = new Date(P0);
+  while (d <= P1) { out.push(d.toISOString().slice(0, 10)); d = new Date(+d + 7 * DAY); }
+  if (out[out.length - 1] !== PROJ.finish) out.push(PROJ.finish);
+  return out; })();
+
+const pct = n => Math.round(n * 100 / TOT);
+const todayPlanned = plannedAt(PROJ.today), todayActual = EARNED;
+
+/* ── header ── */
+$('pcode').textContent = PROJ.code;
+$('pname').textContent = PROJ.name;
+$('pmeta').textContent = `${PROJ.area}  ·  owner ${PROJ.owner}  ·  ${fmt(PROJ.start)} → ${fmt(PROJ.finish)}  ·  ${TASKS.length} tasks  ·  ${TOT} planned man-hours`;
+const late = todayActual < todayPlanned;
+const varh = Math.round(todayActual - todayPlanned);
+$('tiles').innerHTML = [
+  [pct(todayActual) + '%', 'Actual complete'],
+  [pct(todayPlanned) + '%', 'Should be, today'],
+  [`<span style="color:${late ? 'var(--crit)' : 'var(--good)'}">${varh > 0 ? '+' : ''}${varh} h</span>`,
+   late ? 'Behind plan' : 'Ahead of plan'],
+  [days(PROJ.today, PROJ.finish) + ' d', 'Left to the finish date'],
+  [TASKS.filter(t => t[5] === 100).length + ' / ' + TASKS.length, 'Tasks finished']
+].map(([v, l]) => `<div class="tile"><b>${v}</b><span>${l}</span></div>`).join('');
+
+/* ── shared scales ── */
+const W = 1060, ML = 232, MR = 22;
+const x = d => ML + (Math.round((D(d) - P0) / DAY) / SPAN) * (W - ML - MR);
+/* Month gridlines. The project's own start goes in as the first tick even when it is
+   mid-month, otherwise the chart opens with an unlabelled axis — the reader cannot
+   tell whether the curve begins in September or in October. */
+const MONTHS = (() => { const out = [PROJ.start]; const d = new Date(P0.getFullYear(), P0.getMonth() + 1, 1);
+  while (d <= P1) { out.push(d.toISOString().slice(0, 10)); d.setMonth(d.getMonth() + 1); }
+  return out; })();
+const MLBL = m => D(m).toLocaleDateString('en-GB', { month: 'short' });
+
+/* ── the timeline ── */
+(() => {
+  const RH = 26, H = 40 + TASKS.length * RH + 16;
+  let g = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img"
+      aria-label="Project timeline, one bar per task"><rect width="${W}" height="${H}" fill="var(--surface-1)"/>`;
+  MONTHS.forEach(m => { g += `<line x1="${x(m)}" y1="26" x2="${x(m)}" y2="${H - 14}" stroke="var(--grid)" stroke-width="1"/>
+    <text x="${x(m) + 4}" y="18" font-size="11" fill="var(--text-muted)">${MLBL(m)}</text>`; });
+  TASKS.forEach(([id, nm, st, fi, w, p, who], i) => {
+    const y = 34 + i * RH, x0 = x(st), x1 = Math.max(x0 + 6, x(fi));
+    const done = p === 100, running = p > 0 && p < 100;
+    const overdue = !done && D(fi) < D(PROJ.today);
+    g += `<text x="8" y="${y + 12}" font-size="11.5" fill="var(--text-secondary)">${esc(nm.split(' / ')[1] || nm).slice(0, 34)}</text>`;
+    /* 2px surface gap between the track and the fill, 4px rounded ends */
+    g += `<rect x="${x0}" y="${y + 3}" width="${x1 - x0}" height="13" rx="4" fill="var(--bar)" opacity=".38"/>`;
+    if (p > 0) g += `<rect x="${x0}" y="${y + 3}" width="${Math.max(4, (x1 - x0) * p / 100)}" height="13" rx="4"
+        fill="${overdue ? 'var(--crit)' : 'var(--bar-done)'}"/>`;
+    g += `<rect class="gh" x="${x0}" y="${y}" width="${x1 - x0}" height="19" fill="transparent"
+        data-t="${esc(nm)}&#10;${fmt(st)} → ${fmt(fi)}  ·  ${w} h  ·  ${p}% done  ·  ${esc(who)}"/>`;
+    g += `<text x="${x1 + 6}" y="${y + 14}" font-size="10.5" fill="var(--text-muted)">${p}%</text>`;
+  });
+  g += `<line x1="${x(PROJ.today)}" y1="24" x2="${x(PROJ.today)}" y2="${H - 12}" stroke="var(--series-2)"
+      stroke-width="2" stroke-dasharray="4 3"/>
+    <text x="${x(PROJ.today) + 5}" y="${H - 2}" font-size="10.5" fill="var(--series-2)">today ${fmt(PROJ.today)}</text></svg>`;
+  $('gantt').innerHTML = g;
+})();
+
+/* ── the S-curve ── */
+(() => {
+  const H = 300, MT = 18, MB = 34;
+  const y = v => H - MB - (v / TOT) * (H - MT - MB);
+  const pl = WEEKS.map(d => [x(d), y(plannedAt(d)), d, plannedAt(d)]);
+  const ак = Object.keys(ACTUAL_BY_WEEK).sort();
+  const ac = ак.map(d => [x(d), y(ACTUAL_BY_WEEK[d]), d, ACTUAL_BY_WEEK[d]]);
+  const path = a => a.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+  let g = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img"
+      aria-label="S-curve: cumulative planned man-hours against actual"><rect width="${W}" height="${H}" fill="var(--surface-1)"/>`;
+  [0, 25, 50, 75, 100].forEach(p => { const yy = y(TOT * p / 100);
+    g += `<line x1="${ML}" y1="${yy}" x2="${W - MR}" y2="${yy}" stroke="var(--grid)" stroke-width="1"/>
+      <text x="${ML - 8}" y="${yy + 4}" font-size="11" fill="var(--text-muted)" text-anchor="end">${p}%</text>`; });
+  MONTHS.forEach(m => g += `<text x="${x(m)}" y="${H - 12}" font-size="11" fill="var(--text-muted)" text-anchor="middle">${MLBL(m)}</text>`);
+  g += `<line x1="${x(PROJ.today)}" y1="${MT}" x2="${x(PROJ.today)}" y2="${H - MB}" stroke="var(--series-2)" stroke-width="2" stroke-dasharray="4 3" opacity=".55"/>`;
+  g += `<path d="${path(pl)}" fill="none" stroke="var(--series-1)" stroke-width="2" stroke-linejoin="round"/>`;
+  g += `<path d="${path(ac)}" fill="none" stroke="var(--series-2)" stroke-width="2" stroke-linejoin="round"/>`;
+  /* direct labels, so identity is never colour alone */
+  const lp = pl[pl.length - 1], la = ac[ac.length - 1];
+  g += `<text x="${lp[0] - 6}" y="${lp[1] - 7}" font-size="11.5" font-weight="600" fill="var(--series-1)" text-anchor="end">Planned</text>`;
+  g += `<text x="${la[0] + 10}" y="${la[1] - 9}" font-size="11.5" font-weight="600" fill="var(--series-2)">Actual</text>`;
+  /* a 2px surface ring so an overlapping marker still reads */
+  ac.forEach(p => g += `<circle cx="${p[0]}" cy="${p[1]}" r="4" fill="var(--series-2)" stroke="var(--surface-1)" stroke-width="2"/>
+    <circle class="sh" cx="${p[0]}" cy="${p[1]}" r="11" fill="transparent" data-t="Actual · ${fmt(p[2])}&#10;${p[3]} h earned  ·  ${pct(p[3])}%"/>`);
+  pl.forEach(p => g += `<circle class="sh" cx="${p[0]}" cy="${p[1]}" r="9" fill="transparent" data-t="Planned · ${fmt(p[2])}&#10;${Math.round(p[3])} h  ·  ${pct(p[3])}%"/>`);
+  g += `</svg>`;
+  $('scurve').innerHTML = g;
+  $('svar').innerHTML = `At <b>${fmt(PROJ.today)}</b> the plan says <b>${Math.round(todayPlanned)} h</b> (${pct(todayPlanned)}%) `
+    + `and the site has earned <b>${Math.round(todayActual)} h</b> (${pct(todayActual)}%) — `
+    + `<b style="color:${late ? 'var(--crit)' : 'var(--good)'}">${varh > 0 ? '+' : ''}${varh} h</b>, about `
+    + `<b>${Math.abs(Math.round(varh / (TOT / SPAN)))} days</b> ${late ? 'behind' : 'ahead'}. `
+    + `The gap between the two lines is the whole point of the chart.`;
+})();
+
+/* ── the table view: identity never rests on colour alone ── */
+(() => {
+  const rows = TASKS.map(([id, nm, st, fi, w, p, who]) => {
+    const overdue = p < 100 && D(fi) < D(PROJ.today);
+    const cls = p === 100 ? 'p-done' : overdue ? 'p-late' : p > 0 ? 'p-run' : 'p-soon';
+    const lb = p === 100 ? 'Done' : overdue ? 'Late' : p > 0 ? 'Running' : 'Not started';
+    return `<tr><td>${id}</td><td>${esc(nm)}</td><td>${fmt(st)}</td><td>${fmt(fi)}</td>
+      <td class="n">${w}</td><td class="n">${p}%</td><td class="n">${Math.round(w * p / 100)}</td>
+      <td>${esc(who)}</td><td><span class="pill ${cls}">${lb}</span></td></tr>`;
+  }).join('');
+  $('ttab').innerHTML = `<thead><tr><th>#</th><th>Task</th><th>Start</th><th>Finish</th>
+      <th class="n">Hours</th><th class="n">Done</th><th class="n">Earned</th><th>Who</th><th>State</th></tr></thead>
+    <tbody>${rows}<tr style="font-weight:600;background:#F8FAFC">
+      <td colspan="4">Total</td><td class="n">${TOT}</td><td class="n">${pct(EARNED)}%</td>
+      <td class="n">${Math.round(EARNED)}</td><td colspan="2"></td></tr></tbody>`;
+})();
+
+/* ── hover, on both charts ── */
+(() => {
+  const tip = document.createElement('div'); tip.className = 'tip'; document.body.appendChild(tip);
+  document.addEventListener('mousemove', e => {
+    const t = e.target.closest && e.target.closest('[data-t]');
+    if (!t) { tip.style.opacity = 0; return; }
+    tip.textContent = t.getAttribute('data-t');
+    tip.style.opacity = 1;
+    tip.style.left = Math.min(e.pageX + 14, window.innerWidth - 260) + 'px';
+    tip.style.top = (e.pageY + 14) + 'px';
+  });
+})();
+</script></body></html>

@@ -2,6 +2,21 @@
   "version": "0.2.0",
   "configurations": [
     { "name": "Run BFLFP CMMS", "type": "debugpy", "request": "launch",
-      "program": "${workspaceFolder}/run.py", "console": "integratedTerminal", "justMyCode": true }
+      "program": "${workspaceFolder}/run.py", "console": "integratedTerminal",
+      "justMyCode": true, "subProcess": false },
+
+    { "name": "Debug BFLFP CMMS (no reload)", "type": "debugpy", "request": "launch",
+      "program": "${workspaceFolder}/run.py", "console": "integratedTerminal",
+      "justMyCode": false, "subProcess": false,
+      "env": { "CMMS_RELOAD": "0" } },
+
+    { "name": "Tunnel only (deploy/start_tunnel.py)", "type": "debugpy", "request": "launch",
+      "program": "${workspaceFolder}/deploy/start_tunnel.py", "console": "integratedTerminal",
+      "justMyCode": false },
+
+    { "name": "App only (no tunnel)", "type": "debugpy", "request": "launch",
+      "program": "${workspaceFolder}/run.py", "console": "integratedTerminal",
+      "justMyCode": true, "subProcess": false,
+      "env": { "CMMS_TUNNEL": "0" } }
   ]
 }

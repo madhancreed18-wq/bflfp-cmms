@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Machine Lookup — preview</title>
+<style>
+:root{--or:#EA6A0A;--bl:#2563EB;--nv:#1E293B;--bd:#E2E8F0;--mu:#64748B;--bg:#F1F5F9;--rd:#DC2626;--gr:#16A34A;--am:#D97706}
+*{box-sizing:border-box}body{margin:0;font-family:Sarabun,"Segoe UI",Tahoma,sans-serif;background:#CBD5E1;color:#0F172A}
+.note{max-width:1500px;margin:14px auto 0;background:#FFFBEB;border:1px solid #FDE68A;color:#78350F;border-radius:10px;padding:10px 14px;font-size:13px;line-height:1.55}
+.note b{color:#92400E}
+.modes{display:flex;gap:6px;justify-content:center;margin:12px 0}
+.modes button{border:1px solid #94A3B8;background:#fff;border-radius:99px;padding:6px 16px;font:600 13px inherit;cursor:pointer;font-family:inherit}
+.modes button.on{background:var(--nv);color:#fff;border-color:var(--nv)}
+/* desktop frame */
+.desk{max-width:1500px;margin:0 auto 30px;display:grid;grid-template-columns:210px 1fr;min-height:900px;border-radius:12px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+.side{background:#202020;color:#9AA0A6;padding:16px 12px;font-size:13.5px;font-weight:600}
+.side .br{color:#fff;font-size:16px;padding:4px 8px 16px}.side .br span{color:var(--or)}
+.side div.i{padding:10px 12px;border-radius:9px;display:flex;gap:10px;align-items:center}
+.side div.k{padding:8px 11px 8px 44px;font-size:12.5px;font-weight:500}
+.side .on{background:#2c2c2c;color:var(--or);position:relative}.side .on:before{content:'';position:absolute;left:0;top:7px;bottom:7px;width:3px;background:var(--or);border-radius:0 3px 3px 0}
+.side .new{font-size:9.5px;background:var(--or);color:#fff;border-radius:6px;padding:0 5px;margin-left:auto}
+.main{background:var(--bg);display:flex;flex-direction:column}
+.top{background:#202020;color:#fff;height:54px;display:flex;align-items:center;padding:0 16px;gap:10px;font-weight:700}
+.top .t span{color:var(--or)}.top .u{margin-left:auto;font-size:12px;text-align:right;color:#cbd5e1;font-weight:500}
+.page{padding:14px;display:flex;flex-direction:column;gap:12px}
+.card{background:#fff;border:1px solid var(--bd);border-radius:12px;padding:14px}
+/* search */
+.sbox{position:relative}
+.sin{display:flex;align-items:center;gap:10px;border:2px solid var(--bl);border-radius:12px;padding:0 12px;height:50px;background:#fff}
+.sin input{border:none;outline:none;font:16px inherit;flex:1;font-family:inherit}
+.kbd{font-size:11px;color:var(--mu);border:1px solid var(--bd);border-radius:5px;padding:1px 6px}
+.scan{height:50px;border:none;border-radius:12px;background:var(--nv);color:#fff;font:700 14px inherit;padding:0 18px;cursor:pointer;display:flex;gap:8px;align-items:center;font-family:inherit}
+.fl{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-items:center;font-size:12px;color:var(--mu)}
+.chip{border:1px solid var(--bd);background:#fff;border-radius:99px;padding:4px 11px;font-size:12px;cursor:pointer;color:#334155}
+.chip.on{background:var(--nv);border-color:var(--nv);color:#fff}
+.dd{position:absolute;left:0;right:150px;top:56px;background:#fff;border:1px solid var(--bd);border-radius:12px;box-shadow:0 14px 40px rgba(15,23,42,.18);z-index:20;overflow:hidden}
+.dd .h{font-size:11px;font-weight:700;color:var(--mu);padding:8px 14px;background:#F8FAFC;border-bottom:1px solid #EEF2F6;display:flex}
+.dd .r{display:grid;grid-template-columns:100px 1fr 150px 70px 120px;gap:10px;padding:9px 14px;align-items:center;font-size:13px;border-bottom:1px solid #F1F5F9;cursor:pointer}
+.dd .r:hover,.dd .r.hi{background:#EFF6FF}
+.dd .r b{font-size:13.5px}.dd .r .n{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.dd .r .n small{display:block;color:var(--mu);font-size:11.5px}
+mark{background:#FEF08A;padding:0 1px;border-radius:2px}
+.pill{display:inline-flex;align-items:center;gap:4px;border-radius:99px;padding:1px 8px;font-size:11px;font-weight:700;white-space:nowrap}
+.p-bd{background:#FEE2E2;color:#B91C1C}.p-cm{background:#E2E8F0;color:#334155}.p-pm{background:#DBEAFE;color:#1D4ED8}.p-ok{background:#DCFCE7;color:#166534}.p-wait{background:#FEF3C7;color:#92400E}
+.crit{display:inline-flex;width:22px;height:22px;border-radius:6px;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:12px}
+/* machine header */
+.mh{display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center}
+.qrb{width:74px;height:74px;border-radius:10px;background:repeating-conic-gradient(#0F172A 0 25%,#fff 0 50%) 0 0/12px 12px;border:5px solid #fff;outline:1px solid var(--bd)}
+.mcode{font-size:24px;font-weight:800;letter-spacing:.3px}.mname{font-size:15px;font-weight:600;color:#334155}.mname small{color:var(--mu);font-weight:500}
+.meta{display:flex;gap:14px;flex-wrap:wrap;margin-top:6px;font-size:12.5px;color:var(--mu)}.meta b{color:#0F172A;font-weight:600}
+.state{display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+.big{font-size:13px;font-weight:800;border-radius:10px;padding:7px 12px;display:flex;gap:6px;align-items:center}
+.btn{border:1px solid var(--bd);background:#fff;border-radius:8px;padding:8px 13px;font:600 13px inherit;cursor:pointer;font-family:inherit;color:#0F172A;white-space:nowrap}
+.btn.pr{background:var(--or);border-color:var(--or);color:#fff}.btn.bl{background:var(--bl);border-color:var(--bl);color:#fff}
+/* kpis */
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.kpi{background:#fff;border:1px solid var(--bd);border-radius:12px;padding:11px 13px}
+.kpi .l{font-size:11.5px;color:var(--mu);font-weight:600}.kpi .v{font-size:22px;font-weight:800;margin-top:2px}.kpi .s{font-size:11px;color:var(--mu)}
+/* tabs */
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--bd);margin:-2px -2px 12px}
+.tabs button{border:none;background:none;padding:9px 14px;font:600 13.5px inherit;color:var(--mu);cursor:pointer;border-bottom:3px solid transparent;font-family:inherit}
+.tabs button.on{color:#0F172A;border-color:var(--bl)}.tabs .c{background:#F1F5F9;border-radius:99px;padding:0 7px;font-size:11px;margin-left:4px}
+.tp{display:none}.tp.on{display:block}
+.g2{display:grid;grid-template-columns:1.2fr 1fr;gap:12px}
+.sec{font-size:13.5px;font-weight:800;margin:0 0 8px;display:flex;align-items:center;gap:8px}
+.sec .m{font-weight:500;color:var(--mu);font-size:12px}
+.row{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid #F1F5F9;font-size:13px}
+.row:last-child{border:none}
+.alert{background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:10px 12px;font-size:12.5px;color:#7F1D1D;line-height:1.5}
+.pm2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pmc{border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:12.5px}
+.pmc .d{font-size:18px;font-weight:800;margin:3px 0}
+/* bar chart */
+.bars{display:flex;align-items:flex-end;gap:7px;height:120px;padding-top:6px}
+.bars .b{flex:1;display:flex;flex-direction:column-reverse;gap:1px;align-items:stretch}
+.bars .b i{display:block;border-radius:2px}
+.bx{display:flex;gap:7px;font-size:10px;color:var(--mu);margin-top:4px}.bx span{flex:1;text-align:center}
+.lg{display:flex;gap:12px;font-size:11px;color:var(--mu);margin-top:6px}.lg i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+/* history table */
+.tb{width:100%;border-collapse:collapse;font-size:12.5px}
+.tb th{background:var(--nv);color:#fff;text-align:left;font-size:11.5px;padding:7px 8px;white-space:nowrap;position:sticky;top:0}
+.tb td{padding:8px;border-bottom:1px solid #F1F5F9;vertical-align:top}
+.tb tr:nth-child(even) td{background:#FAFBFD}
+.tb tr.x td{background:#EFF6FF!important}
+.th{width:44px;height:34px;border-radius:5px;background:linear-gradient(135deg,#94A3B8,#475569);display:inline-block;margin-right:3px}
+.det{background:#F8FAFC!important;border-left:3px solid var(--bl)}
+.det .gd{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;font-size:12px}
+.det .gd b{display:block;font-size:11px;color:var(--mu);font-weight:600}
+.ft{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.ft input,.ft select{border:1px solid var(--bd);border-radius:8px;padding:6px 10px;font:13px inherit;font-family:inherit}
+.stk{height:8px;border-radius:99px;background:#E2E8F0;overflow:hidden;width:90px;display:inline-block;vertical-align:middle}
+.stk i{display:block;height:100%}
+.tag{font-size:10.5px;font-weight:700;border-radius:5px;padding:1px 6px}
+.sample{font-size:11px;font-weight:700;background:#FEF3C7;color:#92400E;border-radius:6px;padding:2px 8px}
+/* phone */
+.phonewrap{display:none;justify-content:center;gap:30px;margin:10px auto 40px;flex-wrap:wrap}
+.phone{width:390px;height:820px;background:#fff;border-radius:40px;border:10px solid #0F172A;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 14px 40px rgba(0,0,0,.35)}
+.phone .pt{background:#202020;color:#fff;padding:14px 14px 10px;font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px}
+.phone .pb{flex:1;overflow:auto;background:var(--bg);padding:10px;display:flex;flex-direction:column;gap:9px}
+.phone .card{padding:11px;border-radius:12px}
+.phone .sin{height:44px;border-radius:11px}
+.phone .ptab{display:flex;gap:4px;overflow:auto}.phone .ptab span{white-space:nowrap;border:1px solid var(--bd);background:#fff;border-radius:99px;padding:5px 11px;font-size:12px;font-weight:600}
+.phone .ptab span.on{background:var(--nv);color:#fff;border-color:var(--nv)}
+.phone .pbar{display:flex;border-top:1px solid #2E2E2E;background:#202020}
+.phone .pbar div{flex:1;text-align:center;color:#9AA0A6;font-size:10.5px;padding:8px 0 10px;font-weight:600}.phone .pbar .on{color:var(--or)}
+.pk{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.pk div{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:7px 8px;font-size:10.5px;color:var(--mu)}.pk b{display:block;font-size:17px;color:#0F172A}
+.cap{text-align:center;font-size:12.5px;color:#334155;font-weight:700;margin-top:8px}
+</style></head><body>
+
+<div class="note"><b>PREVIEW ONLY — nothing is built yet.</b> A new page <b>“Machine lookup / ค้นหาเครื่องจักร (search machine)”</b> for every role: type or pick a machine and see <b>exactly the same page a QR scan opens</b> — one page, one set of data for everybody. Real history below is <b>W01PK06</b> from the BFLFP copy of 26 Sep (Thai notes translated in brackets). Spare-part rows are <b>sample data</b>: the parts register exists but is empty and has no machine link yet — see the Parts tab for what that needs.</div>
+<div class="modes"><button class="on" onclick="mode('desk',this)">🖥 Desktop</button><button onclick="mode('phone',this)">📱 Phone</button></div>
+
+<!-- ═════════════════ DESKTOP ═════════════════ -->
+<div class="desk" id="desk">
+ <div class="side">
+  <div class="br">BFLFP <span>· CMMS</span></div>
+  <div class="i">🔧 Jobs</div><div class="i">📅 Planning</div><div class="i">👥 Assigned jobs</div>
+  <div class="i on">🔎 Machine lookup <span class="new">NEW</span></div>
+  <div class="i">📊 Dashboard</div><div class="i">🏭 Machine list</div><div class="i">📋 Assets</div><div class="k">▦ QR labels</div>
+  <div class="i">📄 Reports</div><div class="i">💬 Chat</div>
+ </div>
+ <div class="main">
+  <div class="top"><span class="t">BFL Group <span>- CMMS</span></span><span style="font-size:11px;background:#334155;border-radius:5px;padding:1px 7px">BFLFP</span><span class="u">Raja<br>planner</span></div>
+  <div class="page">
+
+   <!-- search -->
+   <div class="card">
+    <div style="display:flex;gap:10px;align-items:center">
+     <div class="sbox" style="flex:1">
+      <div class="sin">🔎<input id="q" value="pk0" oninput="dd(true)" onfocus="dd(true)" placeholder="Search machine — code, name, location…"><span class="kbd">/</span></div>
+      <div class="dd" id="dd">
+       <div class="h"><span style="flex:1">5 of 1,671 machines · ↑↓ to move · Enter to open</span><span>Esc</span></div>
+       <div class="r hi" onclick="pick()"><b><mark>W01PK0</mark>6</b><div class="n">เครื่องบรรจุซองเพ้าช์ Dupex<small>(Duplex pouch filling machine)</small></div><div>Filling · Floor 1</div><div><span class="crit" style="background:#F7941D">B</span></div><div><span class="pill p-bd">● 1 open</span></div></div>
+       <div class="r" onclick="pick()"><b><mark>W01PK0</mark>1</b><div class="n">เครื่องบรรจุซอง #1<small>(Pouch filler #1)</small></div><div>Filling · Floor 1</div><div><span class="crit" style="background:#F7941D">B</span></div><div><span class="pill p-ok">✓ no open job</span></div></div>
+       <div class="r" onclick="pick()"><b><mark>W01PK0</mark>5</b><div class="n">เครื่องบรรจุซอง #5<small>(Pouch filler #5)</small></div><div>Filling · Floor 1</div><div><span class="crit" style="background:#F7941D">B</span></div><div><span class="pill p-ok">✓ no open job</span></div></div>
+       <div class="r" onclick="pick()"><b><mark>W01PK0</mark>7</b><div class="n">เครื่องบรรจุซองแมวเลีย<small>(Treats cat filler)</small></div><div>Filling · Floor 1</div><div><span class="crit" style="background:#F7941D">B</span></div><div><span class="pill p-wait">⏳ 1 to accept</span></div></div>
+       <div class="r" onclick="pick()"><b><mark>W01PK0</mark>8</b><div class="n">เครื่องบรรจุซอง #8<small>(Pouch filler #8)</small></div><div>Filling · Floor 1</div><div><span class="crit" style="background:#16A34A">C</span></div><div><span class="pill p-ok">✓ no open job</span></div></div>
+      </div>
+     </div>
+     <button class="scan">▦ Scan QR</button>
+    </div>
+    <div class="fl">Narrow down:
+     <span class="chip on">All floors</span><span class="chip">Floor 1</span><span class="chip">Floor 2</span>
+     <span class="chip">Filling</span><span class="chip">Mixing</span><span class="chip">Retort room</span>
+     <span class="chip">Has open job</span><span class="chip">Critical A</span>
+     <span style="margin-left:auto">Recent: <span class="chip">W01PK06</span> <span class="chip">W01BC03</span> <span class="chip">W02AI13</span></span></div>
+   </div>
+
+   <!-- machine header -->
+   <div class="card mh">
+    <div class="qrb" title="its QR label"></div>
+    <div>
+     <div style="display:flex;align-items:center;gap:10px"><span class="mcode">W01PK06</span><span class="crit" style="background:#F7941D">B</span><span class="pill p-cm">PACKING</span></div>
+     <div class="mname">เครื่องบรรจุซองเพ้าช์ Dupex <small>(Duplex pouch filling machine)</small></div>
+     <div class="meta"><span>Plant <b>BFLFP</b></span><span>Location <b>Filling</b></span><span>Floor <b>1</b></span><span>Group <b>PACKING</b></span><span>Brand / model <b>—</b></span><span>Dept <b>Production</b></span></div>
+    </div>
+    <div class="state">
+     <span class="big" style="background:#FEF2F2;color:#B91C1C">● DOWN NOW — BKD-2609-051 · 1 h 20 m</span>
+     <div style="display:flex;gap:6px"><button class="btn pr">＋ New request</button><button class="btn">▦ Print QR</button><button class="btn">✎ Edit asset</button></div>
+    </div>
+   </div>
+
+   <!-- kpis -->
+   <div class="kpis">
+    <div class="kpi"><div class="l">Breakdowns · 30 days</div><div class="v" style="color:var(--rd)">7</div><div class="s">↑ 4 vs previous 30 days</div></div>
+    <div class="kpi"><div class="l">Downtime · 30 days</div><div class="v">31.4 h</div><div class="s">engineering 18.2 h</div></div>
+    <div class="kpi"><div class="l">MTTR</div><div class="v">2.6 h</div><div class="s">repair hours ÷ breakdowns</div></div>
+    <div class="kpi"><div class="l">MTBF</div><div class="v">61 h</div><div class="s">running hours ÷ breakdowns</div></div>
+    <div class="kpi"><div class="l">Last PM</div><div class="v">21 Sep</div><div class="s">Weekly · OK 8 / NG 0</div></div>
+    <div class="kpi"><div class="l">Next PM</div><div class="v" style="color:var(--bl)">28 Sep</div><div class="s">Weekly · assigned Mark</div></div>
+   </div>
+
+   <!-- tabs -->
+   <div class="card">
+    <div class="tabs">
+     <button class="on" onclick="tab('ov',this)">Overview</button>
+     <button onclick="tab('hi',this)">History <span class="c">13</span></button>
+     <button onclick="tab('pm',this)">PM <span class="c">3</span></button>
+     <button onclick="tab('sp',this)">Spare parts <span class="c">6</span></button>
+     <button onclick="tab('dc',this)">Documents & photos</button>
+    </div>
+
+    <!-- OVERVIEW -->
+    <div class="tp on" id="t-ov"><div class="g2">
+     <div>
+      <div class="sec">Open now <span class="m">— so nobody reports a fault already being fixed</span></div>
+      <div class="row"><span class="pill p-bd">BD</span><div style="flex:1"><b>BKD-2609-051</b> · Seal jaw not heating<div style="color:var(--mu);font-size:12px">Reported 09:05 by Filling line · working: Mark, Choke · started 09:20</div></div><span class="pill p-wait">In progress</span></div>
+      <div class="row"><span class="pill p-pm">PM</span><div style="flex:1"><b>PRM-2609-512</b> · Weekly PM<div style="color:var(--mu);font-size:12px">Planned 28 Sep · Mark</div></div><span class="pill p-cm">Assigned</span></div>
+      <div class="sec" style="margin-top:14px">Last 3 repairs</div>
+      <div class="row"><span class="pill p-bd">BD</span><div style="flex:1"><b>26 Sep</b> BKD-2609-050 — หน้างานแก้ไขแล้วครับ <span style="color:var(--mu)">(fixed on site)</span></div><span style="color:var(--mu);font-size:12px">tech 158</span></div>
+      <div class="row"><span class="pill p-bd">BD</span><div style="flex:1"><b>18 Sep</b> BKD-2609-044 — แก้ไขเสร็จแล้วครับ <span style="color:var(--mu)">(repair finished)</span></div><span style="color:var(--mu);font-size:12px">Mark</span></div>
+      <div class="row"><span class="pill p-bd">BD</span><div style="flex:1"><b>10 Sep</b> BKD-2609-019 — เปลี่ยนสายพานใหม่ <span style="color:var(--mu)">(replaced the belt)</span></div><span style="color:var(--mu);font-size:12px">Mark</span></div>
+     </div>
+     <div>
+      <div class="alert">⚠ <b>Repeat fault:</b> “LAN cable loose connection” twice on 2 Sep (BKD-2609-002, BKD-2609-003) — the repair did not hold, or two people reported one stoppage.</div>
+      <div class="sec" style="margin-top:12px">Jobs per month <span class="m">— last 12 months</span></div>
+      <div class="bars" id="bars"></div><div class="bx" id="bx"></div>
+      <div class="lg"><span><i style="background:#DC2626"></i>BD</span><span><i style="background:#64748B"></i>CM</span><span><i style="background:#2563EB"></i>PM</span></div>
+      <div class="pm2" style="margin-top:12px">
+       <div class="pmc">Previous PM<div class="d">21 Sep</div>PRM-2609-446 · Weekly · OK 8 · NG 0<br><span style="color:var(--mu)">Kanya</span></div>
+       <div class="pmc" style="border-color:#BFDBFE;background:#EFF6FF">Next PM<div class="d" style="color:var(--bl)">28 Sep</div>PRM-2609-512 · Weekly<br><span style="color:var(--mu)">Mark</span></div>
+      </div>
+     </div>
+    </div></div>
+
+    <!-- HISTORY -->
+    <div class="tp" id="t-hi">
+     <div class="ft"><span class="chip on">All 13</span><span class="chip">BD 7</span><span class="chip">CM 3</span><span class="chip">PM 3</span>
+      <input type="date" value="2026-06-28"> – <input type="date" value="2026-09-28"><input placeholder="Search fault, fix, technician…" style="flex:1;min-width:200px">
+      <button class="btn">⤓ Excel</button></div>
+     <table class="tb">
+      <tr><th>Date</th><th>Job</th><th>Type</th><th>Problem</th><th>Root cause → fix</th><th>Who</th><th>Downtime</th><th>Photos</th></tr>
+      <tr class="x" onclick="det()" style="cursor:pointer"><td>26 Sep<br><small>09:22</small></td><td><b>BKD-2609-050</b></td><td><span class="pill p-bd">BD</span></td><td>Machine stopped</td><td>หน้างานแก้ไขแล้วครับ <small style="color:var(--mu)">(fixed on site)</small></td><td>tech 158</td><td>49 h 0 m</td><td><span class="th"></span><span class="th"></span></td></tr>
+      <tr id="det"><td colspan="8" class="det"><div class="gd">
+       <div><b>Reported</b>24 Sep 08:27 · Filling line</div><div><b>Started / finished</b>26 Sep 08:40 → 09:22</div><div><b>Accepted by</b>Filling supervisor · 26 Sep 10:02</div><div><b>Spare parts used</b>— none recorded</div>
+       <div style="grid-column:span 4"><b>Timeline</b>Reported → Assigned (Mark) → Started → Paused “waiting for part” 2 h → Finished → Accepted</div></div>
+       <div style="margin-top:8px"><button class="btn bl">Open job</button> <button class="btn">Same fault before (0)</button></div></td></tr>
+      <tr><td>21 Sep</td><td><b>PRM-2609-446</b></td><td><span class="pill p-pm">PM</span></td><td>Weekly PM · 8 items</td><td>OK 8 · NG 0 — ปกติ <small style="color:var(--mu)">(normal)</small></td><td>Kanya</td><td>—</td><td><span class="th"></span></td></tr>
+      <tr><td>18 Sep</td><td><b>BKD-2609-044</b></td><td><span class="pill p-bd">BD</span></td><td>Machine stopped</td><td>แก้ไขเสร็จแล้วครับ <small style="color:var(--mu)">(repair finished)</small></td><td>Mark</td><td>3 h 50 m</td><td></td></tr>
+      <tr><td>10 Sep</td><td><b>BKD-2609-019</b></td><td><span class="pill p-bd">BD</span></td><td>Belt slipping</td><td>เปลี่ยนสายพานใหม่ <small style="color:var(--mu)">(replaced the belt)</small></td><td>Mark</td><td>0 h 07 m</td><td><span class="th"></span><span class="th"></span></td></tr>
+      <tr><td>10 Sep</td><td><b>PRD-2609-035</b></td><td><span class="pill p-cm">CM</span></td><td>Check machine</td><td>ตรวจเช็คปกติครับ <small style="color:var(--mu)">(checked, normal)</small></td><td>Mark</td><td>—</td><td></td></tr>
+      <tr><td>5 Sep</td><td><b>BKD-2609-012</b></td><td><span class="pill p-bd">BD</span></td><td>Electrical trip</td><td>น้ำเข้าปลั๊กไฟ <small style="color:var(--mu)">(water got into the power plug)</small></td><td>Mark</td><td>0 h 49 m</td><td></td></tr>
+      <tr><td>4 Sep</td><td><b>BKD-2609-011</b></td><td><span class="pill p-bd">BD</span></td><td>Sensor fault</td><td>ตัวปรับความถี่เซ็นเซอร์เสีย / หัวเซ็นเซอร์ขยับ <small style="color:var(--mu)">(sensor frequency adjuster failed / sensor head moved)</small></td><td>Mark</td><td>4 h 27 m</td><td><span class="th"></span></td></tr>
+      <tr><td>2 Sep</td><td><b>BKD-2609-003</b> <span class="tag" style="background:#FEE2E2;color:#B91C1C">repeat</span></td><td><span class="pill p-bd">BD</span></td><td>Line stop</td><td>LAN cable loose connection</td><td>tech 143</td><td>0 h 46 m</td><td></td></tr>
+      <tr><td>2 Sep</td><td><b>BKD-2609-002</b> <span class="tag" style="background:#FEE2E2;color:#B91C1C">repeat</span></td><td><span class="pill p-bd">BD</span></td><td>Line stop</td><td>LAN cable loose connection</td><td>tech 143</td><td>25 h 54 m</td><td></td></tr>
+     </table>
+     <div style="text-align:center;margin-top:10px"><button class="btn">Show older (4 more)</button></div>
+    </div>
+
+    <!-- PM -->
+    <div class="tp" id="t-pm"><div class="g2">
+     <div><div class="sec">PM programme for this machine</div>
+      <table class="tb"><tr><th>Frequency</th><th>Items</th><th>Weekday</th><th>Last done</th><th>Next due</th><th>On time (90 d)</th></tr>
+       <tr><td><span class="pill p-pm">Weekly</span></td><td>8</td><td>Monday</td><td>21 Sep</td><td><b style="color:var(--bl)">28 Sep</b></td><td>12 / 13 · 92 %</td></tr>
+       <tr><td><span class="pill" style="background:#FEE2E2;color:#B91C1C">Monthly</span></td><td>5</td><td>1st Monday</td><td>7 Sep</td><td>5 Oct</td><td>3 / 3 · 100 %</td></tr>
+       <tr><td><span class="pill" style="background:#DCFCE7;color:#166534">3-month</span></td><td>4</td><td>—</td><td>1 Jul</td><td>6 Oct</td><td>1 / 1</td></tr></table>
+      <div class="sec" style="margin-top:14px">Checklist items that failed (NG) — last 90 days</div>
+      <div class="row"><span class="pill p-wait">NG ×2</span><div>Sealing jaw temperature within ±5 °C <div style="color:var(--mu);font-size:12px">14 Sep, 31 Aug · both followed by a CM</div></div></div>
+      <div class="row"><span class="pill p-wait">NG ×1</span><div>Belt tension / wear <div style="color:var(--mu);font-size:12px">7 Sep · belt replaced 10 Sep (BKD-2609-019)</div></div></div>
+     </div>
+     <div><div class="sec">Recent PM sheets</div>
+      <div class="row"><span class="pill p-pm">PM</span><div style="flex:1"><b>PRM-2609-446</b> · 21 Sep · OK 8 / NG 0<div style="color:var(--mu);font-size:12px">Kanya · accepted 22 Sep</div></div><button class="btn">📄 Sheet</button></div>
+      <div class="row"><span class="pill p-pm">PM</span><div style="flex:1"><b>PRM-2609-416</b> · 23 Sep · OK 8 / NG 0</div><button class="btn">📄 Sheet</button></div>
+      <div class="row"><span class="pill p-pm">PM</span><div style="flex:1"><b>PRM-2609-235</b> · 15 Sep · OK 8 / NG 0 <div style="color:var(--mu);font-size:12px">note: ใส่รูปแล้วเปลี่ยนไม่ได้ (photo added, cannot be changed)</div></div><button class="btn">📄 Sheet</button></div>
+     </div>
+    </div></div>
+
+    <!-- SPARE PARTS -->
+    <div class="tp" id="t-sp">
+     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span class="sample">SAMPLE DATA</span><span style="font-size:12.5px;color:var(--mu)">Needs two new things: a <b>parts ↔ machine link</b> (which parts fit this machine) and <b>parts used per job</b> (written when a technician finishes).</span><span style="flex:1"></span><button class="btn">＋ Link a part</button></div>
+     <div class="g2">
+      <div><div class="sec">Parts for this machine</div>
+       <table class="tb"><tr><th>Part no.</th><th>Part</th><th>Stock</th><th>Min</th><th>Store</th><th>Last used</th></tr>
+        <tr><td><b>SP-BLT-0610</b></td><td>Conveyor belt 610 mm</td><td><span class="stk"><i style="width:30%;background:#DC2626"></i></span> <b style="color:var(--rd)">1</b></td><td>2</td><td>ENG store A-3</td><td>10 Sep · BKD-2609-019</td></tr>
+        <tr><td><b>SP-HTR-220</b></td><td>Sealing jaw heater 220 V</td><td><span class="stk"><i style="width:60%;background:#D97706"></i></span> <b>2</b></td><td>2</td><td>ENG store B-1</td><td>31 Aug</td></tr>
+        <tr><td><b>SP-SNS-PE12</b></td><td>Photo-eye sensor PE-12</td><td><span class="stk"><i style="width:90%;background:#16A34A"></i></span> <b>6</b></td><td>2</td><td>ENG store B-4</td><td>4 Sep · BKD-2609-011</td></tr>
+        <tr><td><b>SP-LAN-CAT6</b></td><td>LAN cable Cat6 + connector</td><td><span class="stk"><i style="width:100%;background:#16A34A"></i></span> <b>20</b></td><td>5</td><td>IT cabinet</td><td>2 Sep · BKD-2609-003</td></tr>
+        <tr><td><b>SP-TC-K</b></td><td>Thermocouple type K</td><td><span class="stk"><i style="width:50%;background:#D97706"></i></span> <b>2</b></td><td>2</td><td>ENG store B-1</td><td>—</td></tr>
+        <tr><td><b>SP-TFL-300</b></td><td>Teflon tape 300 mm</td><td><span class="stk"><i style="width:80%;background:#16A34A"></i></span> <b>8</b></td><td>3</td><td>ENG store A-1</td><td>21 Sep · PM</td></tr></table>
+       <div style="font-size:11.5px;color:var(--mu);margin-top:6px">Red = below minimum → shows on the planner's dashboard as “reorder”.</div></div>
+      <div><div class="sec">Parts used on this machine <span class="m">— last 90 days</span></div>
+       <div class="row"><b style="min-width:52px">10 Sep</b><div style="flex:1">1 × Conveyor belt 610 mm<div style="color:var(--mu);font-size:12px">BKD-2609-019 · Mark</div></div><b>฿2,450</b></div>
+       <div class="row"><b style="min-width:52px">4 Sep</b><div style="flex:1">1 × Photo-eye sensor PE-12<div style="color:var(--mu);font-size:12px">BKD-2609-011 · Mark</div></div><b>฿1,180</b></div>
+       <div class="row"><b style="min-width:52px">2 Sep</b><div style="flex:1">2 × LAN cable Cat6<div style="color:var(--mu);font-size:12px">BKD-2609-003 · tech 143</div></div><b>฿160</b></div>
+       <div class="row"><b style="min-width:52px">31 Aug</b><div style="flex:1">1 × Sealing jaw heater 220 V<div style="color:var(--mu);font-size:12px">CM · Kanya</div></div><b>฿3,900</b></div>
+       <div style="display:flex;justify-content:space-between;border-top:2px solid var(--bd);padding-top:8px;margin-top:4px;font-size:13px"><b>Parts cost · 90 days</b><b>฿7,690</b></div></div>
+     </div>
+    </div>
+
+    <!-- DOCS -->
+    <div class="tp" id="t-dc">
+     <div class="sec">Photos from jobs <span class="m">— newest first, tap to open the job</span></div>
+     <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <div style="width:130px"><span class="th" style="width:130px;height:96px"></span><div style="font-size:11.5px;color:var(--mu)">26 Sep · before · BKD-050</div></div>
+      <div style="width:130px"><span class="th" style="width:130px;height:96px"></span><div style="font-size:11.5px;color:var(--mu)">26 Sep · after · BKD-050</div></div>
+      <div style="width:130px"><span class="th" style="width:130px;height:96px"></span><div style="font-size:11.5px;color:var(--mu)">21 Sep · PM</div></div>
+      <div style="width:130px"><span class="th" style="width:130px;height:96px"></span><div style="font-size:11.5px;color:var(--mu)">10 Sep · belt</div></div></div>
+     <div class="sec" style="margin-top:14px">Manuals & drawings <span class="sample">OPTIONAL — later</span></div>
+     <div style="font-size:12.5px;color:var(--mu)">Upload a PDF manual / wiring drawing once per machine; technicians open it from the phone at the machine.</div>
+    </div>
+   </div>
+  </div>
+ </div>
+</div>
+
+<!-- ═════════════════ PHONE ═════════════════ -->
+<div class="phonewrap" id="phone">
+ <div>
+ <div class="phone"><div class="pt">☰ <span>BFL Group <span style="color:var(--or)">- CMMS</span></span></div>
+  <div class="pb">
+   <div class="sin">🔎<input value="W01PK" style="border:none;outline:none;font:15px inherit;flex:1;font-family:inherit"><span style="background:var(--nv);color:#fff;border-radius:8px;padding:5px 9px;font-size:12px;font-weight:700">▦ Scan</span></div>
+   <div class="card" style="padding:0">
+    <div class="row" style="padding:10px 12px"><div style="flex:1"><b>W01PK06</b> <span class="crit" style="background:#F7941D;width:18px;height:18px;font-size:10.5px">B</span><div style="font-size:12px">เครื่องบรรจุซองเพ้าช์ Dupex <span style="color:var(--mu)">(Duplex pouch filler)</span></div><div style="font-size:11px;color:var(--mu)">Filling · Floor 1</div></div><span class="pill p-bd">● 1 open</span></div>
+    <div class="row" style="padding:10px 12px"><div style="flex:1"><b>W01PK07</b><div style="font-size:12px">เครื่องบรรจุซองแมวเลีย <span style="color:var(--mu)">(Treats cat filler)</span></div><div style="font-size:11px;color:var(--mu)">Filling · Floor 1</div></div><span class="pill p-wait">⏳ accept</span></div>
+    <div class="row" style="padding:10px 12px"><div style="flex:1"><b>W01PK08</b><div style="font-size:12px">เครื่องบรรจุซอง #8 <span style="color:var(--mu)">(Pouch filler #8)</span></div><div style="font-size:11px;color:var(--mu)">Filling · Floor 1</div></div><span class="pill p-ok">✓</span></div>
+   </div>
+   <div style="font-size:11.5px;color:var(--mu);text-align:center">Recent: W01PK06 · W01BC03 · W02AI13</div>
+  </div>
+  <div class="pbar"><div>Jobs</div><div class="on">🔎 Lookup</div><div>Chat</div><div>More</div></div></div>
+ <div class="cap">1 · Search (type or scan)</div></div>
+
+ <div>
+ <div class="phone"><div class="pt">‹ <span>W01PK06</span><span style="margin-left:auto;font-size:12px;color:#cbd5e1">✕</span></div>
+  <div class="pb">
+   <div class="card"><div style="display:flex;gap:10px;align-items:center"><div class="qrb" style="width:52px;height:52px"></div><div><b style="font-size:18px">W01PK06</b> <span class="crit" style="background:#F7941D">B</span><div style="font-size:12.5px">เครื่องบรรจุซองเพ้าช์ Dupex</div><div style="font-size:11px;color:var(--mu)">(Duplex pouch filler) · Filling · Floor 1</div></div></div>
+    <div class="big" style="background:#FEF2F2;color:#B91C1C;margin-top:8px;justify-content:center">● DOWN NOW · BKD-2609-051 · Mark</div>
+    <button class="btn pr" style="width:100%;margin-top:8px;padding:11px">＋ New request</button></div>
+   <div class="pk"><div>BD 30 d<b style="color:var(--rd)">7</b></div><div>Downtime<b>31 h</b></div><div>Next PM<b style="color:var(--bl)">28 Sep</b></div></div>
+   <div class="ptab"><span class="on">History</span><span>Open 2</span><span>PM</span><span>Parts</span><span>Photos</span></div>
+   <div class="alert" style="font-size:11.5px">⚠ Repeat: LAN cable loose ×2 on 2 Sep</div>
+   <div class="card" style="padding:0 11px">
+    <div class="row"><span class="pill p-bd">BD</span><div style="flex:1;font-size:12.5px"><b>26 Sep</b> · BKD-050<div style="color:var(--mu)">fixed on site · tech 158</div></div></div>
+    <div class="row"><span class="pill p-pm">PM</span><div style="flex:1;font-size:12.5px"><b>21 Sep</b> · Weekly OK 8/8<div style="color:var(--mu)">Kanya</div></div></div>
+    <div class="row"><span class="pill p-bd">BD</span><div style="flex:1;font-size:12.5px"><b>18 Sep</b> · BKD-044<div style="color:var(--mu)">repair finished · Mark</div></div></div>
+    <div class="row"><span class="pill p-bd">BD</span><div style="flex:1;font-size:12.5px"><b>10 Sep</b> · BKD-019<div style="color:var(--mu)">replaced the belt · Mark · 🔩 belt 610</div></div></div>
+   </div>
+   <button class="btn" style="width:100%">Show more</button>
+  </div>
+  <div class="pbar"><div>Jobs</div><div class="on">🔎 Lookup</div><div>Chat</div><div>More</div></div></div>
+ <div class="cap">2 · Machine page = same as a QR scan</div></div>
+</div>
+
+<script>
+function mode(m,b){document.querySelectorAll('.modes button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  document.getElementById('desk').style.display=m==='desk'?'grid':'none';document.getElementById('phone').style.display=m==='phone'?'flex':'none';}
+function tab(k,b){document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  document.querySelectorAll('.tp').forEach(x=>x.classList.remove('on'));document.getElementById('t-'+k).classList.add('on');}
+function dd(on){document.getElementById('dd').style.display=on?'block':'none';}
+function pick(){dd(false);document.getElementById('q').value='W01PK06';}
+function det(){const d=document.getElementById('det');d.style.display=d.style.display==='none'?'':'none';}
+document.addEventListener('click',e=>{if(!e.target.closest('.sbox'))dd(false);});
+dd(false);
+// 12-month stacked bars (sample shape; real numbers come from the jobs table)
+const M=['Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep'],D=[[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,1],[1,1,4],[7,3,3]];
+const mx=12;document.getElementById('bars').innerHTML=D.map(([b,c,p])=>`<div class="b">${[[p,'#2563EB'],[c,'#64748B'],[b,'#DC2626']].map(([n,col])=>n?`<i style="height:${n/mx*110}px;background:${col}" title="${n}"></i>`:'').join('')}</div>`).join('');
+document.getElementById('bx').innerHTML=M.map(m=>`<span>${m}</span>`).join('');
+</script>
+</body></html>

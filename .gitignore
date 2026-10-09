@@ -1,7 +1,37 @@
 __pycache__/
 *.pyc
 data/
+data-dev/
 .venv/
 *.db
 uploads/
 Start CMMS (PostgreSQL).bat
+deploy/Caddyfile.local
+caddy.exe
+deploy/secrets.env
+
+# --- not for GitHub (release zips, scratch, media, office working files) ---
+_to_server/
+_to_delete/
+data-dev-video/
+data-dev*/
+Claude outputs/
+Training Videos/
+bflcmms/
+BFL Master/
+BFLPC Doc/
+Bfl vs Bflpc/
+CM Template/
+QR Code/
+docs/operation-manual-videos/
+_*_tmp.js
+~$*
+*.zip
+*.mp4
+*.psd
+*.pem
+
+# office / print working files (tracked ones stay tracked)
+*.xlsx
+*.pptx
+*.pdf

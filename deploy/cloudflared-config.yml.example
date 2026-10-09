@@ -1,0 +1,12 @@
+# Cloudflare Tunnel config for BFLFP CMMS
+# Copy this to:  C:\Users\bfl17\.cloudflared\config.yml
+# Replace <TUNNEL-ID> (both places) with the ID printed by:
+#     cloudflared tunnel create bflfp
+
+tunnel: <TUNNEL-ID>
+credentials-file: C:\Users\bfl17\.cloudflared\<TUNNEL-ID>.json
+
+ingress:
+  - hostname: cmms.bluefalo.co.th
+    service: http://localhost:8000
+  - service: http_status:404
