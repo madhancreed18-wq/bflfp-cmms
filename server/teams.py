@@ -386,10 +386,15 @@ async def day(req: Request, d: str = ""):
             # has something to agree with.
             if lead in acct_ids:
                 nm = acct_ids.get(lead) or nm
+            # b450: a lead who is not a technician at all (a planner) — same treatment as a
+            # phone account: the column says so and takes no drops
+            _lr = c.execute("SELECT role FROM users WHERE id=?", (lead,)).fetchone()
+            _not_tech = bool(_lr) and _lr["role"] != "technician"
             teams.append({"name": nm.split("(")[0].strip() or "Team", "color": "", "lead": lead,
                           "members": [lead], "login": None, "start": "", "end": "",
                           "jobs": list(jids), "auto": True,
-                          "lead_is_account": lead in acct_ids,
+                          "lead_not_tech": _not_tech,
+                          "lead_is_account": (lead in acct_ids) or _not_tech,
                           "lead_username": acct_ids.get(lead, "")})
         # Work that has never been given a day. It is not "unassigned on this day" —
         # it is nowhere yet. On a desk that pile lives on the calendar next door; on a

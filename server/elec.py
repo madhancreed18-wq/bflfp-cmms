@@ -128,6 +128,18 @@ def ensure_board(c):
                 remap_person(c, r["pid"], r["acc"])
             state_set(c, "users:central-remap", "done")
             c.commit()
+        if state_get(c, "jobs:lead-not-tech") != "done":
+            # b450: a planner/admin set as a job's "technician" (a project task given to its
+            # planner) made a board column nobody can save into. Work not started yet goes
+            # back to the pool; work somebody already started is left alone.
+            c.execute("""UPDATE jobs SET lead_tech=NULL WHERE lead_tech IN
+                    (SELECT id FROM users WHERE role<>'technician')
+                  AND status IN ('Reported','WaitingAssignment','WaitingApproval','Assigned')""")
+            c.execute("""UPDATE pm_elec SET tech=NULL WHERE tech IN
+                    (SELECT id FROM users WHERE role<>'technician')
+                  AND COALESCE(started_at,'')='' AND COALESCE(done_at,'')=''""")
+            state_set(c, "jobs:lead-not-tech", "done")
+            c.commit()
     except Exception:
         pass
 

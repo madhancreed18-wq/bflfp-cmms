@@ -1137,9 +1137,11 @@ td.pjd.pjnow{background:#ffe9d6}
 /* ── the help bot: a button that follows every page, and its panel ──────────────
    It sits clear of the phone's bottom bar, and above dialogs it must never cover. */
 .hbfab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));width:62px;height:62px;border-radius:50%;
-  background:none;border:none;padding:0;cursor:pointer;z-index:60;filter:drop-shadow(0 8px 18px rgba(27,117,188,.45));
+  background:radial-gradient(circle at 40% 35%,#4FB3F6,#1565C0);border:2px solid #fff;padding:0;box-sizing:border-box;overflow:hidden;
+  cursor:pointer;z-index:60;box-shadow:0 6px 16px rgba(27,117,188,.45);
   transition:transform .12s}
-.hbfab img{width:100%;height:100%;object-fit:contain;display:block;pointer-events:none}
+.hbfab img{width:118%;height:118%;margin:-4% 0 0 -6%;max-width:none;display:block;pointer-events:none}
+.hbfab{touch-action:none}
 .hbfab:hover{transform:translateY(-2px) scale(1.04)}
 .hbfab:active{transform:scale(.96)}
 .hbdot{position:absolute;top:6px;right:6px;width:11px;height:11px;border-radius:50%;background:#DC2626;border:2px solid #fff}
@@ -1732,7 +1734,7 @@ const patch=(u,b,o)=>api(u,{method:'PATCH',body:JSON.stringify(b),...(o||{})});
 const isNetErr=e=>{const m=(e&&e.message)||'';return m==='offline'||m==='timeout';};
 const esc=s=>(s||'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 const P=['','ปกติ','เร่ง','ด่วน!'];
-const UIBUILD='b449';
+const UIBUILD='b451';
 /* b391 — the sliding shape under the selected tab. Every screen redraws its tabs from
    scratch, so the shape is added after each draw: it starts where the previous tab was
    (remembered per tab set) and slides to the new one; the content after the tabs slides
@@ -7005,6 +7007,9 @@ function asgNoDrop(i){
   const t=ASG&&ASG.teams&&ASG.teams[i];
   if(!t||!t.lead_is_account)return '';
   const who=t.lead_username||t.name||'';
+  if(t.lead_not_tech)return LANG==='TH'
+    ?`"${t.name||''}" ไม่ใช่ช่าง (เป็นผู้วางแผน) — งานที่วางตรงนี้จะไม่ถูกบันทึก ให้ลากไปที่ทีมของช่าง (not a technician — drag onto a technician's team)`
+    :`"${t.name||''}" is not a technician (planner account) — work put there is not saved. Drag it onto a technician's team.`;
   return LANG==='TH'
     ?`คอลัมน์ "${who}" คือบัญชีโทรศัพท์ ไม่ใช่ตัวช่าง — งานที่วางตรงนี้จะไม่ถูกบันทึก ให้ลากไปที่ทีมจริงแทน`
     :`"${who}" is a phone account, not a technician — work put there is not saved. Drag it onto a real team instead.`;
@@ -7084,7 +7089,7 @@ function asgDraw(){
               : 'this work is booked to a phone account, not to a person — somebody picked it up on the shared handset\nthis column cannot be deleted: drag the job onto the crew of whoever actually did it'}"
             style="background:#FEF3C7;color:#92400E;border:1px solid #FDE68A;border-radius:5px;
             padding:0 5px;font-size:9.5px;font-weight:700;white-space:nowrap;flex:none">${
-            TH?'บัญชีโทรศัพท์':'PHONE ACCT'}</span>`
+            t.lead_not_tech?(TH?'ไม่ใช่ช่าง':'NOT A TECH'):(TH?'บัญชีโทรศัพท์':'PHONE ACCT')}</span>`
            :(t.auto?`<span title="${TH?'สร้างอัตโนมัติจากงานที่มอบหมายไว้แล้ว':'made from work already assigned to this person'}"
             style="background:#EEF2F7;color:#475569;border-radius:5px;padding:0 5px;
             font-size:9.5px;font-weight:700;white-space:nowrap;flex:none">${
@@ -16821,7 +16826,7 @@ function hbInit(){
   if(document.getElementById('hbFab'))return;
   const TH=HBTH();
   const w=document.createElement('div');
-  w.innerHTML=`<button id="hbFab" class="hbfab" title="${TH?'ถามผู้ช่วย':'Ask the assistant'}" onclick="hbToggle()"
+  w.innerHTML=`<button id="hbFab" class="hbfab" title="${TH?'ถามผู้ช่วย · ลากเพื่อย้าย':'Ask the assistant · drag to move'}" onclick="hbFabClick(event)"
       ><img src="/helpbot-icon.png" alt="" width="62" height="62"><span id="hbDot" class="hbdot" style="display:none"></span></button>
     <div id="hbPanel" class="hbpanel" role="dialog" aria-label="help">
       <div class="hbh"><img src="/helpbot.png" alt="" width="30" height="30" style="display:block;flex:none">
@@ -16837,6 +16842,7 @@ function hbInit(){
         <button class="hbsend" onclick="hbSend()" aria-label="send">${HBIC.send}</button></div>
     </div>`;
   document.body.appendChild(w);
+  hbRestore();
   hbPoll();
   try{hbVocab();}catch(e){}
   clearInterval(window._hbPoll);
@@ -16848,11 +16854,37 @@ async function hbPoll(){
     if(dot)dot.style.display=d.unread?'block':'none';
   }catch(e){}
 }
+/* b450: the helper can be dragged out of the way with the mouse or a finger; the place
+   is remembered on this device, and the panel opens next to wherever the helper sits */
+let HBDRAG=null,HBMOVED=false;
+function hbFabClick(e){if(HBMOVED){HBMOVED=false;e.preventDefault();return;}hbToggle();}
+function hbPlace(x,y){const f=document.getElementById('hbFab');if(!f)return;
+  const w=f.offsetWidth||62,h=f.offsetHeight||62;
+  x=Math.max(4,Math.min(window.innerWidth-w-4,x));y=Math.max(4,Math.min(window.innerHeight-h-4,y));
+  f.style.left=x+'px';f.style.top=y+'px';f.style.right='auto';f.style.bottom='auto';return [x,y];}
+function hbPanelNear(){const f=document.getElementById('hbFab'),p=document.getElementById('hbPanel');
+  if(!f||!p||!f.style.left)return;
+  const r=f.getBoundingClientRect(),W=window.innerWidth,H=window.innerHeight;
+  if(r.top>H/2){p.style.bottom=Math.max(8,H-r.top+8)+'px';p.style.top='auto';}
+  else{p.style.top=Math.min(H-120,r.bottom+8)+'px';p.style.bottom='auto';}
+  if(!PHONE()){if(r.left>W/2){p.style.right=Math.max(8,W-r.right)+'px';p.style.left='auto';}
+               else{p.style.left=Math.max(8,r.left)+'px';p.style.right='auto';}}}
+document.addEventListener('pointerdown',e=>{const f=e.target.closest&&e.target.closest('#hbFab');if(!f)return;
+  const r=f.getBoundingClientRect();HBDRAG={dx:e.clientX-r.left,dy:e.clientY-r.top,x0:e.clientX,y0:e.clientY,on:false};HBMOVED=false;});
+document.addEventListener('pointermove',e=>{if(!HBDRAG)return;
+  if(!HBDRAG.on&&Math.hypot(e.clientX-HBDRAG.x0,e.clientY-HBDRAG.y0)<6)return;
+  HBDRAG.on=true;HBMOVED=true;e.preventDefault();
+  hbPlace(e.clientX-HBDRAG.dx,e.clientY-HBDRAG.dy);hbPanelNear();},{passive:false});
+document.addEventListener('pointerup',()=>{if(!HBDRAG)return;const was=HBDRAG.on;HBDRAG=null;
+  if(was){const f=document.getElementById('hbFab');try{localStorage.setItem('bflfp_hbpos',JSON.stringify([parseFloat(f.style.left),parseFloat(f.style.top)]))}catch(e){}}});
+function hbRestore(){try{const v=JSON.parse(localStorage.getItem('bflfp_hbpos')||'null');if(v&&v.length===2)hbPlace(v[0],v[1]);}catch(e){}}
+window.addEventListener('resize',()=>{const f=document.getElementById('hbFab');if(f&&f.style.left)hbPlace(parseFloat(f.style.left),parseFloat(f.style.top));});
 function hbToggle(){
   const p=document.getElementById('hbPanel');if(!p)return;
   HB.open=!p.classList.contains('on');
   p.classList.toggle('on',HB.open);
   if(!HB.open)return;
+  hbPanelNear();
   document.getElementById('hbWhere').textContent=hbPageName();
   if(!HB.msgs.length)hbHello();
   hbChips();
