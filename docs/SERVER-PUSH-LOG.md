@@ -47,7 +47,15 @@ the footer.) The service worker carries the matching `bflfp-vNNN` at `/sw.js`.
 
 > **READY 30 Oct: `_to_server\bflfp-cmms-b503.zip`** = b502 + fixed pallet-slip document no. Use this instead of b502 (if b502 is not on yet). Server files — stop the app.
 
+> **READY 30 Oct: `_to_server\bflfp-cmms-b504.zip`** = b503 slip doc no. + b504 real QR for Access slips (server files — stop the app). Needs b502.
+
 ## WAITING — not yet on live
+
+### b504 — Real QR on pallet slips made from the Access history (30 Oct 2026)
+`server/fg.py`, `static/index.html` (b504), `static/sw.js` (v504). **Restart.** Includes b503 (zip also carries b503's fg.html + config.py).
+- Slips made from old Access receives were stored with an empty QR text, so the Packing records "QR" button showed a code of nothing that scanned as blank. They now carry the same QR as a new slip (product, lot, pallet, bags, kg, MFG/EXP).
+- Existing slips are fixed once at start (test: 28,593 of 28,604 — the 11 with no lot/pallet stay blank). New Access imports get the QR straight away.
+- Tested: the QR scans in Receive (finds the pallet) and Load (checks the lot balance) like a new slip.
 
 ### b503 — Pallet slip: fixed document number F-SP-WHD01-03 Rev.01 (30 Oct 2026)
 `server/config.py` (SLIP_FORM_CODE), `server/fg.py`, `static/fg.html`, `static/index.html` (b503), `static/sw.js` (v503). **Restart.** Includes b502.

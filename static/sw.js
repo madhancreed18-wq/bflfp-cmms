@@ -1,4 +1,4 @@
-const CACHE = "bflfp-v503";
+const CACHE = "bflfp-v504";
 const SHELL = ["/", "/manifest.json", "/logo.png",
   "/Logo192.png", "/Logo512.png", "/Logo180.png", "/helpbot.png", "/helpbot-icon.png", "/vendor/jsqr.js", "/vendor/qrcode.js", "/vendor/pdf.min.js", "/vendor/pdf.worker.min.js"];
 self.addEventListener("install", e => {
