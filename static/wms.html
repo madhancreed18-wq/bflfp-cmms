@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="th">
+<head>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#17202A">
+<title>Warehouse</title>
+<style>
+:root{--ink:#17202A;--ink2:#52606D;--line:#DCE2E8;--soft:#EEF1F4;--bg:#F3F5F7;--card:#fff;--blue:#0B6E99;--blue2:#E4EEF6;
+  --ok:#166534;--okbg:#E3F4EA;--warn:#7A4A00;--warnbg:#FFF1D6;--bad:#9B1C14;--badbg:#FDE8E7;--hold:#5B3F8F;--holdbg:#EEE8F8}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 "Sarabun",system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--blue)}
+.hidden{display:none!important}
+header.top{position:sticky;top:0;z-index:5;background:var(--ink);color:#fff;display:flex;align-items:center;gap:10px;padding:8px 14px;min-height:54px}
+header.top .brand{font-weight:700;font-size:17px;display:flex;align-items:center;gap:8px}
+header.top .sp{flex:1}
+header.top .who{font-size:13px;color:#C9D3DC;text-align:right;line-height:1.2}
+.tbtn{background:#2C3A47;border:0;color:#fff;border-radius:8px;padding:8px 10px;min-height:38px;cursor:pointer;font-size:13px}
+.layout{display:flex;min-height:calc(100vh - 54px)}
+nav.side{width:210px;background:#fff;border-right:1px solid var(--line);padding:10px;display:flex;flex-direction:column;gap:2px}
+nav.side button{display:flex;align-items:center;gap:10px;text-align:left;background:none;border:0;border-radius:8px;padding:10px 12px;cursor:pointer;color:var(--ink)}
+nav.side button.on{background:var(--blue2);color:#0B4A6B;font-weight:600}
+nav.side button:hover{background:var(--soft)}
+main{flex:1;min-width:0;padding:18px;max-width:1280px}
+nav.bot{display:none}
+.ic{width:20px;height:20px;flex:none}
+h1{font-size:22px;margin:0 0 14px}
+h2{font-size:16px;margin:0 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+.grid{display:grid;gap:12px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+.tile{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer}
+.tile .l{font-size:13px;color:var(--ink2)}.tile .v{font-size:28px;font-weight:700}.tile .s{font-size:12px;color:var(--ink2)}
+.row2{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+.row2>.card{flex:1 1 340px;min-width:0}
+.row2>.wide{flex:999 1 560px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;color:var(--ink2);font-weight:500;padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 6px;border-bottom:1px solid var(--soft);vertical-align:top}
+tr.click{cursor:pointer}tr.click:hover{background:#F7F9FB}
+.tw{overflow-x:auto}
+.mono{font-family:ui-monospace,Consolas,monospace}
+td.mono{white-space:nowrap}
+.pill{flex:none;display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.p-ok{background:var(--okbg);color:var(--ok)}.p-warn{background:var(--warnbg);color:var(--warn)}.p-crit,.p-expired,.p-rejected{background:var(--badbg);color:var(--bad)}
+.p-none{background:var(--soft);color:var(--ink2)}.p-pending{background:var(--blue2);color:#0B4A6B}.p-released{background:#E0F2F1;color:#115E59}
+.p-stored{background:var(--okbg);color:var(--ok)}.p-hold{background:var(--holdbg);color:var(--hold)}.p-picked{background:var(--warnbg);color:var(--warn)}.p-dispatched{background:var(--soft);color:var(--ink2)}
+.btn{border:1px solid #A9B4BF;background:#fff;border-radius:10px;padding:10px 16px;min-height:44px;cursor:pointer;font-weight:600}
+.btn.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.hold{background:#8A5300;border-color:#8A5300;color:#fff}
+.btn.bad{background:#B42318;border-color:#B42318;color:#fff}
+.btn.big{width:100%;min-height:56px;font-size:17px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--ink2)}
+input.in,select.in,textarea.in{border:1px solid #A9B4BF;border-radius:8px;padding:9px 10px;min-height:42px;background:#fff;width:100%;font-size:15px;color:var(--ink)}
+.kv{display:grid;grid-template-columns:130px 1fr;gap:6px 10px;font-size:14px}.kv>div:nth-child(odd){color:var(--ink2)}
+.msg{border-radius:10px;padding:10px 12px;font-weight:600;margin:10px 0}
+.m-ok{background:var(--okbg);color:var(--ok)}.m-bad{background:var(--badbg);color:var(--bad)}.m-warn{background:var(--warnbg);color:var(--warn)}.m-info{background:var(--blue2);color:#0B4A6B}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.chip{border:1px solid #A9B4BF;background:#fff;border-radius:999px;padding:6px 12px;cursor:pointer;font-size:13px;min-height:36px}
+.chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.big-loc{background:var(--ink);color:#fff;border-radius:14px;padding:18px;text-align:center}
+.big-loc .c{font-family:ui-monospace,Consolas,monospace;font-size:40px;letter-spacing:1px}
+.big-loc .s{font-size:13px;color:#C9D3DC}
+.check{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:48px;background:#fff;cursor:pointer;text-align:left;width:100%}
+.check.on{border-color:var(--blue);background:#F0F7FB}
+.check .bx{width:22px;height:22px;border-radius:5px;border:2px solid #A9B4BF;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;flex:none}
+.check.on .bx{background:var(--blue);border-color:var(--blue)}
+.step{display:flex;align-items:center;gap:8px}
+.step button{width:46px;height:46px;border-radius:8px;border:1px solid #A9B4BF;background:#fff;font-size:22px;cursor:pointer}
+.step input{width:90px;text-align:center;font-size:22px;font-weight:700}
+.bar{height:10px;background:var(--soft);border-radius:5px;overflow:hidden;flex:1}.bar>div{height:10px;background:var(--blue)}
+/* rack */
+.rack{overflow-x:auto;padding-bottom:6px}
+.rk-row{display:flex;align-items:stretch;gap:4px;margin-bottom:4px}
+.rk-lv{width:34px;flex:none;font-size:12px;font-weight:600;color:var(--ink2);display:flex;align-items:center}
+.rk-bay{display:flex;gap:1px;padding:2px;border:1px solid var(--line);border-radius:4px;background:#fff}
+.rk-s{width:13px;height:20px;border-radius:2px;border:1px solid transparent;cursor:pointer;padding:0}
+.s-empty{background:#fff;border-color:#C3CCD5}.s-ok{background:#0B6E99}.s-warn{background:#E3A008}.s-crit,.s-expired{background:#B42318}.s-none{background:#7C8A96}.s-hold{background:#6B4FA0}.s-blocked{background:repeating-linear-gradient(45deg,#C3CCD5 0 3px,#fff 3px 6px)}
+.rk-hd{display:flex;gap:4px;margin-left:38px;font-size:11px;color:var(--ink2)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;margin:8px 0 12px}.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:14px;height:14px;border-radius:3px;display:inline-block}
+/* modal + scanner */
+.ov{position:fixed;inset:0;background:rgba(10,15,20,.55);z-index:20;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:#fff;border-radius:14px;max-width:640px;width:100%;max-height:90vh;overflow:auto;padding:18px}
+.scan{position:fixed;inset:0;background:#000;z-index:30;display:flex;flex-direction:column}
+.scan video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.scan .fr{position:absolute;left:50%;top:42%;width:min(70vw,320px);height:min(70vw,320px);transform:translate(-50%,-50%);border:3px solid #7FD1F5;border-radius:16px;box-shadow:0 0 0 2000px rgba(0,0,0,.35)}
+.scan .fr.lock{border-color:#4ADE80}
+.scan .hint{position:absolute;left:0;right:0;top:calc(42% + min(35vw,160px) + 16px);text-align:center;color:#fff;font-weight:600;padding:0 16px}
+.scan .bt{position:absolute;left:0;right:0;bottom:0;padding:16px;display:flex;flex-direction:column;gap:8px;background:linear-gradient(transparent,rgba(0,0,0,.7))}
+.scan .bt .btn{background:#fff}
+/* labels */
+.labels{display:grid;grid-template-columns:repeat(3,1fr);gap:4mm}
+.lab{border:1px dashed #999;padding:3mm;display:flex;align-items:center;gap:3mm;break-inside:avoid}
+.lab .t{font-family:ui-monospace,Consolas,monospace;font-weight:700;font-size:20pt}
+.lab .u{font-size:9pt;color:#333}
+@media print{header.top,nav.side,nav.bot,.noprint{display:none!important}main{padding:0}body{background:#fff}.card{border:0;padding:0}}
+@media (max-width:820px){
+  nav.side{display:none}
+  main{padding:12px 12px 90px}
+  nav.bot{display:flex;position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);z-index:6;padding-bottom:env(safe-area-inset-bottom)}
+  nav.bot button{flex:1;background:none;border:0;padding:8px 2px 10px;font-size:11px;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--ink2);min-height:56px;cursor:pointer}
+  nav.bot button.on{color:var(--blue);font-weight:700}
+  .tiles{grid-template-columns:repeat(2,1fr)}
+  .tile .v{font-size:24px}
+  header.top .who{display:none}
+  .hide-m{display:none}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#7FD1F5" stroke-width="2" aria-hidden="true"><path d="M3 9l9-5 9 5v11H3z"/><path d="M7 20v-6h10v6"/></svg><span id="ttl">Warehouse</span> <span id="fac" style="color:#7FD1F5"></span></div>
+  <div class="sp"></div>
+  <div class="who" id="who"></div>
+  <button class="tbtn" id="langBtn" onclick="toggleLang()">TH/EN</button>
+  <button class="tbtn" onclick="location.href='/?apps=1'" title="Apps" aria-label="Apps" style="display:flex;align-items:center;gap:6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span class="hide-m">Apps</span></button>
+</header>
+<div class="layout">
+  <nav class="side" id="side"></nav>
+  <main id="app"><div class="card">Loading…</div></main>
+</div>
+<nav class="bot" id="bot"></nav>
+
+<script>
+/* ════════ Warehouse (WMS) — pages inside the CMMS login ════════
+   One file, no build. Talks to /api/wms/*. Session = the CMMS cookie. */
+let LANG=(()=>{try{return localStorage.getItem('bflfp_lang')||'TH'}catch(e){return 'TH'}})();
+const TH=()=>LANG==='TH';
+const L=(th,en)=>TH()?th:en;
+let ME=null,PAGE='home',SET={warn_days:90,crit_days:30};
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const can=k=>!!(ME&&ME.can.includes(k));
+function toggleLang(){LANG=TH()?'EN':'TH';try{localStorage.setItem('bflfp_lang',LANG)}catch(e){}buildNav();go(PAGE,true);}
+
+async function api(url,opt){
+  const r=await fetch(url,Object.assign({credentials:'same-origin',headers:{'Content-Type':'application/json'}},opt||{}));
+  let d=null;try{d=await r.json()}catch(e){}
+  if(!r.ok){const det=d&&d.detail;const e=new Error((det&&det.msg)||(typeof det==='string'?det:'')||('HTTP '+r.status));e.status=r.status;e.detail=det;throw e;}
+  return d;
+}
+const post=(u,b)=>api(u,{method:'POST',body:JSON.stringify(b||{})});
+
+/* ---------- labels ---------- */
+const ST={pending:['รอ QC','Waiting QC'],released:['รอจัดเก็บ','Waiting put-away'],stored:['ในชั้นวาง','In rack'],hold:['กักกัน','On hold'],
+  rejected:['ไม่ผ่าน','Rejected'],picked:['หยิบแล้ว','Picked'],dispatched:['ส่งออกแล้ว','Dispatched']};
+const stPill=s=>`<span class="pill p-${s}">${esc(L(...(ST[s]||[s,s])))}</span>`;
+function expPill(p){
+  if(p.days_left==null)return `<span class="pill p-none">${L('ไม่มี EXP','No EXP')}</span>`;
+  const lv=p.exp_level||'ok';
+  return `<span class="pill p-${lv}">${p.days_left<0?L('หมดอายุ','Expired'):p.days_left+' '+L('วัน','d')}</span>`;
+}
+const fmtD=s=>s?s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4):'-';
+const fmtT=s=>s?fmtD(s.slice(0,10))+' '+s.slice(11,16):'-';
+
+/* ---------- icons ---------- */
+const I=p=>`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+const IC={home:I('<path d="M3 11l9-7 9 7v9H3z"/>'),qc:I('<path d="M9 12l2 2 4-4"/><rect x="4" y="3" width="16" height="18" rx="2"/>'),
+  put:I('<path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/>'),stock:I('<rect x="3" y="4" width="18" height="6" rx="1"/><rect x="3" y="14" width="18" height="6" rx="1"/>'),
+  rack:I('<path d="M4 3v18M20 3v18M4 8h16M4 13h16M4 18h16"/>'),order:I('<path d="M3 7h13v10H3z"/><path d="M16 10h4l1 3v4h-5"/><circle cx="7" cy="18" r="1.5"/><circle cx="18" cy="18" r="1.5"/>'),
+  trace:I('<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>'),setup:I('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'),
+  scan:I('<path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10"/>')};
+
+/* ---------- navigation ---------- */
+function pages(){return [
+  ['home',IC.home,L('ภาพรวม','Overview'),'view'],
+  ['qc',IC.qc,L('ตรวจรับ QC','QC check'),'qc'],
+  ['put',IC.put,L('จัดเก็บ / ย้าย','Put-away'),'store'],
+  ['orders',IC.order,L('หยิบ / ส่งออก','Pick & dispatch'),'view'],
+  ['stock',IC.stock,L('สต็อก','Stock'),'view'],
+  ['rack',IC.rack,L('ผังชั้นวาง','Rack map'),'view'],
+  ['trace',IC.trace,L('ตรวจย้อนกลับ','Traceability'),'view'],
+  ['setup',IC.setup,L('ตั้งค่า','Setup'),'super']].filter(p=>can(p[3]));}
+const BOT=['home','qc','put','orders','stock'];
+function buildNav(){
+  $('#side').innerHTML=pages().map(p=>`<button id="nv-${p[0]}" onclick="go('${p[0]}')">${p[1]}${esc(p[2])}</button>`).join('');
+  const b=pages().filter(p=>BOT.includes(p[0])||(!can('qc')&&!can('store')&&['rack','trace'].includes(p[0])));
+  $('#bot').innerHTML=b.slice(0,5).map(p=>`<button id="nb-${p[0]}" onclick="go('${p[0]}')">${p[1]}<span>${esc(p[2])}</span></button>`).join('');
+}
+function go(p,keep){
+  if(!pages().some(x=>x[0]===p))p='home';
+  PAGE=p;if(!keep)history.replaceState(null,'','#'+p);
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.id==='nv-'+p||b.id==='nb-'+p));
+  stopScan();
+  ({home:pgHome,qc:pgQC,put:pgPut,orders:pgOrders,stock:pgStock,rack:pgRack,trace:pgTrace,setup:pgSetup}[p])();
+  window.scrollTo(0,0);
+}
+function err(e){return `<div class="msg m-bad">${esc(e.message||e)}</div>`;}
+
+/* ════════ QR scanner: camera (BarcodeDetector → jsQR), photo, or typed/handheld ════════ */
+let SC={stream:null,t:null,det:null,cv:null,cand:null,cb:null,busy:false};
+function loadJs(src,test){return new Promise((res,rej)=>{if(test())return res();const s=document.createElement('script');s.src=src;s.onload=()=>res();s.onerror=()=>rej(new Error('load '+src));document.head.appendChild(s);});}
+async function detector(){
+  if(!('BarcodeDetector' in window))return null;
+  try{const f=BarcodeDetector.getSupportedFormats?await BarcodeDetector.getSupportedFormats():['qr_code'];
+    return f.includes('qr_code')?new BarcodeDetector({formats:['qr_code']}):null;}catch(e){return null;}
+}
+async function readQR(cv){
+  if(SC.det){try{const c=await SC.det.detect(cv);return c&&c.length?c[0].rawValue:null;}catch(e){SC.det=null;}}
+  try{await loadJs('/vendor/jsqr.js',()=>window.jsQR);}catch(e){return null;}
+  const im=cv.getContext('2d',{willReadFrequently:true}).getImageData(0,0,cv.width,cv.height);
+  const r=window.jsQR(im.data,cv.width,cv.height,{inversionAttempts:'attemptBoth'});return r&&r.data?r.data:null;
+}
+async function openScan(title,cb){
+  SC.cb=cb;SC.cand=null;
+  const ov=document.createElement('div');ov.className='scan';ov.id='scan';
+  ov.innerHTML=`<video id="scv" playsinline autoplay muted></video><div class="fr" id="scf"></div>
+   <div class="hint" id="sch">${esc(title)}<br><small>${L('เล็ง QR ให้อยู่ในกรอบ ถือนิ่ง ๆ','Hold the QR inside the frame')}</small></div>
+   <div class="bt"><label class="btn" style="text-align:center">📷 ${L('ถ่ายรูป QR แทน','Take a photo instead')}<input type="file" accept="image/*" capture="environment" style="display:none" onchange="scanPhoto(this)"></label>
+   <button class="btn" onclick="stopScan()">${L('ยกเลิก','Cancel')}</button></div>`;
+  document.body.appendChild(ov);
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){$('#sch').textContent=L('เปิดกล้องสดไม่ได้ — ใช้ถ่ายรูปแทน','No live camera here — use the photo button');return;}
+  try{SC.stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}});}
+  catch(e){$('#sch').textContent=L('เปิดกล้องไม่ได้ — อนุญาตกล้อง หรือใช้ถ่ายรูปแทน','Cannot open the camera — allow it, or use the photo button');return;}
+  if(!$('#scan')){stopScan();return;}
+  const v=$('#scv');v.srcObject=SC.stream;try{await v.play()}catch(e){}
+  SC.det=await detector();SC.cv=document.createElement('canvas');tick();
+}
+async function tick(){
+  const v=$('#scv');if(!v||!$('#scan'))return;
+  if(!SC.busy&&v.videoWidth){SC.busy=true;
+    try{const vw=v.videoWidth,vh=v.videoHeight,s=Math.min(vw,vh)*.75,k=Math.min(1,560/s);
+      SC.cv.width=SC.cv.height=Math.round(s*k);
+      SC.cv.getContext('2d',{willReadFrequently:true}).drawImage(v,(vw-s)/2,(vh-s)/2,s,s,0,0,SC.cv.width,SC.cv.height);
+      const raw=await readQR(SC.cv);
+      if(raw){if(!SC.cand||SC.cand.raw!==raw)SC.cand={raw,t:Date.now()};$('#scf')&&$('#scf').classList.add('lock');
+        if(Date.now()-SC.cand.t>350){SC.busy=false;return scanned(raw);}}
+    }catch(e){}
+    SC.busy=false;}
+  SC.t=setTimeout(tick,140);
+}
+async function scanPhoto(inp){
+  const f=inp.files&&inp.files[0];inp.value='';if(!f)return;
+  try{const img=new Image();img.src=URL.createObjectURL(f);await img.decode();
+    for(const z of [.5,.8,1]){const W=img.width,H=img.height,sw=W*z,sh=H*z,k=Math.min(1,1600/Math.max(sw,sh));
+      const cv=document.createElement('canvas');cv.width=Math.round(sw*k);cv.height=Math.round(sh*k);
+      cv.getContext('2d').drawImage(img,(W-sw)/2,(H-sh)/2,sw,sh,0,0,cv.width,cv.height);
+      if(!SC.det&&!window.jsQR)SC.det=await detector();
+      const raw=await readQR(cv);if(raw)return scanned(raw);}
+    $('#sch').textContent=L('อ่าน QR จากรูปไม่ได้ ลองใหม่','No QR found in the photo — try again');
+  }catch(e){}
+}
+function scanned(raw){const cb=SC.cb;stopScan();if(navigator.vibrate)try{navigator.vibrate(80)}catch(e){};if(cb)cb(raw);}
+function stopScan(){clearTimeout(SC.t);if(SC.stream){SC.stream.getTracks().forEach(t=>t.stop());SC.stream=null;}const o=$('#scan');if(o)o.remove();}
+/* the scan box used on every scanning page: camera button + a field a handheld scanner can type into */
+function scanBox(id,label,fn){
+  return `<div class="card" style="margin-bottom:12px"><button class="btn pri big" onclick="openScan('${esc(label)}',${fn})">${IC.scan} ${esc(label)}</button>
+   <div style="display:flex;gap:8px;margin-top:10px"><input class="in" id="${id}" placeholder="${L('หรือยิงด้วยเครื่องสแกน / พิมพ์ แล้วกด Enter','or use a handheld scanner / type, then Enter')}"
+     onkeydown="if(event.key==='Enter'){const v=this.value;this.value='';${fn}(v)}"></div></div>`;
+}
+
+/* ════════ Overview ════════ */
+async function pgHome(){
+  const A=$('#app');let d;
+  try{d=await api('/api/wms/summary');}catch(e){A.innerHTML=err(e);return;}
+  SET=d.settings;const c=d.counts,free=d.positions.total-d.positions.used;
+  const tile=(l,v,s,col,pg)=>`<div class="tile" onclick="go('${pg}')"><div class="l">${l}</div><div class="v" style="color:${col||'inherit'}">${v}</div><div class="s">${s}</div></div>`;
+  A.innerHTML=`<h1>${L('ภาพรวมคลังสินค้า','Warehouse overview')}</h1>
+  <div class="tiles">
+   ${tile(L('พาเลทในชั้นวาง','Pallets in rack'),c.stored,L('ปล่อยแล้ว อยู่ในชั้นวาง','Released, in racks'),'','stock')}
+   ${tile(L('ช่องว่าง','Free positions'),free.toLocaleString(),L(`จาก ${d.positions.total.toLocaleString()} ช่อง`,`of ${d.positions.total.toLocaleString()}`),'','rack')}
+   ${tile(L('รอ QC','Waiting QC'),c.pending,L(`กักกัน ${c.hold}`,`On hold ${c.hold}`),'#0B5F86','qc')}
+   ${tile(L('รอจัดเก็บ','Waiting put-away'),c.released,L('ผ่าน QC แล้ว','QC released'),'#115E59','put')}
+   ${tile(L(`หมดอายุใน ${SET.crit_days} วัน`,`Expiring ≤ ${SET.crit_days} d`),d.expiry.crit+d.expiry.expired,L(`หมดอายุแล้ว ${d.expiry.expired} · ไม่มี EXP ${d.expiry.none}`,`Expired ${d.expiry.expired} · no EXP ${d.expiry.none}`),'#9B1C14','stock')}
+   ${tile(L('วันนี้ รับ / ส่ง','Today in / out'),d.today.in+' / '+d.today.out,L('พาเลท','Pallets'),'','orders')}
+  </div>
+  <div class="row2">
+   <div class="card wide"><h2>${L('ออกก่อนตาม FEFO (หมดอายุก่อน ออกก่อน)','Next out by FEFO (earliest expiry first)')}</h2>${palTable(d.fefo,true)}</div>
+   <div class="card"><h2>${L('คิว QC และรอจัดเก็บ','QC queue & waiting put-away')}</h2>
+    ${d.qc.concat(d.putaway).map(p=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--soft);cursor:pointer" onclick="palDlg(${p.id})">
+      <div><div class="mono">${esc(p.lot_no)} #${esc(p.pallet_no)}</div><div style="font-size:12px;color:var(--ink2)">${esc(p.product_name)}</div></div>${stPill(p.status)}</div>`).join('')
+      ||`<div style="color:var(--ink2)">${L('ไม่มีรายการ','Nothing waiting')}</div>`}
+   </div>
+  </div>
+  <div class="card" style="margin-top:16px"><h2>${L('การใช้พื้นที่แต่ละแถว','Fill by rack row')}</h2>
+   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px 28px">
+   ${d.rows.map(r=>{const pc=r.total?Math.round(100*r.used/r.total):0;return `<div style="display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer" onclick="RACKROW='${r.row}';go('rack')"><b style="width:30px">${r.row}</b><div class="bar"><div style="width:${pc}%"></div></div><span style="width:70px;text-align:right;color:var(--ink2)">${r.used}/${r.total}</span></div>`}).join('')}
+   </div></div>`;
+}
+function palTable(rows,short){
+  if(!rows.length)return `<div style="color:var(--ink2)">${L('ไม่มีพาเลท','No pallets')}</div>`;
+  return `<div class="tw"><table><thead><tr><th>${L('ล็อต #พาเลท','Lot #pallet')}</th><th>${L('สินค้า','Product')}</th>${short?'':`<th>${L('ถุง','Bags')}</th>`}<th>MFG</th><th>EXP</th><th>${L('เหลือ','Left')}</th><th>${L('ตำแหน่ง','Location')}</th>${short?'':`<th>${L('สถานะ','Status')}</th>`}</tr></thead><tbody>
+  ${rows.map(p=>`<tr class="click" onclick="palDlg(${p.id})"><td class="mono">${esc(p.lot_no)} #${esc(p.pallet_no)}</td><td>${esc(p.product_name)}<div style="font-size:12px;color:var(--ink2)">${esc(p.product_code)}</div></td>${short?'':`<td>${p.bags_counted||p.bags_slip}</td>`}
+   <td>${fmtD(p.mfg_date)}</td><td>${fmtD(p.exp_date)}</td><td>${expPill(p)}</td><td class="mono">${esc(p.location||'-')}</td>${short?'':`<td>${stPill(p.status)}</td>`}</tr>`).join('')}
+  </tbody></table></div>`;
+}
+
+/* pallet detail */
+async function palDlg(id){
+  let d;try{d=await api('/api/wms/pallet/'+id);}catch(e){alert(e.message);return;}
+  const p=d.pallet;
+  const ACT={receive:['รับเข้า','Received'],'qc-release':['QC ผ่าน','QC released'],'qc-hold':['QC กักกัน','QC hold'],'qc-reject':['QC ไม่ผ่าน','QC rejected'],
+    putaway:['จัดเก็บ','Put away'],move:['ย้าย','Moved'],pick:['หยิบ','Picked'],unpick:['คืนจากใบสั่ง','Un-picked'],dispatch:['ส่งออก','Dispatched'],hold:['กักกัน','Hold']};
+  dlg(`<h2 class="mono">${esc(p.lot_no)} #${esc(p.pallet_no)} ${stPill(p.status)}</h2>
+   <div class="kv">
+    <div>${L('สินค้า','Product')}</div><div><b>${esc(p.product_name)}</b><br>${esc(p.product_code)} · ${esc(p.weight)}</div>
+    <div>${L('ถุง ใบพาเลท / นับได้','Bags slip / counted')}</div><div>${p.bags_slip} / ${p.bags_counted||'-'}</div>
+    <div>MFG / EXP</div><div>${fmtD(p.mfg_date)} / ${fmtD(p.exp_date)} ${expPill(p)}${p.exp_src==='manual'?' <small>('+L('พิมพ์เอง','typed')+')</small>':''}</div>
+    <div>${L('ตำแหน่ง','Location')}</div><div class="mono">${esc(p.location||'-')}</div>
+    <div>${L('สถานี / ผู้แพ็ค','Station / packer')}</div><div>${esc(p.station)} / ${esc(p.operator)}</div>
+    <div>QC</div><div>${esc(p.qc_by||'-')} ${fmtT(p.qc_at)}${p.qc_note?'<br><i>'+esc(p.qc_note)+'</i>':''}</div>
+    ${p.order?`<div>${L('ใบสั่ง','Order')}</div><div>${esc(p.order.order_no)} · ${esc(p.order.customer)} · ${esc(p.order.truck)}</div>`:''}
+   </div>
+   <h2 style="margin-top:14px">${L('ประวัติ','History')}</h2>
+   <table><tbody>${d.moves.map(m=>`<tr><td style="white-space:nowrap">${fmtT(m.created_at)}</td><td><b>${esc(L(...(ACT[m.action]||[m.action,m.action])))}</b> ${m.from_loc||m.to_loc?`<span class="mono">${esc(m.from_loc||'')}→${esc(m.to_loc||'')}</span>`:''}${m.note?'<br><small>'+esc(m.note)+'</small>':''}</td><td>${esc(m.user_name)}</td></tr>`).join('')}</tbody></table>
+   <div class="btns" style="margin-top:14px">
+    ${can('super')&&['stored','released'].includes(p.status)?`<button class="btn hold" onclick="holdPal(${p.id})">${L('กักกัน','Put on hold')}</button>`:''}
+    ${can('qc')&&p.status==='hold'?`<button class="btn" onclick="closeDlg();QCSLIP=null;qcOpenId(${p.id})">${L('ตรวจ QC ใหม่','Re-check QC')}</button>`:''}
+    ${can('store')&&['released','stored','hold'].includes(p.status)?`<button class="btn" onclick="closeDlg();go('put');putLoad({pallet_id:${p.id}})">${L('จัดเก็บ / ย้าย','Put away / move')}</button>`:''}
+    <button class="btn" onclick="closeDlg()">${L('ปิด','Close')}</button></div>`);
+}
+async function holdPal(id){const n=prompt(L('เหตุผลที่กักกัน','Reason for hold'));if(!n)return;try{await post('/api/wms/pallet/'+id+'/hold',{note:n});closeDlg();go(PAGE,true);}catch(e){alert(e.message);}}
+function dlg(html){closeDlg();const o=document.createElement('div');o.className='ov';o.id='dlg';o.onclick=e=>{if(e.target===o)closeDlg();};o.innerHTML=`<div class="modal">${html}</div>`;document.body.appendChild(o);}
+function closeDlg(){const o=$('#dlg');if(o)o.remove();}
+
+/* ════════ QC check ════════ */
+let QCSLIP=null,QCCHK=[false,false,false];
+function pgQC(){
+  $('#app').innerHTML=`<h1>${L('ตรวจรับ QC','QC check')}</h1>${scanBox('qcIn',L('สแกนใบพาเลท','Scan pallet slip'),'qcScan')}<div id="qcBody"></div>`;
+  if(QCSLIP)qcRender();
+}
+async function qcScan(raw){
+  const B=$('#qcBody');if(!raw)return;
+  try{const d=await post('/api/wms/scan',{text:raw});
+    if(d.kind!=='pallet'){B.innerHTML=`<div class="msg m-warn">${L('นี่คือ QR ช่องเก็บ ไม่ใช่ใบพาเลท','That is a slot label, not a pallet slip')}</div>`;return;}
+    if(d.exists&&!['pending','hold'].includes(d.pallet.status)){QCSLIP=null;
+      B.innerHTML=`<div class="msg m-info">${L('พาเลทนี้ตรวจแล้ว','Already checked')}: ${stPill(d.pallet.status)} <a href="#" onclick="palDlg(${d.pallet.id});return false">${L('ดูรายละเอียด','details')}</a></div>`;return;}
+    QCSLIP={raw,slip:d.slip,pallet:d.pallet};QCCHK=[false,false,false];qcRender();
+  }catch(e){B.innerHTML=err(e);}
+}
+async function qcOpenId(id){go('qc');try{const d=await api('/api/wms/pallet/'+id);const p=d.pallet;
+  QCSLIP={raw:null,slip:{lot_no:p.lot_no,pallet_no:p.pallet_no,product_code:p.product_code,product_name:p.product_name,weight:p.weight,bags_slip:p.bags_slip,station:p.station,operator:p.operator,mfg_date:p.mfg_date,exp_date:p.exp_date},pallet:p};QCCHK=[false,false,false];qcRender();}catch(e){alert(e.message);}}
+function qcRender(){
+  const s=QCSLIP.slip,p=QCSLIP.pallet;
+  const chk=[L('สินค้าบนถุงตรงกับใบพาเลท','Product on the bags matches the slip'),L('วันที่ผลิต / หมดอายุบนถุงถูกต้อง','MFG / EXP printed on the bags is correct'),L('ถุงไม่ขาด ไม่เปียก ฟิล์มพันดี','No torn or wet bags, wrap OK')];
+  $('#qcBody').innerHTML=`
+  <div class="card" style="margin-bottom:12px">
+   ${p?`<div class="msg m-warn" style="margin-top:0">${L('ตรวจซ้ำ — สถานะปัจจุบัน','Re-check — current status')} ${stPill(p.status)}${p.qc_note?' · '+esc(p.qc_note):''}</div>`:''}
+   <div class="mono" style="font-size:18px">${esc(s.lot_no)} #${esc(s.pallet_no)}</div>
+   <div class="kv" style="margin-top:8px">
+    <div>${L('สินค้า','Product')}</div><div><b>${esc(s.product_name)}</b><br>${esc(s.product_code)} · ${esc(s.weight)}</div>
+    <div>${L('ถุงตามใบพาเลท','Bags on slip')}</div><div><b>${s.bags_slip}</b></div>
+    <div>${L('สถานี / ผู้แพ็ค','Station / packer')}</div><div>${esc(s.station)} / ${esc(s.operator)}</div>
+   </div></div>
+  <div class="card grid" style="margin-bottom:12px">
+   <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><b>${L('จำนวนถุงที่นับได้','Bags counted')}</b>
+    <div class="step"><button onclick="qcStep(-1)" aria-label="-1">−</button><input class="in" id="qcCnt" inputmode="numeric" value="${p&&p.bags_counted?p.bags_counted:''}" oninput="qcGate()"><button onclick="qcStep(1)" aria-label="+1">+</button></div></div>
+   <div id="qcMis"></div>
+   ${chk.map((c,i)=>`<button class="check ${QCCHK[i]?'on':''}" onclick="QCCHK[${i}]=!QCCHK[${i}];this.classList.toggle('on');qcGate()"><span class="bx">✓</span>${esc(c)}</button>`).join('')}
+   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <label class="f">MFG ${L('(จากเลขล็อต)','(from lot no.)')}<input class="in" type="date" id="qcMfg" value="${esc(s.mfg_date||'')}"></label>
+    <label class="f">EXP ${s.exp_date?'':L('(พิมพ์ตามถุง)','(type from bag)')}<input class="in" type="date" id="qcExp" value="${esc(s.exp_date||'')}"></label>
+   </div>
+   <label class="f">${L('หมายเหตุ / เหตุผล (ต้องใส่เมื่อ กักกัน / ไม่ผ่าน)','Note / reason (required for Hold / Reject)')}<textarea class="in" id="qcNote" rows="2"></textarea></label>
+  </div>
+  <div id="qcRes"></div>
+  <div class="btns" style="display:grid;grid-template-columns:repeat(3,1fr)">
+   <button class="btn bad" onclick="qcSend('reject')">${L('ไม่ผ่าน','Reject')}</button>
+   <button class="btn hold" onclick="qcSend('hold')">${L('กักกัน','Hold')}</button>
+   <button class="btn ok" id="qcOk" onclick="qcSend('release')">${L('ผ่าน','Approve')}</button></div>`;
+  qcGate();
+}
+function qcStep(n){const i=$('#qcCnt');const v=parseInt(i.value||QCSLIP.slip.bags_slip||0,10)+n;i.value=Math.max(0,v);qcGate();}
+function qcGate(){
+  const v=parseInt($('#qcCnt').value,10),need=+QCSLIP.slip.bags_slip;
+  $('#qcMis').innerHTML=!isNaN(v)&&v!==need?`<div class="msg m-warn" style="margin:0">${L(`นับได้ ${v} ไม่ตรงกับใบพาเลท (${need}) — กด กักกัน หรือนับใหม่`,`Counted ${v} ≠ slip ${need} — Hold or recount`)}</div>`:'';
+  $('#qcOk').disabled=!(v===need&&QCCHK.every(x=>x));
+}
+async function qcSend(dec){
+  const body={decision:dec,bags_counted:$('#qcCnt').value,mfg_date:$('#qcMfg').value,exp_date:$('#qcExp').value,note:$('#qcNote').value};
+  if(QCSLIP.pallet)body.pallet_id=QCSLIP.pallet.id;else body.text=QCSLIP.raw;
+  try{const r=await post('/api/wms/qc',body);const p=r.pallet;QCSLIP=null;
+    $('#qcBody').innerHTML=`<div class="msg ${dec==='release'?'m-ok':dec==='hold'?'m-warn':'m-bad'}">${esc(p.lot_no)} #${esc(p.pallet_no)} → ${stPill(p.status)}<br>${
+      dec==='release'?L('ส่งต่อให้รถยกจัดเก็บ','Next: forklift puts it away'):dec==='hold'?L('ย้ายไปพื้นที่กักกัน','Move it to the hold area'):L('พาเลทถูกกันออกจากสต็อก','Blocked from stock')}</div>
+      <button class="btn pri big" onclick="openScan('${L('สแกนใบพาเลทถัดไป','Scan next pallet slip')}',qcScan)">${IC.scan} ${L('สแกนพาเลทถัดไป','Scan next pallet')}</button>`;
+  }catch(e){$('#qcRes').innerHTML=err(e);}
+}
+
+/* ════════ Put-away / move ════════ */
+let PUT=null;
+function pgPut(){
+  $('#app').innerHTML=`<h1>${L('จัดเก็บ / ย้ายพาเลท','Put-away / move')}</h1>${scanBox('putIn',L('สแกนใบพาเลท','Scan pallet slip'),'putScan')}<div id="putBody"></div><div id="putWait"></div>`;
+  if(PUT)putRender();putWaiting();
+}
+async function putWaiting(){
+  try{const d=await api('/api/wms/pallets?status=released');const W=$('#putWait');if(!W)return;
+    W.innerHTML=d.pallets.length?`<div class="card"><h2>${L('รอจัดเก็บ','Waiting put-away')} (${d.pallets.length})</h2>${d.pallets.map(p=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--soft);cursor:pointer" onclick="putLoad({pallet_id:${p.id}})"><div><div class="mono">${esc(p.lot_no)} #${esc(p.pallet_no)}</div><div style="font-size:12px;color:var(--ink2)">${esc(p.product_name)}</div></div><span class="pill p-released">${L('เลือก','Select')}</span></div>`).join('')}</div>`:'';
+  }catch(e){}
+}
+function putScan(raw){if(raw)putLoad({text:raw});}
+async function putLoad(b){
+  const B=$('#putBody');
+  try{const d=await post('/api/wms/suggest',b);PUT={pallet:d.pallet,suggest:d.suggest,why:d.why};putRender();}
+  catch(e){PUT=null;if(B)B.innerHTML=err(e);}
+}
+function putRender(){
+  const p=PUT.pallet,B=$('#putBody');if(!B)return;
+  const why={'same lot':L('ใกล้ล็อตเดียวกัน','next to the same lot'),'same product':L('ใกล้สินค้าเดียวกัน','next to the same product'),'first free low slot':L('ช่องว่างชั้นล่างแรก','first free low slot'),full:L('ชั้นวางเต็ม','racks are full')}[PUT.why]||PUT.why;
+  const m=PUT.suggest?PUT.suggest.match(/^([A-Z]{2})(\d+)-(\d)-(\d)$/):null;
+  B.innerHTML=`<div class="card" style="margin-bottom:12px"><div class="mono" style="font-size:17px">${esc(p.lot_no)} #${esc(p.pallet_no)} ${stPill(p.status)}</div>
+    <div>${esc(p.product_name)} · ${p.bags_counted||p.bags_slip} ${L('ถุง','bags')} · EXP ${fmtD(p.exp_date)}</div>${p.location?`<div>${L('ตำแหน่งปัจจุบัน','Now at')} <b class="mono">${esc(p.location)}</b></div>`:''}</div>
+   ${PUT.suggest?`<div class="big-loc" style="margin-bottom:12px"><div class="s">${L('ช่องที่แนะนำ','Suggested slot')}</div><div class="c">${esc(PUT.suggest)}</div>
+     <div class="s">${m?L(`แถว ${m[1]} · ช่อง ${+m[2]} · ชั้น ${m[3]} · ตำแหน่ง ${m[4]}`,`Row ${m[1]} · bay ${+m[2]} · level ${m[3]} · position ${m[4]}`):''}</div><div class="s" style="color:#7FD1F5">${esc(why)}</div></div>`
+     :`<div class="msg m-bad">${esc(why)}</div>`}
+   <button class="btn pri big" onclick="openScan('${L('สแกน QR ที่ช่องเก็บ','Scan the slot label')}',putSlot)">${IC.scan} ${L('สแกน QR ที่ช่องเก็บ','Scan the slot label')}</button>
+   <div style="display:flex;gap:8px;margin-top:10px"><input class="in mono" id="putLoc" placeholder="${L('หรือพิมพ์รหัสช่อง เช่น','or type slot code e.g.')} ${esc(PUT.suggest||'AA01-1-1')}" onkeydown="if(event.key==='Enter')putSlot(this.value)">
+    <button class="btn" onclick="putSlot($('#putLoc').value)">OK</button></div><div id="putRes"></div>`;
+}
+async function putSlot(code){
+  if(!code||!PUT)return;
+  try{const r=await post('/api/wms/putaway',{pallet_id:PUT.pallet.id,location:code.trim()});PUT=null;
+    $('#putBody').innerHTML=`<div class="msg m-ok">${esc(r.pallet.lot_no)} #${esc(r.pallet.pallet_no)} → <span class="mono">${esc(r.pallet.location)}</span> ✓</div>`;putWaiting();
+  }catch(e){const R=$('#putRes');if(R)R.innerHTML=err(e);}
+}
+
+/* ════════ Orders: pick (FEFO) + dispatch ════════ */
+let ORD=null;
+async function pgOrders(){
+  const A=$('#app');ORD=null;let d;
+  try{d=await api('/api/wms/orders?status=open,picking');}catch(e){A.innerHTML=err(e);return;}
+  let done=[];try{done=(await api('/api/wms/orders?status=dispatched,cancelled')).orders.slice(0,20);}catch(e){}
+  A.innerHTML=`<h1>${L('หยิบ / ส่งออก','Pick & dispatch')}</h1>
+   ${can('super')?`<div class="btns" style="margin-bottom:12px"><button class="btn pri" onclick="newOrder()">+ ${L('สร้างใบสั่งจ่าย','New dispatch order')}</button></div>`:''}
+   <div class="grid">${d.orders.map(o=>`<div class="card" style="cursor:pointer" onclick="ordOpen(${o.id})"><div style="display:flex;justify-content:space-between;gap:8px"><b class="mono">${esc(o.order_no)}</b><span class="pill ${o.status==='picking'?'p-picked':'p-pending'}">${o.status==='picking'?L('กำลังหยิบ','Picking'):L('รอหยิบ','Open')}</span></div>
+     <div style="color:var(--ink2);font-size:14px">${esc(o.customer)} · ${L('รถ','Truck')} ${esc(o.truck||'-')} · ${fmtD(o.due_date)}</div>
+     <div style="display:flex;align-items:center;gap:10px;margin-top:8px"><div class="bar"><div style="width:${o.qty?Math.round(100*o.picked/o.qty):0}%"></div></div><b>${o.picked}/${o.qty}</b></div></div>`).join('')
+     ||`<div class="card" style="color:var(--ink2)">${L('ไม่มีใบสั่งที่รอหยิบ','No open orders')}</div>`}</div>
+   ${done.length?`<div class="card" style="margin-top:16px"><h2>${L('ส่งออกล่าสุด','Recent')}</h2><div class="tw"><table><tbody>${done.map(o=>`<tr class="click" onclick="ordOpen(${o.id})"><td class="mono">${esc(o.order_no)}</td><td>${esc(o.customer)}</td><td>${esc(o.truck)}</td><td>${o.picked}/${o.qty}</td><td>${fmtT(o.dispatched_at)}</td><td>${o.status==='cancelled'?L('ยกเลิก','Cancelled'):L('ส่งแล้ว','Dispatched')}</td></tr>`).join('')}</tbody></table></div></div>`:''}`;
+}
+async function ordOpen(id){
+  try{ORD=await api('/api/wms/orders/'+id);}catch(e){alert(e.message);return;}ordRender();
+}
+function ordRender(msg){
+  const o=ORD,open=['open','picking'].includes(o.status);
+  const short=o.lines.reduce((a,l)=>a+Math.max(0,l.qty-l.picked.length),0);
+  $('#app').innerHTML=`<div class="btns" style="margin-bottom:10px"><button class="btn" onclick="go('orders')">← ${L('ใบสั่งทั้งหมด','All orders')}</button></div>
+   <h1 class="mono">${esc(o.order_no)}</h1>
+   <div style="color:var(--ink2);margin:-8px 0 12px">${esc(o.customer)} · ${L('รถ','Truck')} ${esc(o.truck||'-')} · ${fmtD(o.due_date)}${o.note?' · '+esc(o.note):''}</div>
+   ${open&&can('store')?scanBox('pkIn',L('สแกนพาเลทที่หยิบ','Scan picked pallet'),'ordPick'):''}
+   <div id="pkMsg">${msg||''}</div>
+   ${o.lines.map(l=>`<div class="card" style="margin-bottom:12px">
+     <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><div><b>${esc(l.product_name||l.product_code)}</b><div style="font-size:12px;color:var(--ink2)">${esc(l.product_code)} · ${L('มีในชั้นวาง','in rack')} ${l.available}</div></div><b style="font-size:18px">${l.picked.length} / ${l.qty}</b></div>
+     ${l.next.length&&open?`<div style="font-size:13px;color:var(--ink2);margin-top:8px">${L('หยิบตามลำดับ FEFO:','Pick in FEFO order:')}</div>
+      ${l.next.map((p,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:8px;margin-top:6px;border:${i===0?'2px solid var(--blue)':'1px solid var(--line)'};border-radius:10px">
+        <b style="width:26px;height:26px;border-radius:50%;background:${i===0?'var(--blue)':'var(--soft)'};color:${i===0?'#fff':'inherit'};display:flex;align-items:center;justify-content:center">${i+1}</b>
+        <div style="flex:1"><div class="mono" style="font-size:16px">${esc(p.location)}</div><div style="font-size:12px;color:var(--ink2)">${esc(p.lot_no)} #${esc(p.pallet_no)} · EXP ${fmtD(p.exp_date)}</div></div>${expPill(p)}</div>`).join('')}`:''}
+     ${l.picked.length?`<div style="font-size:13px;color:var(--ink2);margin-top:10px">${L('หยิบแล้ว','Picked')}</div>${l.picked.map(p=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--soft)"><span class="mono">${esc(p.lot_no)} #${esc(p.pallet_no)}</span><span>${fmtD(p.exp_date)} ${stPill(p.status)} ${open&&can('store')?`<button class="chip" onclick="ordUnpick(${p.id})">${L('คืน','Undo')}</button>`:''}</span></div>`).join('')}`:''}
+     ${open&&l.available<l.qty-l.picked.length?`<div class="msg m-warn">${L('สต็อกในชั้นวางไม่พอ','Not enough stock in the racks')}</div>`:''}
+   </div>`).join('')}
+   ${open&&can('store')?`<div class="btns"><button class="btn ok big" onclick="ordDispatch(${short})">${L('ยืนยันขึ้นรถแล้ว','Confirm loaded on truck')}${short?` (${L('ขาด','short')} ${short})`:''}</button></div>`:''}
+   ${open&&can('super')?`<div class="btns" style="margin-top:8px"><button class="btn" onclick="ordCancel()">${L('ยกเลิกใบสั่ง','Cancel order')}</button></div>`:''}`;
+}
+async function ordPick(raw,override){
+  if(!raw)return;
+  try{ORD=await post('/api/wms/orders/'+ORD.id+'/pick',{text:raw,override:override||''});ordRender(`<div class="msg m-ok">${L('หยิบแล้ว ✓','Picked ✓')}</div>`);}
+  catch(e){
+    if(e.detail&&e.detail.fefo&&can('super')&&!override){
+      const r=prompt(e.message+'\n\n'+L('หัวหน้า: ใส่เหตุผลเพื่อข้าม FEFO (หรือยกเลิก)','Supervisor: type a reason to override FEFO (or cancel)'));
+      if(r)return ordPick(raw,r);
+    }
+    $('#pkMsg').innerHTML=err(e);if(navigator.vibrate)try{navigator.vibrate([200,100,200])}catch(x){}
+  }
+}
+async function ordUnpick(pid){try{ORD=await post('/api/wms/orders/'+ORD.id+'/unpick',{pallet_id:pid});ordRender(`<div class="msg m-info">${L('คืนพาเลทแล้ว — ต้องจัดเก็บใหม่','Returned — it needs put-away again')}</div>`);}catch(e){alert(e.message);}}
+async function ordDispatch(short){
+  if(short&&!confirm(L(`ยังขาด ${short} พาเลท ส่งออกบางส่วน?`,`${short} pallet(s) short. Dispatch partially?`)))return;
+  const t=prompt(L('ทะเบียนรถ','Truck number'),ORD.truck||'');if(t===null)return;
+  try{await post('/api/wms/orders/'+ORD.id+'/dispatch',{partial:!!short,truck:t});await ordOpen(ORD.id);}catch(e){$('#pkMsg').innerHTML=err(e);}
+}
+async function ordCancel(){if(!confirm(L('ยกเลิกใบสั่งนี้? พาเลทที่หยิบแล้วจะต้องจัดเก็บใหม่','Cancel this order? Picked pallets go back to put-away')))return;try{await post('/api/wms/orders/'+ORD.id+'/cancel',{});go('orders');}catch(e){alert(e.message);}}
+let ORDOPT='';
+function orderLine(){return `<div style="display:flex;gap:8px;margin-top:8px" class="ol"><select class="in olp"><option value=""></option>${ORDOPT}</select><input class="in olq" type="number" min="1" placeholder="${L('พาเลท','pallets')}" style="width:110px"></div>`;}
+async function newOrder(){
+  let pr=[];try{pr=(await api('/api/wms/products')).products;}catch(e){}
+  const opt=pr.map(p=>`<option value="${esc(p.code)}">${esc(p.code)} — ${esc(p.name)} (${p.in_stock})</option>`).join('');
+  ORDOPT=opt;const line=orderLine;
+  dlg(`<h2>${L('สร้างใบสั่งจ่าย','New dispatch order')}</h2><div class="grid">
+   <label class="f">${L('เลขที่ใบสั่ง','Order no.')}<input class="in" id="noNo"></label>
+   <label class="f">${L('ลูกค้า','Customer')}<input class="in" id="noCu"></label>
+   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><label class="f">${L('ทะเบียนรถ','Truck')}<input class="in" id="noTr"></label><label class="f">${L('วันที่ส่ง','Due date')}<input class="in" type="date" id="noDu"></label></div>
+   <div><b>${L('สินค้า (จำนวนพาเลท)','Products (pallets)')}</b><div id="noLines">${line()}</div><button class="chip" style="margin-top:8px" onclick="$('#noLines').insertAdjacentHTML('beforeend',orderLine())">+ ${L('เพิ่มรายการ','Add line')}</button></div>
+   <div id="noErr"></div><div class="btns"><button class="btn pri" onclick="saveOrder()">${L('บันทึก','Save')}</button><button class="btn" onclick="closeDlg()">${L('ยกเลิก','Cancel')}</button></div></div>`);
+}
+async function saveOrder(){
+  const lines=[...document.querySelectorAll('.ol')].map(r=>({product_code:r.querySelector('.olp').value,qty:+r.querySelector('.olq').value||0}));
+  try{const r=await post('/api/wms/orders',{order_no:$('#noNo').value,customer:$('#noCu').value,truck:$('#noTr').value,due_date:$('#noDu').value,lines});closeDlg();ordOpen(r.id);}
+  catch(e){$('#noErr').innerHTML=err(e);}
+}
+
+/* ════════ Stock ════════ */
+let STK={status:'stored,released,hold',exp:'',q:''};
+async function pgStock(){
+  const A=$('#app');
+  const sc=[['stored,released,hold',L('ในคลังทั้งหมด','All in warehouse')],['stored',L('ในชั้นวาง','In rack')],['released',L('รอจัดเก็บ','Waiting put-away')],['hold',L('กักกัน','On hold')],['pending',L('รอ QC','Waiting QC')],['rejected',L('ไม่ผ่าน','Rejected')],['dispatched',L('ส่งออกแล้ว','Dispatched')]];
+  const ec=[['',L('ทุกอายุ','Any expiry')],['expired,crit',L(`≤ ${SET.crit_days} วัน`,`≤ ${SET.crit_days} d`)],['warn',L(`≤ ${SET.warn_days} วัน`,`≤ ${SET.warn_days} d`)],['none',L('ไม่มี EXP','No EXP')]];
+  A.innerHTML=`<h1>${L('สต็อก (เรียงตาม FEFO)','Stock (FEFO order)')}</h1>
+   <div class="chips">${sc.map(s=>`<button class="chip ${STK.status===s[0]?'on':''}" onclick="STK.status='${s[0]}';pgStock()">${s[1]}</button>`).join('')}</div>
+   <div class="chips">${ec.map(s=>`<button class="chip ${STK.exp===s[0]?'on':''}" onclick="STK.exp='${s[0]}';pgStock()">${s[1]}</button>`).join('')}</div>
+   <div style="display:flex;gap:8px;margin-bottom:12px"><input class="in" id="stQ" value="${esc(STK.q)}" placeholder="${L('ค้นหา ล็อต / รหัส / ชื่อสินค้า / ช่อง','Search lot / code / product / slot')}" onkeydown="if(event.key==='Enter'){STK.q=this.value;pgStock()}"><button class="btn" onclick="STK.q=$('#stQ').value;pgStock()">${L('ค้นหา','Search')}</button></div>
+   <div class="card" id="stT">…</div>`;
+  try{const d=await api(`/api/wms/pallets?status=${STK.status}&exp=${STK.exp}&q=${encodeURIComponent(STK.q)}`);
+    const sum={};d.pallets.forEach(p=>{const k=p.product_code;sum[k]=sum[k]||{n:0,b:0,name:p.product_name};sum[k].n++;sum[k].b+=(p.bags_counted||p.bags_slip||0);});
+    $('#stT').innerHTML=`<div style="margin-bottom:10px;color:var(--ink2);font-size:14px">${d.pallets.length} ${L('พาเลท','pallets')} · ${Object.entries(sum).map(([k,v])=>`<b>${esc(k)}</b> ${v.n} ${L('พาเลท','pal')} / ${v.b} ${L('ถุง','bags')}`).join(' · ')}</div>${palTable(d.pallets,false)}`;
+  }catch(e){$('#stT').innerHTML=err(e);}
+}
+
+/* ════════ Rack map ════════ */
+let RACKROW='';
+async function pgRack(){
+  const A=$('#app');let d;
+  try{d=await api('/api/wms/locations?row='+RACKROW);}catch(e){A.innerHTML=err(e);return;}
+  RACKROW=d.row;
+  const by={};d.locations.forEach(l=>{by[l.code]=l;});
+  const used=d.locations.filter(l=>l.pallet).length;
+  const cls=l=>l.blocked?'s-blocked':!l.pallet?'s-empty':l.pallet.status==='hold'?'s-hold':'s-'+(l.pallet.exp_level||'ok');
+  let grid='';
+  for(let lv=d.levels;lv>=1;lv--){
+    grid+=`<div class="rk-row"><div class="rk-lv">L${lv}</div>`;
+    for(let b=1;b<=d.bays;b++){grid+='<div class="rk-bay">';
+      for(let s=1;s<=d.slots;s++){const code=`${d.row}${String(b).padStart(2,'0')}-${lv}-${s}`,l=by[code];
+        if(l)grid+=`<button class="rk-s ${cls(l)}" title="${code}${l.pallet?' · '+esc(l.pallet.lot_no)+' #'+esc(l.pallet.pallet_no):''}" aria-label="${code}" onclick="slotDlg('${code}')"></button>`;}
+      grid+='</div>';}
+    grid+='</div>';}
+  let hd='';for(let b=1;b<=d.bays;b++)hd+=`<div style="width:${d.slots*14+5}px;text-align:center;flex:none">${String(b).padStart(2,'0')}</div>`;
+  A.innerHTML=`<h1>${L('ผังชั้นวาง','Rack map')} · ${esc(d.row)}</h1>
+   <div class="chips">${d.rows.map(r=>`<button class="chip ${r===d.row?'on':''}" onclick="RACKROW='${r}';pgRack()">${r}</button>`).join('')}</div>
+   <div class="legend"><span><i class="s-empty" style="border:1px solid #C3CCD5"></i>${L('ว่าง','Empty')}</span><span><i class="s-ok"></i>&gt; ${SET.warn_days} ${L('วัน','d')}</span><span><i class="s-warn"></i>${SET.crit_days+1}–${SET.warn_days} ${L('วัน','d')}</span><span><i class="s-crit"></i>≤ ${SET.crit_days} ${L('วัน / หมดอายุ','d / expired')}</span><span><i class="s-none"></i>${L('ไม่มี EXP','No EXP')}</span><span><i class="s-hold"></i>${L('กักกัน','Hold')}</span><span><i class="s-blocked"></i>${L('ปิดใช้','Blocked')}</span></div>
+   <div class="card"><div style="font-size:13px;color:var(--ink2);margin-bottom:8px">${used} / ${d.locations.length} ${L('ช่องมีพาเลท · ชั้น 1 = ชั้นพื้น · แต่ละช่อง (bay) มี','slots used · L1 = floor level · each bay holds')} ${d.slots} ${L('พาเลท','pallets')}</div>
+    <div class="rack"><div class="rk-hd">${hd}</div>${grid}</div></div>`;
+}
+async function slotDlg(code){
+  let d;try{d=await post('/api/wms/scan',{text:'LOC:'+code});}catch(e){alert(e.message);return;}
+  if(d.pallet)return palDlg(d.pallet.id);
+  dlg(`<h2 class="mono">${esc(code)}</h2><div>${d.loc.blocked?L('ช่องนี้ถูกปิดใช้งาน','This slot is blocked'):L('ว่าง','Empty')}</div>
+   <div class="btns" style="margin-top:14px">${can('super')?`<button class="btn" onclick="blockSlot('${code}',${d.loc.blocked?0:1})">${d.loc.blocked?L('เปิดใช้ช่อง','Unblock slot'):L('ปิดใช้ช่อง (ชำรุด)','Block slot (damaged)')}</button>`:''}<button class="btn" onclick="closeDlg()">${L('ปิด','Close')}</button></div>`);
+}
+async function blockSlot(code,b){try{await post('/api/wms/locations/block',{code,blocked:b});closeDlg();pgRack();}catch(e){alert(e.message);}}
+
+/* ════════ Traceability ════════ */
+async function pgTrace(q){
+  const A=$('#app');
+  A.innerHTML=`<h1>${L('ตรวจย้อนกลับตามล็อต','Traceability by lot')}</h1>
+   <div style="display:flex;gap:8px;margin-bottom:12px"><input class="in mono" id="trQ" value="${esc(q||'')}" placeholder="${L('เลขล็อต เช่น','Lot no. e.g.')} 261023129" onkeydown="if(event.key==='Enter')pgTrace(this.value)"><button class="btn pri" onclick="pgTrace($('#trQ').value)">${L('ค้นหา','Search')}</button></div><div id="trR"></div>`;
+  if(!q)return;
+  try{const d=await api('/api/wms/trace?lot='+encodeURIComponent(q));
+    const cnt={};d.pallets.forEach(p=>cnt[p.status]=(cnt[p.status]||0)+1);
+    $('#trR').innerHTML=`<div class="card"><div style="margin-bottom:10px">${d.pallets.length} ${L('พาเลท','pallets')} · ${Object.entries(cnt).map(([k,v])=>stPill(k)+' '+v).join(' ')}</div>
+     <div class="tw"><table><thead><tr><th>${L('ล็อต #พาเลท','Lot #pallet')}</th><th>${L('สินค้า','Product')}</th><th>${L('สถานะ','Status')}</th><th>${L('ตำแหน่ง / ใบสั่ง','Location / order')}</th><th>EXP</th></tr></thead><tbody>
+     ${d.pallets.map(p=>`<tr class="click" onclick="palDlg(${p.id})"><td class="mono">${esc(p.lot_no)} #${esc(p.pallet_no)}</td><td>${esc(p.product_name)}</td><td>${stPill(p.status)}</td><td>${p.order?esc(p.order.order_no+' · '+p.order.customer+' · '+p.order.truck):'<span class="mono">'+esc(p.location||'-')+'</span>'}</td><td>${fmtD(p.exp_date)}</td></tr>`).join('')}</tbody></table></div></div>`;
+  }catch(e){$('#trR').innerHTML=err(e);}
+}
+
+/* ════════ Setup (supervisor) ════════ */
+let SETTAB='products';
+async function pgSetup(){
+  const A=$('#app');
+  const tabs=[['products',L('สินค้า / อายุสินค้า','Products / shelf life')],['layout',L('ผังชั้นวาง','Rack layout')],['labels',L('พิมพ์ป้าย QR ช่อง','Print slot labels')],['users',L('ทีม FG (ผู้ใช้งาน)','FG team (users)')]];
+  A.innerHTML=`<h1 class="noprint">${L('ตั้งค่า','Setup')}</h1><div class="chips noprint">${tabs.map(t=>`<button class="chip ${SETTAB===t[0]?'on':''}" onclick="SETTAB='${t[0]}';pgSetup()">${t[1]}</button>`).join('')}</div><div id="setB">…</div>`;
+  const B=$('#setB');
+  try{
+    if(SETTAB==='products'){const d=await api('/api/wms/products');
+      B.innerHTML=`<div class="card"><div style="font-size:13px;color:var(--ink2);margin-bottom:10px">${L('สินค้าถูกเพิ่มอัตโนมัติเมื่อสแกนใบพาเลทครั้งแรก ใส่อายุสินค้า (วัน) เพื่อคำนวณ EXP = MFG + อายุ','Products are added automatically the first time a slip is scanned. Enter shelf life (days) so EXP = MFG + shelf life.')}</div>
+       <div class="tw"><table><thead><tr><th>${L('รหัส','Code')}</th><th>${L('ชื่อ','Name')}</th><th>${L('น้ำหนัก','Weight')}</th><th>${L('อายุ (วัน)','Shelf life (days)')}</th><th>${L('ในคลัง','In stock')}</th><th></th></tr></thead><tbody>
+       ${d.products.map(p=>`<tr><td class="mono">${esc(p.code)}</td><td>${esc(p.name)}</td><td>${esc(p.weight)}</td><td><input class="in" type="number" min="0" style="width:110px" id="sl-${p.id}" value="${p.shelf_life_days||''}"></td><td>${p.in_stock}</td><td><button class="btn" onclick="saveProd('${esc(p.code)}',${p.id})">${L('บันทึก','Save')}</button></td></tr>`).join('')
+         ||`<tr><td colspan="6" style="color:var(--ink2)">${L('ยังไม่มีสินค้า — สแกนใบพาเลทที่หน้า QC','No products yet — scan a slip on the QC page')}</td></tr>`}</tbody></table></div></div>`;}
+    else if(SETTAB==='layout'){const s=await api('/api/wms/settings');
+      const f=(k,l,t)=>`<label class="f">${l}<input class="in" id="ly-${k}" ${t||'type="number" min="1"'} value="${esc(s[k])}"></label>`;
+      B.innerHTML=`<div class="card grid" style="max-width:640px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+         ${f('row_start',L('แถวแรก','First row'),'maxlength="2"')}${f('rows',L('จำนวนแถว','Rows'))}${f('bays',L('ช่อง (bay) ต่อแถว','Bays per row'))}${f('levels',L('ชั้นต่อช่อง','Levels'))}${f('slots',L('พาเลทต่อชั้นต่อช่อง','Pallets per level per bay'))}
+         ${f('warn_days',L('เตือนเมื่อเหลือ (วัน)','Warn at (days left)'))}${f('crit_days',L('วิกฤตเมื่อเหลือ (วัน)','Critical at (days left)'))}</div>
+        <div id="lyCalc" style="color:var(--ink2);font-size:14px"></div>
+        <div style="font-size:13px;color:var(--ink2)">${L('รหัสช่อง','Slot code')}: <b class="mono">AA01-3-2</b> = ${L('แถว AA · ช่อง 01 · ชั้น 3 · ตำแหน่ง 2','row AA · bay 01 · level 3 · position 2')}. ${L('ช่องที่มีพาเลทอยู่จะไม่ถูกลบ','Slots holding a pallet are never removed.')}</div>
+        <div id="lyRes"></div><div class="btns"><button class="btn pri" onclick="saveLayout()">${L('บันทึกและสร้างช่อง','Save & build slots')}</button></div></div>`;
+      const calc=()=>{const v=k=>+($('#ly-'+k).value||0);$('#lyCalc').textContent=`${v('rows')} × ${v('bays')} × ${v('levels')} × ${v('slots')} = ${(v('rows')*v('bays')*v('levels')*v('slots')).toLocaleString()} ${L('ตำแหน่งพาเลท','pallet positions')}`;};
+      B.querySelectorAll('input').forEach(i=>i.oninput=calc);calc();}
+    else if(SETTAB==='labels'){const d=await api('/api/wms/locations?row='+RACKROW);RACKROW=d.row;
+      await loadJs('/vendor/qrcode.js',()=>window.qrcode);
+      B.innerHTML=`<div class="noprint chips">${d.rows.map(r=>`<button class="chip ${r===d.row?'on':''}" onclick="RACKROW='${r}';pgSetup()">${r}</button>`).join('')}</div>
+        <div class="noprint btns" style="margin-bottom:12px"><button class="btn pri" onclick="window.print()">${L('พิมพ์','Print')} (${d.locations.length})</button></div>
+        <div class="labels">${d.locations.map(l=>`<div class="lab">${qrSvg('LOC:'+l.code,22)}<div><div class="t">${esc(l.code)}</div><div class="u">${L('แถว','Row')} ${esc(l.row_code)} · ${L('ช่อง','Bay')} ${l.bay} · ${L('ชั้น','Lv')} ${l.level} · ${L('ตำแหน่ง','Pos')} ${l.slot}</div></div></div>`).join('')}</div>`;}
+    else if(SETTAB==='users'){const d=await api('/api/wms/users');
+      const RL={'':L('— ไม่มีสิทธิ์ —','— no access —'),view:L('ดูอย่างเดียว','View only'),qc:L('QC ตรวจรับ','QC inspector'),store:L('คลัง / รถยก','Store / forklift'),super:L('หัวหน้าคลัง','Supervisor')};
+      B.innerHTML=`<div class="card"><div style="font-size:13px;color:var(--ink2);margin-bottom:10px">${L('ทีม FG = ผู้ที่มีสิทธิ์คลังสินค้า หลังเข้าสู่ระบบจะเห็นไอคอน CMMS และ คลังสินค้า ใช้บัญชีเดียวกับ CMMS ผู้ดูแลระบบเป็นหัวหน้าคลังเสมอ','FG team = anyone given Warehouse access. After sign-in they see both the CMMS and Warehouse app icons. Same accounts as the CMMS; CMMS admins are always Supervisor.')}</div>
+       <div class="tw"><table><thead><tr><th>${L('ชื่อ','Name')}</th><th>${L('ผู้ใช้','Username')}</th><th>CMMS</th><th>${L('สิทธิ์คลังสินค้า','Warehouse access')}</th></tr></thead><tbody>
+       ${d.users.map(u=>`<tr><td>${esc(u.name)}</td><td class="mono">${esc(u.username)}</td><td>${esc(u.role)}</td><td>${u.role==='admin'?RL.super:`<select class="in" style="max-width:200px" onchange="setRole(${u.id},this.value)">${['','view','qc','store','super'].map(r=>`<option value="${r}" ${u.wms_role===r?'selected':''}>${RL[r]}</option>`).join('')}</select>`}</td></tr>`).join('')}</tbody></table></div></div>`;}
+  }catch(e){B.innerHTML=err(e);}
+}
+function qrSvg(text,mm){const q=qrcode(0,'M');q.addData(text);q.make();const n=q.getModuleCount(),m=2;let p='';
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(q.isDark(r,c))p+=`M${c+m} ${r+m}h1v1h-1z`;
+  return `<svg width="${mm}mm" height="${mm}mm" viewBox="0 0 ${n+2*m} ${n+2*m}" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path d="${p}" fill="#000"/></svg>`;}
+async function saveProd(code,id){try{const r=await post('/api/wms/products',{code,shelf_life_days:+$('#sl-'+id).value||0});alert(L(`บันทึกแล้ว — อัปเดต EXP ${r.pallets_updated} พาเลท`,`Saved — EXP updated on ${r.pallets_updated} pallet(s)`));}catch(e){alert(e.message);}}
+async function saveLayout(){const b={};['row_start','rows','bays','levels','slots','warn_days','crit_days'].forEach(k=>b[k]=$('#ly-'+k).value);
+  try{const r=await post('/api/wms/settings',b);SET.warn_days=+b.warn_days;SET.crit_days=+b.crit_days;$('#lyRes').innerHTML=`<div class="msg m-ok">${L(`บันทึกแล้ว — ทั้งหมด ${r.total} ช่อง (เพิ่ม ${r.added}, ลบ ${r.removed})`,`Saved — ${r.total} slots (added ${r.added}, removed ${r.removed})`)}</div>`;}
+  catch(e){$('#lyRes').innerHTML=err(e);}}
+async function setRole(id,r){try{await post('/api/wms/users/'+id,{wms_role:r});}catch(e){alert(e.message);}}
+
+/* ════════ Sign-in (same accounts and cookie as the CMMS) ════════ */
+async function loginPage(){
+  $('#side').innerHTML='';$('#bot').innerHTML='';
+  let f=[];try{f=await api('/api/factories');}catch(e){}
+  $('#app').innerHTML=`<div class="card" style="max-width:400px;margin:40px auto" ><h1>${L('เข้าสู่ระบบคลังสินค้า','Sign in to Warehouse')}</h1><div class="grid">
+   <label class="f">${L('โรงงาน','Plant')}<select class="in" id="lgF">${f.map(x=>`<option value="${x.id}" ${x.code==='PC'?'selected':''}>${esc(x.code)}</option>`).join('')}</select></label>
+   <label class="f">${L('ชื่อผู้ใช้','Username')}<input class="in" id="lgU" autocomplete="username"></label>
+   <label class="f">${L('รหัสผ่าน','Password')}<input class="in" id="lgP" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></label>
+   <div id="lgC"></div><div id="lgE"></div><button class="btn pri big" onclick="doLogin()">${L('เข้าสู่ระบบ','Sign in')}</button></div></div>`;
+}
+let CAP=null;
+async function doLogin(){
+  const b={username:$('#lgU').value,password:$('#lgP').value,factory_id:+$('#lgF').value};
+  if(CAP){b.captcha_token=CAP;b.captcha_answer=($('#lgCa')||{}).value;}
+  try{await post('/api/login',b);CAP=null;start();}
+  catch(e){$('#lgE').innerHTML=err(e);
+    if(e.detail&&e.detail.captcha_required){try{const c=await api('/api/captcha');CAP=c.token;$('#lgC').innerHTML=`<img src="${c.image}" alt="captcha"><input class="in" id="lgCa" placeholder="${L('รหัสจากภาพ','Code from the image')}">`;}catch(x){}}}
+}
+
+async function start(){
+  $('#langBtn').textContent=TH()?'EN':'TH';
+  try{ME=await api('/api/wms/me');}catch(e){if(e.status===401)return loginPage();$('#app').innerHTML=err(e);return;}
+  $('#fac').textContent=ME.factory_code;$('#who').innerHTML=esc(ME.name)+'<br>'+esc({view:L('ดูอย่างเดียว','View'),qc:'QC',store:L('คลัง','Store'),super:L('หัวหน้าคลัง','Supervisor')}[ME.wms_role]||'');
+  if(!ME.can.length){$('#app').innerHTML=`<div class="card" style="max-width:520px;margin:40px auto"><h1>${L('ยังไม่มีสิทธิ์ใช้คลังสินค้า','No warehouse access yet')}</h1><p>${L('ให้หัวหน้าคลังเปิดสิทธิ์ที่ ตั้งค่า › ผู้ใช้งาน','Ask the warehouse supervisor to give you access in Setup › Users.')}</p><button class="btn" onclick="location.href='/?apps=1'">Apps</button></div>`;return;}
+  try{SET=(await api('/api/wms/summary')).settings;}catch(e){}
+  buildNav();go((location.hash||'#home').slice(1),true);
+}
+window.addEventListener('hashchange',()=>{const p=(location.hash||'#home').slice(1);if(p!==PAGE&&ME)go(p,true);});
+start();
+</script>
+</body>
+</html>

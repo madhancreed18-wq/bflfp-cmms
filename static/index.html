@@ -12,11 +12,11 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="BFL Group CMMS">
 <link rel="apple-touch-icon" sizes="180x180" href="/Logo180.png">
-<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--or:#1B75BC;--ord:#0F3D6E;--navy:#1E293B;--bg:#F1F5F9;--bd:#D9E6F2;--red:#DC2626;--green:#43A047;--blue:#1B75BC;--gray:#5C789A;--amber:#D97706;--orange:#F97316;--hbg:#202020}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Prompt',system-ui,sans-serif;background:linear-gradient(180deg,#E4E9F1 0%,#F1F5F9 360px) no-repeat #F1F5F9;min-height:100vh;min-height:100dvh;color:var(--navy);font-size:15px;-webkit-tap-highlight-color:transparent}
+body{font-family:'Sarabun',system-ui,sans-serif;background:linear-gradient(180deg,#E4E9F1 0%,#F1F5F9 360px) no-repeat #F1F5F9;min-height:100vh;min-height:100dvh;color:var(--navy);font-size:15px;-webkit-tap-highlight-color:transparent}
 header{background:var(--hbg);color:#fff;padding:10px 14px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:5}
 header .logo{background:#fff;border-radius:9px;padding:4px 7px;display:flex;align-items:center;flex:none}
 header .logo img{height:24px;display:block}
@@ -185,7 +185,8 @@ label{font-size:12px;color:var(--gray);display:block;margin:8px 0 3px}
 .switch.on .trk{background:var(--or)}.switch.on .trk::after{left:20px}
 /* ---- v2.2 login (Bluefalo navy) ---- */
 body.lgbg{background:linear-gradient(180deg,#0F3D6E 0%,#16324A 100%)}
-.lgwrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:44px 20px 24px}
+body.lgbg main#app{padding:0!important;max-width:none}
+.lgwrap{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:44px 20px 24px}
 .lgchip{background:#fff;border-radius:18px;padding:12px 20px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
 .lgchip img{height:52px;display:block}
 .lgwrap h2{color:#fff;font-size:24px;font-weight:700;margin-top:22px;letter-spacing:.3px}
@@ -417,6 +418,7 @@ dialog>h3.dlgbar{display:flex;align-items:center;gap:10px;margin:-18px -18px 14p
   .sidebar{display:flex}
   .bnav{display:none}
   header{margin-left:210px}
+  #fnbar.fnbar{margin-left:210px}
   main#app{margin-left:210px;max-width:none;background:#F1F5F9;padding:18px 24px}
   main#app:has(.canvas){padding-bottom:0}
   main#app:has(.canvas){padding:0}
@@ -680,6 +682,8 @@ body.hasenv{padding-bottom:20px}
 .tvtog button.on .tvbadge,.ppseg.pptabs button.on .tvbadge{background:var(--ctband);color:#fff}
 .tvtog .tvlamp,.ppseg.pptabs .tvlamp{box-shadow:0 0 0 2px var(--ctband),0 0 6px rgba(34,197,94,.65)}
 .tvtog button.on .tvlamp,.ppseg.pptabs button.on .tvlamp{box-shadow:0 0 0 2px var(--ctpage),0 0 6px rgba(34,197,94,.65)}
+/* b464: black tab text on every phone tab (easier to read on the orange band) */
+.tvtog button,.ppseg.pptabs button,.tvtog button.on,.ppseg.pptabs button.on{color:#111827!important}
 .ctpill{position:absolute;bottom:0;top:7px;left:0;width:0;background:var(--ctpage);border-radius:var(--ctr) var(--ctr) 0 0;z-index:0;pointer-events:none}
 .ctpill.go{transition:left .28s cubic-bezier(.4,.1,.2,1),width .28s cubic-bezier(.4,.1,.2,1)}
 .ctpill:before,.ctpill:after{content:'';position:absolute;bottom:0;width:var(--ctr);height:var(--ctr)}
@@ -1260,7 +1264,130 @@ body.optech .chead .ctitle,body.optech .chead .cright{display:none}
 .sctbl .r{text-align:right}
 .sctbl td.low{color:#DC2626;font-weight:700}
 .elgrid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:10px;align-items:start}.elgrid>.card{margin:0}@media(max-width:820px){.elgrid{grid-template-columns:1fr}}
+/* ═══ b490: Manage → Users, matrix view (Concept D) ═══ */
+.mxwrap{display:flex;flex-direction:column;gap:12px;margin-top:12px;height:calc(100vh - 150px);min-height:480px}
+.mxsum{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:11px 16px;margin:0}
+.mxsum .big{font-weight:700;font-size:14px;white-space:nowrap}.mxsum .big span{color:#64748B;font-weight:500}
+.mxhb{flex:1;min-width:140px;display:flex;height:9px;border-radius:5px;overflow:hidden;background:#EEF1F5}.mxhb div{height:100%}
+.mxleg{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:#475569}.mxleg span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.mxleg i,.mxchip i{width:8px;height:8px;border-radius:50%;flex:none;display:inline-block}
+.mxgrid{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(400px,1fr);gap:12px}
+.mxpanel{margin:0;padding:0;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.mxph{display:flex;align-items:center;gap:10px;padding:12px 16px 8px;flex-wrap:wrap}
+.mxph h3{margin:0;font-size:14px;color:#1F2937}.mxph .hint{margin-left:auto;font-size:11.5px;color:#94A3B8}
+.mxtbl{padding:2px 14px 10px;overflow:auto;flex:1;min-height:0}
+.mxtbl table{border-collapse:separate;border-spacing:5px;width:100%;table-layout:fixed}
+.mxtbl th{font-size:11px;font-weight:700;color:#64748B;letter-spacing:.03em;padding:4px 2px;cursor:pointer;border-radius:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mxtbl th:hover,.mxtbl th.on{color:#2563EB}
+.mxtbl tr>:first-child{width:34%;text-align:left}.mxtbl tr>:last-child{width:54px}
+.mxtbl td.rn{font-size:12.5px;font-weight:600;color:#1F2937;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:4px}
+.mxtbl td.rn:hover,.mxtbl td.rn.on{color:#2563EB}.mxtbl td.rn small{color:#94A3B8;font-weight:500}
+.mxc{height:42px;border-radius:8px;text-align:center;font-weight:700;font-size:14.5px;cursor:pointer;position:relative;transition:transform .08s,box-shadow .08s}
+.mxc:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(37,99,235,.25)}
+.mxc.on{box-shadow:0 0 0 3px #1E293B}.mxc.dim{opacity:.32}.mxc.zero{color:#CBD5E1;font-weight:500}
+.mxc .dot{position:absolute;top:5px;right:6px;min-width:15px;height:15px;padding:0 4px;border-radius:8px;background:#fff;color:#DC2626;font-size:10px;line-height:15px;font-weight:700;box-shadow:0 0 0 1px rgba(220,38,38,.25)}
+.mxtbl td.tot{text-align:center;color:#94A3B8;font-weight:600;font-size:12px}
+.mxlg{display:flex;align-items:center;gap:8px;font-size:11.5px;color:#64748B;padding:0 16px 12px}
+.mxlg .sc{width:110px;height:8px;border-radius:4px;background:linear-gradient(90deg,#E8F0FE,#2563EB)}
+.mxcrumb{font-weight:700;font-size:14px;display:flex;align-items:center;gap:6px;color:#1F2937;min-width:0}
+.mxcrumb span{color:#94A3B8;font-weight:500}.mxcrumb a{font-size:11.5px;font-weight:500;color:#64748B;background:#F1F5F9;border-radius:6px;padding:2px 8px;cursor:pointer;text-decoration:none}
+.mxseg{display:inline-flex;background:#F1F5F9;border-radius:8px;padding:2px;margin-left:auto}
+.mxseg button{border:0;background:none;padding:4px 10px;border-radius:6px;color:#64748B;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer}
+.mxseg button.on{background:#fff;color:#1F2937;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.mxchips{display:flex;gap:6px;flex-wrap:wrap;padding:0 16px 10px;border-bottom:1px solid var(--bd)}
+.mxchip{border:1px solid #E2E8F0;background:#fff;border-radius:999px;padding:3px 10px;font-size:12px;display:inline-flex;align-items:center;gap:6px;color:#1F2937;font-family:inherit;cursor:pointer}
+.mxchip b{font-weight:700}.mxchip.zero{color:#94A3B8}.mxchip.on{background:#1E293B;color:#fff;border-color:#1E293B}
+.mxlist{flex:1;min-height:0;overflow-y:auto}
+.mxlh{position:sticky;top:0;z-index:1;background:#F8FAFC;border-bottom:1px solid #E2E8F0;padding:5px 16px;font-size:11px;font-weight:700;color:#64748B;letter-spacing:.04em;text-transform:uppercase}
+.mxit{display:flex;align-items:center;gap:11px;padding:8px 16px;border-bottom:1px solid #F1F5F9;cursor:pointer}
+.mxit:hover{background:#F7F9FC}.mxit.on{background:#EFF6FF}
+.mxit .nm{flex:1;min-width:0}.mxit .nm b{display:block;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#1F2937}
+.mxit .nm small{display:block;font-size:11.5px;color:#64748B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mxtags{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;max-width:52%}
+.mxtag{font-size:10.5px;font-weight:700;border-radius:6px;padding:1px 7px;white-space:nowrap}
+.mxt-acc{background:#EAF1FF;color:#2563EB}.mxt-per{background:#E8F7EE;color:#15803D}.mxt-sh{background:#FEF3C7;color:#92400E}
+.mxt-w{background:#FFF4E0;color:#B45309}.mxt-b{background:#FDECEC;color:#DC2626}.mxt-v{background:#F2ECFF;color:#7C3AED}.mxt-g{background:#EEF1F5;color:#64748B}
+.mxempty{padding:44px 20px;text-align:center;color:#94A3B8;font-size:12.5px}
+.mxov{position:fixed;inset:0;background:rgba(15,23,42,.35);z-index:90}
+.mxdrw{position:fixed;top:0;right:0;bottom:0;width:420px;max-width:100%;background:#fff;z-index:91;overflow:auto;box-shadow:-10px 0 30px rgba(0,0,0,.18);animation:mxin .2s ease}
+@keyframes mxin{from{transform:translateX(40px);opacity:.4}to{transform:none;opacity:1}}
+.mxdrw .mxx{position:sticky;top:0;display:flex;justify-content:flex-end;padding:8px 10px 0;background:#fff;z-index:2}
+.mxdrw .mxx button{border:0;background:#F1F5F9;width:32px;height:32px;border-radius:8px;font-size:15px;color:#64748B;cursor:pointer}
+dialog:has(.mxnew){width:min(460px,94vw);padding:0}
+.mxnew .mxq{font-size:13px;font-weight:600;color:#334155;margin-bottom:8px}
+.mxopt{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid #E2E8F0;border-radius:8px;margin:0 0 6px;cursor:pointer;background:#fff}
+.mxopt:hover{background:#F8FAFC}.mxopt:has(input:checked){border-color:#2563EB;background:#EFF6FF}
+.mxopt input{width:16px;height:16px;margin:0;flex:none;accent-color:#2563EB}
+.mxopt .ico{font-size:22px;line-height:1;flex:none}
+.mxopt .tx b{display:block;font-size:13.5px;color:#1F2937}.mxopt .tx small{display:block;font-size:11.5px;color:#64748B;line-height:1.35}
+.mxnew .mxpre{margin:8px 0 0}
+.mxbtns{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid #EEF1F5}
+.mxbtns .btn{min-width:96px;padding:7px 14px;font-size:13.5px}
+.mxtypes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:16px;width:min(760px,86vw);box-sizing:border-box}
+.mxty{border:1.5px solid #E2E8F0;border-radius:12px;padding:15px;cursor:pointer;background:#fff;text-align:left;font-family:inherit;transition:.12s}
+.mxty:hover{border-color:#2563EB;box-shadow:0 0 0 3px #EAF1FF}
+.mxty .ico{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:19px;margin-bottom:9px}
+.mxty b{display:block;font-size:14px;margin-bottom:3px;color:#1F2937}.mxty p{margin:0;color:#64748B;font-size:12px}
+.mxty ul{margin:8px 0 0;padding-left:16px;color:#64748B;font-size:11.5px}
+.mxpre{margin:0 16px 14px;padding:9px 12px;background:#F8FAFC;border-radius:8px;font-size:12px;color:#475569}
+@media(max-height:820px){.mxc{height:34px;font-size:13.5px}.mxtbl table{border-spacing:4px}.mxit{padding:6px 14px}.mxsum{padding:8px 14px}.mxph{padding:10px 14px 6px}.mxwrap{gap:10px}}
+@media(max-width:1440px){.mxgrid{grid-template-columns:minmax(0,1fr) minmax(360px,.95fr)}.mxtbl tr>:first-child{width:28%}.mxtbl td.rn small{display:none}.mxleg{display:none}}
+@media(max-width:1100px){.mxgrid{grid-template-columns:1fr}.mxwrap{height:auto}.mxlist{max-height:70vh}.mxtypes{grid-template-columns:1fr}}
+
+/* ═══ b490: PC sidebar — icons only, opens while the mouse is over it ═══
+   Only on a real mouse screen (hover:hover). A touch screen has no "hover", so the
+   menu there stays as it was. The open menu floats OVER the page — the page never
+   jumps sideways when it opens or closes. */
+.sbpin{display:none;background:none;border:none;color:#9AA0A6;cursor:pointer;padding:3px 5px;border-radius:6px;margin-left:auto;font-size:13px;line-height:1}
+.sbpin:hover{background:rgba(255,255,255,.08);color:#fff}
+@media(min-width:900px) and (hover:hover){
+  .sbpin{display:inline-flex}
+  .sidebar .sbx{display:none}
+  body.sbauto .sidebar{width:64px;overflow:hidden;z-index:60;transition:width .16s ease .28s,box-shadow .16s ease .28s}
+  body.sbauto .sidebar *{white-space:nowrap}
+  body.sbauto .sidebar:hover{width:236px;overflow-y:auto;box-shadow:10px 0 30px rgba(0,0,0,.35);transition-delay:.08s}
+  body.sbauto header,body.sbauto #fnbar.fnbar,body.sbauto main#app{margin-left:64px}
+  body.sbauto .sidebar:not(:hover) .skids,
+  body.sbauto .sidebar:not(:hover) .ssec,
+  body.sbauto .sidebar:not(:hover) .schev,
+  body.sbauto .sidebar:not(:hover) .sbpin{display:none}
+  body.sbauto .sidebar:not(:hover) .sbrand{font-size:0;padding:6px 0 16px}
+  body.sbauto .sidebar:not(:hover) .sbrand::before{content:'☰';font-size:18px;color:#9AA0A6;display:block;width:40px;text-align:center}
+  body.sbauto .sidebar:not(:hover) .snav button{overflow:hidden}
+  body.sbauto .sidebar:not(:hover) .suser .sinfo,body.sbauto .sidebar:not(:hover) .suser .slogout{display:none}
+  body.sbauto .sidebar:not(:hover) .suser{justify-content:center;padding-left:0;padding-right:0}
+  /* b493: the user badge is pinned to the bottom; the page list scrolls above it, so on a
+     short 14" screen the badge is never pushed off the bottom or cut in half */
+  .sidebar{overflow:hidden}
+  .sidebar>.snav+.snav{flex:1 1 auto;min-height:0;overflow:hidden auto;scrollbar-width:thin}
+  .sidebar>.snav+.snav+div:not(.suser){display:none}
+  .sidebar>.suser{flex:none;padding-bottom:12px}
+  body.sbauto .sidebar:not(:hover)>.snav+.snav{overflow:hidden}
+}
+/* ═══ b490: menu across the top (Odoo style) — PC only ═══ */
+#tnav{display:none}
+@media(min-width:900px){
+  body.topnav #sidebar{display:none}
+  body.topnav header,body.topnav #fnbar.fnbar,body.topnav main#app{margin-left:0}
+  body.topnav header h1{flex:none;max-width:260px}
+  body.topnav #tnav{display:flex;align-items:center;gap:2px;flex:1 1 auto;min-width:0;margin-left:10px}
+  #tnav>button,#tnav .tng>button{background:none;border:0;color:#CBD5E1;font-family:inherit;font-size:13.5px;font-weight:500;padding:7px 11px;border-radius:7px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
+  #tnav>button:hover,#tnav .tng>button:hover,#tnav .tng.open>button{background:rgba(255,255,255,.1);color:#fff}
+  #tnav button.on{color:#fff;box-shadow:inset 0 -2px 0 var(--orange)}
+  #tnav .tng{position:relative}
+  #tnav .tng>button::after{content:'';width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:4px solid currentColor;opacity:.7}
+  #tnav .tdd{display:none;position:absolute;top:calc(100% + 6px);left:0;min-width:210px;background:#fff;border-radius:10px;box-shadow:0 10px 30px rgba(15,23,42,.22);padding:6px;z-index:80}
+  #tnav .tng.open .tdd{display:block}
+  #tnav .tng.rt .tdd{left:auto;right:0}
+  #tnav .tdd button{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;text-align:left;padding:8px 12px;border-radius:7px;font-family:inherit;font-size:13.5px;color:#1F2937;cursor:pointer;white-space:nowrap}
+  #tnav .tdd button:hover{background:#F1F5F9}
+  #tnav .tdd button.on{color:var(--orange);font-weight:600;box-shadow:none;background:#FFF7ED}
+  #tnav .tdd button .ic{width:18px;display:inline-flex;justify-content:center;color:#64748B}
+  #tnav .tdd button .ic svg{width:16px;height:16px}
+  #tnav .tdd hr{border:0;border-top:1px solid #EEF1F5;margin:5px 4px}
+}
 </style>
+<script src="/fnbar.js"></script>
 </head>
 <body>
 <header>
@@ -1270,10 +1397,12 @@ body.optech .chead .ctitle,body.optech .chead .cright{display:none}
   <h1 id="htitle">BFL Group <span style="color:var(--orange)">- CMMS</span></h1>
   <div class="who" id="who"></div>
   <div id="hmode"></div>
+  <button class="btn sm hidden" id="appsBtn" onclick="goApps()" title="Apps" aria-label="Apps"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="display:block"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></button>
   <button class="btn sm hidden" id="chatBtn" onclick="renderChat()">💬</button>
   <button class="btn sm hidden" id="helpBtn" onclick="showHelp()">❓</button>
   <button class="btn sm hidden" id="logoutBtn" onclick="logout()">ออก</button>
 </header>
+
 <main id="app"></main>
 <nav id="bnav" class="bnav hidden"></nav>
 <aside id="sidebar" class="sidebar"></aside>
@@ -1734,7 +1863,7 @@ const patch=(u,b,o)=>api(u,{method:'PATCH',body:JSON.stringify(b),...(o||{})});
 const isNetErr=e=>{const m=(e&&e.message)||'';return m==='offline'||m==='timeout';};
 const esc=s=>(s||'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 const P=['','ปกติ','เร่ง','ด่วน!'];
-const UIBUILD='b451';
+const UIBUILD='b494';
 /* b391 — the sliding shape under the selected tab. Every screen redraws its tabs from
    scratch, so the shape is added after each draw: it starts where the previous tab was
    (remembered per tab set) and slides to the new one; the content after the tabs slides
@@ -1775,14 +1904,152 @@ async function start(){
   try{
     try{const h=await (await fetch('/api/health')).json();if(h.version)$('#footVer').textContent='v'+h.version+' · ui '+UIBUILD;}catch(e){}
     try{ME=await api('/api/me');}catch(e){ME=null;}
-    if(ME)await afterLogin();else renderLogin();
+    if(!ME)return renderLogin();
+    // b466: a person with a second app (the FG team's Warehouse) lands on the app
+    // launcher — unless they already chose CMMS in this tab, or a link opens a job/asset
+    const deep=/[?&](job|elec|asset)=/.test(location.search), ask=/[?&]apps=1/.test(location.search);
+    if(ask)history.replaceState(null,'',location.pathname);
+    let chose='';try{chose=sessionStorage.getItem('bflfp_app')||''}catch(e){}
+    // b471: no launcher — land on the person's function (default first, then what this tab last used)
+    let hadFn='';try{hadFn=sessionStorage.getItem('bflfp_fn')||''}catch(e){}
+    if(!deep&&useChooser()&&(ask||!hadFn)){renderChoose();return;}
+    if(!deep&&(ask&&(FnBar.list(ME).length>1||CROSSFAC())||(ME.role==='admin'&&!hadFn))){renderApps();return;}
+    if(!deep){const f=FnBar.current(ME);if(f&&f!=='cmms'){location.href='/fg.html?fn='+f;return;}}
+    if(/[?&]fn=/.test(location.search))history.replaceState(null,'',location.pathname);
+    await afterLogin();
   }finally{loadOff();}
 }
-function renderLogin(){
+/* ══════ APP LAUNCHER (b466) ══════
+   One sign-in, several apps — like the module screen of an ERP. Shown after login to
+   anyone who has more than the CMMS; today that is the FG (finished-goods) team, who
+   were given Warehouse access (users.wms_role, set in Warehouse › Setup › Users).
+   Everyone else goes straight into the CMMS exactly as before. */
+// b470: two FG apps from one role (users.fg_role, set in Warehouse › Users):
+//   FG Stock  = the floor: packing slips, receive scan, issue scan (phones / packing PC)
+//   Warehouse = the checker: queue, history, stock, reports, masters, users (office PC)
+// The old pallet-rack Warehouse (wms.html) is no longer offered here.
+const FG_FLOOR=['admin','packing','packcheck','receiver','issuer'],FG_OFFICE=['admin','checker'];
+function hasApps(){return !!(ME&&ME.fg_role);}
+function fgHome(){return FG_OFFICE.includes(ME.fg_role)&&!FG_FLOOR.includes(ME.fg_role)?'/fg.html?app=wh':'/fg.html?app=fg';}
+// an FG-only login (FG › Users › "FG only") never sees the CMMS — straight to the FG Stock app
+function fgOnly(){return !!(ME&&ME.fg_only&&ME.fg_role&&ME.fg_role!=='admin');}
+function goApps(){try{sessionStorage.removeItem('bflfp_app')}catch(e){}location.href='/?apps=1';}
+function openApp(a){
+  if(a!=='cmms'){FnBar.go(a);return;}
+  try{sessionStorage.setItem('bflfp_fn','cmms')}catch(e){}
+  try{sessionStorage.setItem('bflfp_app','cmms')}catch(e){}
+  afterLogin();
+}
+/* ══════ APP SCREEN (b475) — Odoo-style module grid, one section per plant ══════
+   Each plant shows the apps this person may open there: CMMS everywhere, the FG
+   functions only in plants where FG Stock is switched on (admin toggles it per plant
+   right here). Opening an app in another plant first moves the session to that plant. */
+const APPIC={   // BFL colours: blue #1B75BC / dark blue #0F3D6E / orange #F97316
+ cmms:'<circle cx="24" cy="24" r="17" fill="#FED7AA"/><path d="M30.5 13.5a7 7 0 0 0-9.2 8.8L12 31.6l4.4 4.4 9.3-9.3a7 7 0 0 0 8.8-9.2l-4 4-3.6-.9-.9-3.6z" fill="#F97316"/>',
+ packing:'<path d="M24 7l15 8v18l-15 8-15-8V15z" fill="#CFE2F5"/><path d="M24 23l15-8v18l-15 8z" fill="#0F3D6E"/><path d="M9 15l15 8v18L9 33z" fill="#1B75BC"/><path d="M16.5 11l15 8v6" stroke="#F97316" stroke-width="2.6" fill="none"/>',
+ packcheck:'<rect x="9" y="8" width="24" height="31" rx="4" fill="#CFE2F5"/><rect x="14" y="5" width="14" height="7" rx="2" fill="#0F3D6E"/><path d="M14 19h14M14 25h9" stroke="#1B75BC" stroke-width="2.6" stroke-linecap="round"/><circle cx="33" cy="33" r="9" fill="#F97316"/><path d="M29 33l3 3 5-6" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
+ receiver:'<rect x="7" y="31" width="34" height="5" rx="1.5" fill="#0F3D6E"/><rect x="9" y="36" width="5" height="4" fill="#0F3D6E"/><rect x="21.5" y="36" width="5" height="4" fill="#0F3D6E"/><rect x="34" y="36" width="5" height="4" fill="#0F3D6E"/><rect x="11" y="19" width="26" height="12" rx="2" fill="#CFE2F5"/><path d="M24 4v14" stroke="#F97316" stroke-width="4" stroke-linecap="round"/><path d="M17 12l7 7 7-7" stroke="#F97316" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
+ issuer:'<rect x="4" y="14" width="24" height="18" rx="2.5" fill="#CFE2F5"/><path d="M28 19h8l6 7v6H28z" fill="#1B75BC"/><circle cx="13" cy="34" r="4.5" fill="#0F3D6E"/><circle cx="35" cy="34" r="4.5" fill="#0F3D6E"/><path d="M10 23h11M17 19l4 4-4 4" stroke="#F97316" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
+ checker:'<path d="M5 19L24 8l19 11v21H5z" fill="#CFE2F5"/><path d="M5 19L24 8l19 11" stroke="#0F3D6E" stroke-width="3" fill="none" stroke-linejoin="round"/><rect x="12" y="25" width="24" height="15" fill="#1B75BC"/><rect x="15" y="32" width="4" height="6" fill="#fff"/><rect x="22" y="29" width="4" height="9" fill="#fff"/><rect x="29" y="27" width="4" height="11" fill="#F97316"/>'
+};
+const APPNAME=f=>{const TH=LANG==='TH';return {cmms:['CMMS','CMMS'],packing:['แพคกิ้ง','Packing'],packcheck:['Checker แพคกิ้ง','Packing check'],
+  receiver:['ตรวจรับพาเลท (รับเข้า FG)','Pallet Checker (FG receiver)'],issuer:['โหลดพาเลท (จ่ายออก FG)','Pallet Loader (FG issuer)'],checker:['คลังสินค้า','Warehouse']}[f][TH?0:1];};
+/* b482 — "Choose what to open" after sign-in for a non-admin with 2+ functions (e.g. CMMS + Pallet Checker).
+   Big phone-friendly cards; the pick opens that function's own screens. Admins keep the plant grid. */
+const APPDESC=f=>{const TH=LANG==='TH';return {cmms:['แจ้งซ่อม ดูงานซ่อมบำรุง','Report problems, maintenance jobs'],packing:['ทำใบพาเลท QR พิมพ์ A6','Make and print A6 QR pallet slips'],
+  packcheck:['ตรวจใบพาเลทก่อนส่ง FG','Approve pallet slips before FG'],receiver:['สแกน QR → เช็คลิสต์ → รับ / ไม่รับพาเลท','Scan QR → checklist → accept / reject pallet'],
+  issuer:['สแกน QR → เช็คลิสต์ → จ่ายเต็ม / บางส่วน ขึ้นรถ','Scan QR → checklist → load full / part pallet'],checker:['ยืนยันลงสต็อก รายงาน','Confirm to stock, reports']}[f][TH?0:1];};
+function useChooser(){return ME&&ME.role!=='admin'&&!CROSSFAC()&&FnBar.list(ME).length>1;}
+function renderChoose(){
   clearInterval(TIMER);
+  ['#logoutBtn','#helpBtn','#chatBtn','#navBurger','#appsBtn'].forEach(k=>{const e=$(k);if(e)e.classList.add('hidden');});
+  drawerToggle(false);hdrBack(null);document.body.classList.remove('optech');
+  $('#foot').classList.add('hidden');$('#bnav').classList.add('hidden');
+  document.querySelector('header').classList.add('hidden');document.body.classList.remove('lgbg');
+  const TH=LANG==='TH',fns=FnBar.list(ME);
+  $('#app').innerHTML=`<style>
+   .chbg{position:fixed;inset:0;overflow:auto;z-index:200;background:linear-gradient(160deg,#DCE6F2 0%,#EEF3F9 50%,#F7F9FC 100%);font-family:'Sarabun',system-ui,sans-serif;color:#1E293B}
+   .chtop{height:52px;background:#202020;color:#fff;display:flex;align-items:center;gap:10px;padding:0 14px;font-size:14px}
+   .chtop .lg{background:#fff;border-radius:9px;padding:4px 7px;display:flex}.chtop .lg img{height:24px;display:block}.chtop .sp{flex:1}
+   .chtop button{background:rgba(255,255,255,.12);border:0;color:#fff;border-radius:7px;padding:7px 11px;cursor:pointer;font:inherit;font-size:13px;white-space:nowrap}
+   .chw{max-width:560px;margin:0 auto;padding:26px 16px 40px}
+   .chw h1{font-size:20px;margin:0 0 4px;color:#0F3D6E}.chw p{margin:0 0 18px;color:#64748B;font-size:14px}
+   .chg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 10px;margin-top:8px}
+   @media(min-width:640px){.chg{grid-template-columns:repeat(3,minmax(0,1fr))}}
+   .chc{position:relative;display:flex;flex-direction:column;align-items:center;gap:10px;background:none;border:0;border-radius:14px;padding:10px 4px;cursor:pointer;font:inherit;color:inherit}
+   .chc:hover .ic,.chc:focus-visible .ic{border-color:#F97316;transform:translateY(-2px)}.chc:focus-visible{outline:2px solid #1B75BC;outline-offset:2px}.chc:active .ic{transform:scale(.96)}
+   .chc .ic{position:relative;width:80px;height:80px;border-radius:18px;background:#fff;border:1px solid #E2EAF3;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(15,61,110,.08),0 6px 16px rgba(15,61,110,.14);transition:transform .12s,border-color .12s}
+   .chc b{font-size:14.5px;font-weight:600;color:#0F172A;text-align:center;line-height:1.3}.chc small{font-size:12px;color:#64748B;text-align:center;line-height:1.3;margin-top:-6px}
+   .chc .df{position:absolute;top:-6px;right:-10px;font-size:11px;font-weight:600;color:#fff;background:#F97316;border-radius:99px;padding:1px 8px}
+  </style><div class="chbg"><div class="chtop"><span class="lg"><img src="/logo.png?v=2" alt="Bluefalo"></span><b>BFL Group</b><span class="sp"></span>
+   <button onclick="LANG=LANG==='TH'?'EN':'TH';try{localStorage.setItem('bflfp_lang',LANG)}catch(e){}renderChoose()">${TH?'EN':'ไทย'}</button>
+   <button onclick="logout()">${TH?'ออกจากระบบ':'Sign out'}</button></div>
+   <div class="chw"><h1>${TH?'สวัสดี':'Hello'} ${esc(meName())}</h1><p>${TH?'เลือกงานที่ต้องการใช้':'Choose what you want to open'}</p>
+   <div class="chg">${fns.map(f=>{const n=APPNAME(f),m=n.match(/^(.*?)\s*\((.*)\)$/);
+     return `<button class="chc" onclick="openApp('${f}')"><span class="ic"><svg viewBox="0 0 48 48" width="50" height="50" aria-hidden="true">${APPIC[f]}</svg>${(ME.fg_default||'cmms')===f?'<span class="df">★</span>':''}</span>
+     <b>${esc(m?m[1]:n)}</b>${m?`<small>${esc(m[2])}</small>`:''}</button>`;}).join('')}</div>
+   <p style="margin-top:14px;font-size:12.5px">${TH?'เปลี่ยนงานภายหลังได้ที่ปุ่ม แอป (▦) มุมขวาบน':'Switch later with the Apps (▦) button at the top right'}</p></div></div>`;
+}
+async function renderApps(){
+  clearInterval(TIMER);
+  ['#logoutBtn','#helpBtn','#chatBtn','#navBurger','#appsBtn'].forEach(k=>{const e=$(k);if(e)e.classList.add('hidden');});
+  drawerToggle(false);hdrBack(null);document.body.classList.remove('optech');
+  $('#foot').classList.add('hidden');$('#bnav').classList.add('hidden');
+  document.querySelector('header').classList.add('hidden');
+  document.body.classList.remove('lgbg');
+  const TH=LANG==='TH',admin=ME.role==='admin';
+  let plants=[];try{plants=(await api('/api/fg/plants')).plants;}catch(e){plants=[{id:ME.factory_id,code:ME.factory_code,name:ME.factory_name,fg:true}];}
+  const mine=CROSSFAC()?plants:plants.filter(p=>p.id===ME.factory_id);
+  const fns=FnBar.list(ME),fg=fns.filter(f=>f!=='cmms');
+  const logo={1:'/logo.png?v=2',2:'/fac_fp.png?v=2',3:'/fac_pc.png?v=2'};
+  const tile=(f,p)=>`<button class="odt" onclick="openAppAt('${f}',${p.id})" aria-label="${esc(APPNAME(f))} · ${esc(p.code)}"><span class="odi"><svg viewBox="0 0 48 48" width="46" height="46" aria-hidden="true">${APPIC[f]}</svg></span><span class="odn">${esc(APPNAME(f))}</span></button>`;
+  $('#app').innerHTML=`<style>
+   .odbg{position:fixed;inset:0;overflow:auto;z-index:20;background:linear-gradient(160deg,#DCE6F2 0%,#E8EEF6 40%,#F4F7FB 100%);font-family:'Sarabun',system-ui,sans-serif;color:#1E293B}
+   .odbg:before{content:"";position:fixed;inset:0;background:linear-gradient(115deg,transparent 0 48%,rgba(255,255,255,.45) 48% 62%,transparent 62%),linear-gradient(60deg,transparent 0 70%,rgba(255,255,255,.35) 70% 80%,transparent 80%);pointer-events:none}
+   .odtop{position:sticky;top:0;z-index:2;height:52px;background:#202020;color:#fff;display:flex;align-items:center;gap:12px;padding:0 16px;font-size:14px}
+   .odtop .lg{background:#fff;border-radius:9px;padding:4px 7px;display:flex}.odtop .lg img{height:24px;display:block}
+   .odtop b{font-size:15px}.odtop .sp{flex:1}.odtop button{background:rgba(255,255,255,.1);border:0;color:#fff;border-radius:7px;padding:6px 11px;cursor:pointer;font:inherit;font-size:13px}
+   .odtop button:hover{background:rgba(255,255,255,.2)}.odtop .x{color:#F97316}
+   .odwrap{position:relative;max-width:920px;margin:0 auto;padding:34px 20px 60px}
+   .odsec{margin-bottom:22px;background:rgba(255,255,255,.55);border:1px solid #D9E6F2;border-radius:16px;padding:16px 14px 18px}.odhd{display:flex;align-items:center;gap:10px;margin:0 0 14px 6px}
+   .odhd img{width:30px;height:30px;object-fit:contain;background:#fff;border-radius:8px;padding:3px;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+   .odhd .t{font-weight:600;font-size:15px;color:#0F3D6E}.odhd .s{font-size:12.5px;color:#6B7280}.odhd .cur{font-size:11px;font-weight:600;color:#fff;background:#F97316;border-radius:99px;padding:2px 9px}
+   .odhd .tg{margin-left:auto;border:1px solid #D9E6F2;background:#fff;border-radius:99px;font:inherit;font-size:12px;padding:4px 10px;cursor:pointer;color:#5C789A}
+   .odhd .tg.on{border-color:#1B75BC;background:#1B75BC;color:#fff;font-weight:600}
+   .odgrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:22px 10px}
+   .odt{background:none;border:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:9px;padding:6px 2px;border-radius:12px;font:inherit;color:#374151}
+   .odi{width:72px;height:72px;background:#fff;border-radius:14px;display:flex;align-items:center;justify-content:center;border:1px solid #E2EAF3;box-shadow:0 1px 2px rgba(15,61,110,.08),0 4px 12px rgba(15,61,110,.10);transition:transform .12s,box-shadow .12s,border-color .12s}
+   .odt:hover .odi,.odt:focus-visible .odi{transform:translateY(-2px);border-color:#F97316;box-shadow:0 2px 4px rgba(15,61,110,.1),0 8px 18px rgba(15,61,110,.16)}
+   .odt:focus-visible{outline:2px solid #1B75BC;outline-offset:2px}
+   .odn{font-size:13.5px;text-align:center;line-height:1.25;color:#1E293B;font-weight:500}
+   .odnone{font-size:13px;color:#6B7280;margin-left:6px}
+   .odtop b,.odtop button{white-space:nowrap}
+   @media(max-width:700px){.odtop .ap,.odtop .nm{display:none}.odgrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:18px 6px}.odi{width:64px;height:64px}.odwrap{padding:22px 12px 50px}}
+  </style><div class="odbg"><div class="odtop"><span class="lg"><img src="/logo.png?v=2" alt="Bluefalo"></span><b>BFL Group <span class="x">- Apps</span></b><span class="sp"></span>
+   <span class="nm">${esc(meName())}</span>
+   <button onclick="LANG=LANG==='TH'?'EN':'TH';try{localStorage.setItem('bflfp_lang',LANG)}catch(e){}renderApps()">${TH?'EN':'ไทย'}</button>
+   <button onclick="logout()">${TH?'ออกจากระบบ':'Sign out'}</button></div>
+   <div class="odwrap">${mine.map(p=>{
+     const list=['cmms'].filter(()=>fns.includes('cmms')).concat(p.fg?fg:[]);
+     return `<div class="odsec"><div class="odhd"><img src="${logo[p.id]||'/logo.png?v=2'}" alt=""><div><div class="t">${esc(p.code==='FP'?'BFLFP':p.code==='PC'?'BFLPC':p.code)} ${p.id===ME.factory_id?`<span class="cur">${TH?'โรงงานปัจจุบัน':'current'}</span>`:''}</div><div class="s">${esc(p.name)}</div></div>
+       ${admin?`<button class="tg ${p.fg?'on':''}" onclick="plantFg(${p.id},${p.fg?0:1})" title="${TH?'เปิด/ปิด FG Stock ในโรงงานนี้':'Turn FG Stock on/off for this plant'}">FG Stock: ${p.fg?(TH?'เปิด':'on'):(TH?'ปิด':'off')}</button>`:''}</div>
+       ${list.length?`<div class="odgrid">${list.map(f=>tile(f,p)).join('')}</div>`:`<div class="odnone">${TH?'ไม่มีแอปในโรงงานนี้':'No apps for you in this plant'}</div>`}</div>`;}).join('')}
+   </div></div>`;
+}
+async function plantFg(id,on){try{await post('/api/fg/plants',{factory_id:id,enabled:!!on});}catch(e){alert(e.message);}renderApps();}
+async function openAppAt(f,fid){
+  if(fid&&fid!==ME.factory_id){
+    try{await post('/api/factory',{factory_id:fid});}catch(e){alert(e.message);return;}
+    try{sessionStorage.setItem('bflfp_fn',f);}catch(e){}
+    location.href=f==='cmms'?'/?fn=cmms':'/fg.html?fn='+f;return;
+  }
+  openApp(f);
+}
+function renderLogin(){
+  clearInterval(TIMER);{const fb=$('#fnbar');if(fb){fb.innerHTML='';fb.className='';}}
   $('#who').textContent='';$('#logoutBtn').classList.add('hidden');
   $('#helpBtn').classList.add('hidden');$('#chatBtn').classList.add('hidden');
-  $('#navBurger').classList.add('hidden');drawerToggle(false);
+  $('#navBurger').classList.add('hidden');$('#appsBtn').classList.add('hidden');drawerToggle(false);
   hdrBack(null);document.body.classList.remove('optech');{const hm=$('#hmode');if(hm)hm.innerHTML='';}
   $('#foot').classList.add('hidden');
   $('#bnav').classList.add('hidden');
@@ -1859,6 +2126,10 @@ async function doLogin(){
     if(remember)localStorage.setItem('bflfp_user',body.username);
     else localStorage.removeItem('bflfp_user');
     localStorage.setItem('bflfp_factory',String(FACSEL));
+    try{sessionStorage.removeItem('bflfp_app');sessionStorage.removeItem('bflfp_fn')}catch(e){}
+    if(ME.role==='admin'){renderApps();return;}
+    if(useChooser()){renderChoose();return;}
+    {const f=FnBar.current(ME);if(f&&f!=='cmms'){location.href='/fg.html?fn='+f;return;}}
     afterLogin();return;
   }
   let d={};try{d=(await r.json()).detail||{}}catch(e){}
@@ -1866,7 +2137,7 @@ async function doLogin(){
   if(d&&d.captcha_required){await loadCaptcha();$('#capMsg').textContent=d.msg||'';lgError(d.msg||'กรุณากรอกรหัสจากภาพ');return;}
   lgError(typeof d==='string'?d:(d.msg||'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'));
 }
-async function logout(){try{liveStop()}catch(e){}await post('/api/logout',{});ME=null;renderLogin()}
+async function logout(){try{liveStop()}catch(e){}try{sessionStorage.removeItem('bflfp_fn')}catch(e){}await post('/api/logout',{});ME=null;renderLogin()}
 
 /* THE APP IS NOT USABLE WITHOUT THIS ONE CALL. It carries the plant's machines, its
    technicians and its symptom list, and half the screens dereference it directly. It
@@ -1909,6 +2180,9 @@ async function afterLogin(){
     $('#helpBtn').classList.remove('hidden');
     $('#chatBtn').classList.remove('hidden');
     $('#navBurger').classList.remove('hidden');   // CSS decides whether a phone shows it
+    // b473: no switch bar — a person with more than one function changes it from the Apps button
+    $('#appsBtn').classList.toggle('hidden',FnBar.list(ME).length<2&&!CROSSFAC());
+    try{if(hasApps())sessionStorage.setItem('bflfp_app','cmms')}catch(e){}
     $('#who').innerHTML=`${esc(meName())}<br><span style="color:#9CA3AF">${ME.role}</span>`;
     $('#htitle').innerHTML=hTitleHtml();
     await navLoadLayout();                       // admin-arranged sidebar order, shared by role
@@ -3357,6 +3631,39 @@ function toastMsg(t){
   el.textContent=t;el.style.display='block';clearTimeout(el._t);el._t=setTimeout(()=>{el.style.display='none';},3200);
 }
 function pdfDl(u,name,mode){dlFile(u,name||'',mode==='share'?null:()=>setTimeout(pdfClose,900),mode);}
+/* b494: the preview was drawn at screen size (max 900px), so small print on the daily
+   form came out soft and could not be zoomed. Pages now fill the window, are drawn at
+   2-3x the screen's pixels, and re-draw sharp at every zoom step (− / + / Ctrl+wheel). */
+let _PV=null;
+const PVZ=[0.5,0.75,1,1.25,1.5,2,2.5,3,4];
+function pvZoom(d){
+  if(!_PV)return;
+  if(d===0)_PV.z=1;
+  else{const i=PVZ.findIndex(x=>x>=_PV.z-1e-6);_PV.z=PVZ[Math.max(0,Math.min(PVZ.length-1,(i<0?2:i)+d))];}
+  pvRender();
+}
+async function pvRender(){
+  const box=document.getElementById('pdfPages');if(!box||!_PV)return;
+  const run=++_PV.run,pdf=_PV.pdf;
+  const pct=document.getElementById('pvPct');if(pct)pct.textContent=Math.round(_PV.z*100)+'%';
+  const fit=Math.min(box.clientWidth-16,1500);
+  const frag=document.createElement('div');
+  for(let n=1;n<=pdf.numPages;n++){
+    const pg=await pdf.getPage(n);
+    if(run!==_PV.run)return;
+    const v0=pg.getViewport({scale:1});
+    const css=fit/v0.width*_PV.z;
+    const dpr=Math.min(Math.max(window.devicePixelRatio||1,2)*(_PV.z>1.5?1.25:1),4);
+    const vp=pg.getViewport({scale:css*dpr});
+    const c=document.createElement('canvas');
+    c.width=Math.floor(vp.width);c.height=Math.floor(vp.height);
+    c.style.cssText=`width:${Math.floor(v0.width*css)}px;height:${Math.floor(v0.height*css)}px;background:#fff;margin:8px auto;display:block;border-radius:4px;max-width:none`;
+    frag.appendChild(c);
+    await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
+    if(!document.getElementById('pdfPages')||run!==_PV.run)return;   // closed or re-zoomed mid-render
+  }
+  box.innerHTML='';box.appendChild(frag);
+}
 async function pdfView(url,dl,dlname,foot){
   pdfClose();
   const TH=LANG==='TH';
@@ -3366,6 +3673,10 @@ async function pdfView(url,dl,dlname,foot){
       <div style="flex:1;color:#E2E8F0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${TH?'ตัวอย่างเอกสาร':'Document preview'}</div>
       ${dl?`<button class="btn" style="background:#1B75BC;border:none;color:#fff" onclick="pdfDl('${dl}','${esc(dlname||'')}')">⬇ ${TH?'ดาวน์โหลด':'Download'}</button>`:''}
       ${dl&&CAN_SHARE_FILES()?`<button class="btn" style="background:#16A34A;border:none;color:#fff" onclick="pdfDl('${dl}','${esc(dlname||'')}','share')">↗ ${TH?'แชร์':'Share'}</button>`:''}
+      <span style="display:inline-flex;align-items:center;gap:4px;background:#334155;border-radius:8px;padding:2px">
+        <button class="btn" style="background:none;border:none;color:#fff;padding:6px 11px;font-size:16px" onclick="pvZoom(-1)" title="${TH?'ย่อ (zoom out)':'Zoom out'}">−</button>
+        <button id="pvPct" class="btn" style="background:none;border:none;color:#fff;padding:6px 8px;min-width:58px;font-size:13px" onclick="pvZoom(0)" title="${TH?'พอดีหน้าจอ (fit)':'Fit to screen'}">100%</button>
+        <button class="btn" style="background:none;border:none;color:#fff;padding:6px 11px;font-size:16px" onclick="pvZoom(1)" title="${TH?'ขยาย (zoom in)':'Zoom in'}">+</button></span>
       <button class="btn" style="background:#334155;border:none;color:#fff" onclick="pdfClose()">✕ ${TH?'ปิด':'Close'}</button>
     </div>
     <div id="pdfPages" style="flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:0 8px 30px;text-align:center">
@@ -3379,22 +3690,11 @@ async function pdfView(url,dl,dlname,foot){
   try{
     await ensurePdfjs();
     const pdf=await pdfjsLib.getDocument({url}).promise;
+    _PV={pdf,z:1,run:0};
     const box=document.getElementById('pdfPages');if(!box)return;
-    box.innerHTML='';
-    const cw=Math.min(box.clientWidth-16,900);
-    for(let n=1;n<=pdf.numPages;n++){
-      const pg=await pdf.getPage(n);
-      const v0=pg.getViewport({scale:1});
-      const scale=cw/v0.width,dpr=Math.min(window.devicePixelRatio||1,2);
-      const vp=pg.getViewport({scale:scale*dpr});
-      const c=document.createElement('canvas');
-      c.width=vp.width;c.height=vp.height;
-      c.style.width=(vp.width/dpr)+'px';c.style.height=(vp.height/dpr)+'px';
-      c.style.cssText+=';background:#fff;margin:8px auto;display:block;border-radius:4px';
-      box.appendChild(c);
-      await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
-      if(!document.getElementById('pdfPages'))return;      // closed mid-render
-    }
+    // b494: Ctrl + mouse wheel zooms, like any PDF viewer
+    box.addEventListener('wheel',e=>{if(!e.ctrlKey)return;e.preventDefault();pvZoom(e.deltaY<0?1:-1);},{passive:false});
+    await pvRender();
   }catch(e){
     const box=document.getElementById('pdfPages');
     if(box)box.innerHTML=`<div style="color:#FCA5A5;padding:40px 12px;font-size:13px">${TH?'เปิดตัวอย่างไม่สำเร็จ':'Preview failed'}<br>${esc(String((e&&e.message)||e))}</div>`;
@@ -3877,6 +4177,7 @@ function buildNav(){
       [IC.stages,(LANG==='TH'?'สเตจงาน':'Stages'),renderPlannerTree,'stages'],
       [IC.report,(LANG==='TH'?'รายงาน / Reports':'Reports'),renderReports,'reports'],
       [IC.hours,(LANG==='TH'?'เวลาทำงาน':'Hours'),renderHours,'hours'],
+      [IC.logs,(LANG==='TH'?'อาการที่แจ้ง':'Problem types'),renderProblemTypes,'ptypes'],   // b458
       [IC.chat,t('nv_chat'),()=>renderChat(),'chat'],[IC.more,t('nv_more'),renderMore,'more']],
     // Engineering Center answers for the whole group: the numbers of all three plants
     // and the machine/OEE table. It plans nothing and owns no work orders, so it has
@@ -4039,6 +4340,17 @@ function liveBusy(){
     const a=document.activeElement;
     if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&a.id!=='jfq')return true;
     if(window.ASG)return true;                 // the day-assignment popup holds unsaved work
+    // b453: the reporter's form (ใบแจ้งซ่อม) is unsaved work for as long as it is on
+    // screen. Only a focused box held the refresh, so the moment focus left one — picking
+    // "+ Use this text" under the asset box, or tapping a blank part of the form — a
+    // waiting update redrew the menu tab (the home list) over the form and the report
+    // was lost. The form now holds updates until it is saved or left.
+    if(document.getElementById('op_rname'))return true;
+    // b454: any screen with something typed and not saved yet waits too
+    const app=document.getElementById('app');
+    if(app)for(const x of app.querySelectorAll('textarea,input'))
+      if(!/^(hidden|checkbox|radio|button|submit)$/i.test(x.type||'')&&!/^(jfq|pmQ|cmQ|pjq)$/.test(x.id||'')
+         &&!x.readOnly&&!x.disabled&&x.value!==x.defaultValue)return true;
   }catch(e){}
   return false;
 }
@@ -4052,10 +4364,34 @@ let LIVEFAIL=0;
    list the moment anything anywhere in the plant moved. Pressing Start is itself such a
    move, which is why it happened on every single start. A screen refreshes itself now;
    only when no particular screen is open does the tab stand in. */
-let LIVEVIEW=null;
+/* b454 — WHICH screen is on, so a refresh redraws THAT screen and nothing else.
+   It used to fall back to the menu tab whenever a screen had not registered itself,
+   so a planner reading a job, or a reporter filling a form, had the Jobs list or the
+   home page drawn over them: "the app goes back by itself". Every render…() function is
+   now wrapped; the one whose output is on #app owns the screen, and a refresh calls it
+   again with the same arguments. A screen drawn some other way is simply left alone. */
+let _LV=null,LVSTAMP=null,RSTACK=[],APPOWN=null;
+Object.defineProperty(window,'LIVEVIEW',{configurable:true,get(){return _LV;},
+  set(v){_LV=v;LVSTAMP=v?(RSTACK[RSTACK.length-1]||APPOWN):null;}});
+function rWrapAll(){
+  Object.keys(window).forEach(k=>{
+    if(!/^render[A-Z]/.test(k))return;const f=window[k];
+    if(typeof f!=='function'||f._rw)return;
+    const w=function(...a){const call={f,a,t:this,k};RSTACK.push(call);
+      const done=()=>{const i=RSTACK.lastIndexOf(call);if(i>=0)RSTACK.splice(i,1);};
+      let r;try{r=f.apply(this,a);}catch(e){done();throw e;}
+      if(r&&typeof r.then==='function')r.then(done,done);else done();
+      return r;};
+    w._rw=1;try{window[k]=w;}catch(e){}});
+}
+rWrapAll();
 async function liveRedraw(){
   try{await uiSync(LIVEV);}catch(e){}
-  const fn=LIVEVIEW||(NAV&&NAV[NAVI]&&NAV[NAVI][2]);if(!fn||LIVEBUSY)return;
+  const own=APPOWN;
+  const fn=(LIVEVIEW&&LVSTAMP&&LVSTAMP===own)?LIVEVIEW
+          :own?(()=>own.f.apply(own.t,own.a))
+          :(!APPDRAWN&&NAV&&NAV[NAVI]&&NAV[NAVI][2]);   // nothing drawn yet: the tab
+  if(!fn||LIVEBUSY)return;
   LIVEBUSY=true;LIVEQUIET++;APPSAME=true;
   const y=window.scrollY||document.documentElement.scrollTop||0;
   try{await fn();if(!APPKEPT)window.scrollTo(0,y);LIVEFAIL=0;}
@@ -4070,7 +4406,34 @@ async function liveRedraw(){
    redraw now compares the page it built with the page on screen and leaves the screen
    alone when they are the same. Only live redraws: a page the person opens is always
    drawn fresh. */
-let APPSAME=false,APPKEPT=false;
+let APPSAME=false,APPKEPT=false,APPDRAWN=false;
+/* b454 — A REFRESH CHANGES ONLY WHAT CHANGED. A live redraw still builds the page, but
+   it is laid over the page on screen node by node: a job that moved to In progress
+   changes that one label; scroll, open sections, a half-typed box and focus stay put. */
+function morphAttrs(a,b){
+  for(const at of [...a.attributes])if(!b.hasAttribute(at.name)&&!(a.tagName==='DETAILS'&&at.name==='open'))a.removeAttribute(at.name);
+  for(const at of [...b.attributes])if(a.getAttribute(at.name)!==at.value)a.setAttribute(at.name,at.value);
+}
+function morphNode(a,b){
+  if(a.nodeType!==b.nodeType||a.nodeName!==b.nodeName)return a.replaceWith(b);
+  if(a.nodeType!==1){if(a.nodeValue!==b.nodeValue)a.nodeValue=b.nodeValue;return;}
+  morphAttrs(a,b);
+  // a box someone is typing in keeps what they typed
+  if((a.tagName==='TEXTAREA')&&document.activeElement===a)return;
+  morphKids(a,b);
+}
+function morphKids(a,b){
+  const ids=new Map();for(const c of a.children)if(c.id)ids.set(c.id,c);
+  let ca=a.firstChild;
+  for(const nb of [...b.childNodes]){
+    if(nb.nodeType===1&&nb.id&&ids.has(nb.id)){const m=ids.get(nb.id);ids.delete(nb.id);
+      if(m!==ca)a.insertBefore(m,ca);ca=m;}
+    if(!ca){a.appendChild(nb);continue;}
+    if(ca.nodeType===1&&ca.id&&nb.id!==ca.id){a.insertBefore(nb,ca);continue;}
+    const next=ca.nextSibling;morphNode(ca,nb);ca=next;
+  }
+  while(ca){const n=ca.nextSibling;ca.remove();ca=n;}
+}
 (()=>{try{
   const el=document.getElementById('app'),d=Object.getOwnPropertyDescriptor(Element.prototype,'innerHTML');
   if(!el||!d)return;let last=null;
@@ -4081,6 +4444,13 @@ let APPSAME=false,APPKEPT=false;
       // nor does it blank the page with a "Loading…" card while it fetches (Reports,
       // Assigned jobs …): the old screen stays until the new one is ready
       if(APPSAME&&this.childNodes.length&&v.length<6000&&/กำลังโหลด…|Loading…/.test(v))return;
+      if(APPSAME&&this.childNodes.length){
+        try{const t=document.createElement('template');d.set.call(t,v);morphKids(this,t.content);
+          last=v;APPKEPT=true;return;}catch(e){}           // anything odd: draw it whole
+      }
+      // a screen the person opened: whoever drew it owns it (an un-wrapped redraw of
+      // the same screen — a filter, a tab inside it — keeps the owner it had)
+      if(!APPSAME){if(RSTACK.length)APPOWN=RSTACK[RSTACK.length-1];APPDRAWN=true;}
       last=v;d.set.call(this,v);}});
 }catch(e){}})();
 async function liveTick(){                    // the safety net, and the foreground check
@@ -4116,6 +4486,7 @@ async function liveListen(gen){
   }
 }
 function liveStart(){
+  rWrapAll();
   liveStop();
   LIVEV='';LIVEFAIL=0;
   LIVE=setInterval(liveTick,60000);           // backstop, not the plan
@@ -4140,6 +4511,7 @@ async function navGo(i){
   NAV.forEach((_,j)=>{const b=$('#bn'+j);if(b)b.classList.toggle('on',j===i);const s=$('#sb'+j);if(s)s.classList.toggle('on',j===i)});
   navMarkTree(i);
   const app=$('#app');if(app){app.style.transition='opacity .12s';app.style.opacity='.4';}
+  {const f=NAV[i][2];if(f&&!f._rw&&f.name&&window[f.name]&&window[f.name]._rw)NAV[i][2]=window[f.name];}
   try{await NAV[i][2]();}finally{if(app)app.style.opacity='';}
   LIVEV='';                                   // this screen is fresh — re-baseline
 }
@@ -5807,7 +6179,10 @@ function rcFields(){
     {k:'dept',lb:TH?'แผนกที่แจ้ง':'Reporting dept',kind:'set',get:j=>jobDept(j),
      show:v=>deptLabel(v)||v},
     {k:'trade',lb:TH?'หน่วยงานช่าง':'Trade',kind:'set',get:j=>jobTrade(j)||''},
-    {k:'prio',lb:TH?'ระดับ':'Priority',kind:'set',get:j=>String(j.priority??'')},
+    {k:'prio',lb:TH?'ระดับ':'Priority',kind:'set',get:j=>String(j.priority??''),show:v=>rcPrioLbl(v)},
+    // b454: machine class A / B / C (machines.criticality), the Class column
+    {k:'crit',lb:TH?'ระดับเครื่อง':'Class',kind:'set',get:j=>String(j.mcrit||'').trim().toUpperCase(),
+     show:v=>v||(TH?'ไม่ระบุ':'not set')},
     {k:'planned',lb:TH?'วางแผน':'Planned date',kind:'set',date:1,get:j=>j.planned_date||''},
     {k:'due',lb:TH?'กำหนด':'Due date',kind:'set',date:1,get:j=>j.due_date||''},
     // Created and Completed were the last two columns on the table with no filter behind
@@ -5945,7 +6320,7 @@ function jobTrade(j){
   const pt=((BOOT&&BOOT.problem_types)||[]).find(p=>p.name===j.problem_type);
   return (pt&&pt.category)||'';
 }
-const TRADE_COL={Mechanical:'#0E7A70',Electrical:'#B45309',Instrument:'#7C3AED',Process:'#2563EB',Other:'#64748B'};
+const TRADE_COL={Mechanical:'#0E7A70',Electrical:'#B45309',Instrument:'#7C3AED',Process:'#2563EB','Air Condition':'#0891B2',IT:'#4F46E5',Facility:'#A16207',Other:'#64748B'};
 // ── What the two columns say out loud ───────────────────────────────────────────
 // Stage 1 / Stage 2 named nothing. The first is the phase the job is in; the second
 // is WHOSE MOVE IT IS — and that is a different person at every step, which is why it
@@ -5985,13 +6360,25 @@ function s2Key(j){
   if(raw==='Assigned'&&j.status==='InProgress')return 'Working';
   return raw;
 }
+// b452: a PM nobody in the plant has yet is not always the plant planner's move. An
+// all-electrical PM that the CE planner gave to a named CE technician is waiting on that
+// person; a mixed PM is waiting on the planner AND already has its CE technician.
+function s2PmCE(j,short){
+  if(String(j.jobtype||'').toUpperCase()!=='PM'||s2Key(j)!=='Not assigned')return null;
+  const TH=LANG==='TH',n=j.ce_name||'';
+  if(j.el_only&&n)return [short?(TH?'ช่าง CE: '+n:'CE: '+n):(TH?'ช่างไฟฟ้าส่วนกลาง: '+n+' รอเริ่มงาน':'Central Electrical: '+n+' to start'),'w-tech'];
+  if(j.el_only)return [short?(TH?'ผู้วางแผน CE: รอมอบหมาย':'CE planner: to assign'):(TH?'ผู้วางแผน CE: รอมอบหมายช่างไฟฟ้า':'CE planner: to give it to a CE technician'),'w-plan'];
+  if(n){const e=S2L['Not assigned'];return [e[short?1:2][TH?1:0]+' · CE '+n,'w-plan'];}
+  return null;
+}
 function s2Label(j,short){
+  const ce=s2PmCE(j,short);if(ce)return ce[0];
   const e=S2L[s2Key(j)];
   const again=String(stage2Of(j)||'').startsWith('R.');
   const v=e?(e[short?1:2][LANG==='TH'?1:0]):s2Key(j);
   return (again?'↻ ':'')+v;
 }
-function s2Cls(j){const e=S2L[s2Key(j)];return e?e[0]:'w-flat';}
+function s2Cls(j){const ce=s2PmCE(j,true);if(ce)return ce[1];const e=S2L[s2Key(j)];return e?e[0]:'w-flat';}
 const stage1Of=j=>j.stage1||stagePair(j)[0];
 const stage2Of=j=>j.stage2||stagePair(j)[1];
 function rcTableHtml(jobs){
@@ -6127,6 +6514,12 @@ function rcDayLabel(key){
 function rcBucket(s){if(s==='Done')return 'done';if(s==='InProgress'||s==='Paused'||s==='ServiceCompleted')return 'prog';return 'open';}
 function rcChip(active,onclick,label){return `<button onclick="${onclick}" style="font-size:11.5px;padding:3px 11px;border-radius:999px;border:1px solid ${active?'#1E293B':'#e2e8f0'};background:${active?'#1E293B':'#fff'};color:${active?'#fff':'#475569'};cursor:pointer;white-space:nowrap">${label}</button>`;}
 function rcSetType(t){rcTogSet(RCFTYPE,t);}
+// b454: Class / Priority chips tick values in the same per-column filter the funnel uses
+function rcTogF(k,v){const f=RCF[k]||{kind:'set',vals:[]};const i=f.vals.indexOf(v);
+  if(i>=0)f.vals.splice(i,1);else f.vals.push(v);
+  if(f.vals.length)RCF[k]=f;else delete RCF[k];rcMenuClose();rcRedraw();}
+function rcPrioLbl(v){const TH=LANG==='TH';v=String(v);
+  return v==='3'?(TH?'ด่วน! (critical)':'Critical'):v==='2'?(TH?'เร่ง (urgent)':'Urgent'):v==='1'?(TH?'ปกติ (normal)':'Normal'):(v||'—');}
 function rcSetStat(s){rcTogSet(RCFSTAT,s);}
 function rcClearAll(){RCFV=new Set();RCFTYPE=new Set();RCFSTAT=new Set();RCF={};rcMenuClose();rcRedraw();}
 function rcDropF(k){delete RCF[k];rcMenuClose();rcRedraw();}
@@ -6265,6 +6658,13 @@ function rcTreeHtml(jobs){
     <span style="font-size:11px;color:#94A3B8">${TH?'สถานะ':'Status'}:</span>
     ${rcChip(!RCFSTAT.size,"RCFSTAT=new Set();rcRedraw()",TH?'ทั้งหมด':'All')}${[['open',TH?'ยังไม่เสร็จ':'Open'],['prog',TH?'ทำอยู่':'In prog'],['done',TH?'เสร็จ':'Done']]
       .map(([k,l])=>rcChip(RCFSTAT.has(k),`rcSetStat('${k}')`,`${l} ${poolST.filter(j=>rcBucket(j.status)===k).length}`)).join('')}
+    ${(()=>{const cv=(RCF.crit||{}).vals||[],pv=(RCF.prio||{}).vals||[];
+      const pc=rcPool(jobs,null,'crit'),pp=rcPool(jobs,null,'prio');
+      const cr=j=>String(j.mcrit||'').trim().toUpperCase();
+      return `<span style="width:12px"></span><span style="font-size:11px;color:#94A3B8">${TH?'ระดับเครื่อง':'Class'}:</span>
+      ${rcChip(!cv.length,"delete RCF.crit;rcRedraw()",TH?'ทั้งหมด':'All')}${['A','B','C'].map(c=>rcChip(cv.includes(c),`rcTogF('crit','${c}')`,`${c} ${pc.filter(j=>cr(j)===c).length}`)).join('')}
+      <span style="width:12px"></span><span style="font-size:11px;color:#94A3B8">${TH?'ความเร่งด่วน':'Priority'}:</span>
+      ${rcChip(!pv.length,"delete RCF.prio;rcRedraw()",TH?'ทั้งหมด':'All')}${['1','2','3'].map(p=>rcChip(pv.includes(p),`rcTogF('prio','${p}')`,`${rcPrioLbl(p)} ${pp.filter(j=>String(j.priority??'')===p).length}`)).join('')}`;})()}
     <span style="width:10px"></span>
     <span style="font-size:11.5px;color:#64748B;white-space:nowrap"
       title="${TH?'จำนวนงานในช่วงวันที่ที่เลือก':'how many jobs the date range brought back'}">
@@ -6531,6 +6931,8 @@ async function renderPM(withcm){
   let cal={days:{}};try{cal=await api(`/api/pm/planned?from=${from}&to=${to}${PMELEC?'&elec=1':''}`);}catch(e){}
   PMCFG={active:cal.active,start_date:cal.start_date};   // for the Start/Stop confirms
   PMDAYS=cal.days||{};PMCNT=cal.counts||{};PMHOL=new Set(cal.holidays||[]);PMOFF=new Set(cal.weekly_off||[6]);
+  await pmPendLoad();                       // b452: the side panel's waiting-for-assignment list
+  if(!PMDAYSEL)PMDAYSEL=pmISO(new Date());  // b452: the side panel opens on today
   const monthName=base.toLocaleString(LANG==='TH'?'th-TH':'en-US',{month:'long',year:'numeric'});
   const dowNames=(TH?['จ','อ','พ','พฤ','ศ','ส','อา']:['Mon','Tue','Wed','Thu','Fri','Sat','Sun']);
   const todayISO=pmISO(new Date());const cap=PMCAL.mode==='week'?14:4;
@@ -6648,7 +7050,7 @@ let PMRSTATE=new Map();
 const pmRoomOpen=(gk,def)=>PMRSTATE.has(gk)?PMRSTATE.get(gk):!!def;
 function pmRoomToggle(gk,def){
   PMRSTATE.set(gk,!pmRoomOpen(gk,def));
-  const el=document.getElementById('pmDaySide');if(el)el.innerHTML=pmDaySideHtml();
+  pmSidePaint();
 }
 /* b389 — the list beside a calendar ends where the calendar ends. It had a fixed
    640 / 660 px cap, so on a tall month the list stopped half-way down with empty page
@@ -6663,11 +7065,61 @@ function pmColsSync(){
   requestAnimationFrame(run);setTimeout(run,300);
 }
 window.addEventListener('resize',()=>{clearTimeout(window._pcsT);window._pcsT=setTimeout(pmColsSync,150);});
-function pmDaySideHtml(){
+/* b452 — the PM plan's side panel works like the CM plan's: a search box, then the PM
+   work orders nobody has been put on yet (grouped by their day, oldest first), then
+   the selected day's planned PM by room. Plant: no plant technician on a sheet that
+   has plant points. Electrical: no CE technician on an open electrical part. */
+let PMQ='',PMPEND=[],PMPOPEN={},PMPSEC=true;
+const pmQOk=j=>{const q=(PMQ||'').trim().toLowerCase();if(!q)return true;
+  return [j.jobid,j.code,j.mcode,j.name,j.mname].some(v=>String(v||'').toLowerCase().includes(q));};
+async function pmPendLoad(){
+  try{const r=await api('/api/pm/pending'+(PMELEC?'?elec=1':''));PMPEND=r.jobs||[];}catch(e){PMPEND=[];}
+}
+function pmSideTop(){
+  const TH=LANG==='TH',td=pmISO(new Date());
+  const list=PMPEND.filter(pmQOk),q=(PMQ||'').trim();
+  const days=[...new Set(list.map(j=>j.date||''))].sort();
+  const anyOpen=days.some(d=>PMPOPEN[d]);
+  const fd=d=>d?new Date(d).toLocaleDateString(TH?'th-TH':'en-US',{weekday:'short',day:'numeric',month:'short'}):(TH?'ไม่มีวันที่ (no date)':'No date');
+  const item=j=>`<div onclick="pmOpenJob(${j.id})" style="padding:6px 10px 6px 30px;border-bottom:1px solid #f4f6f9;cursor:pointer">
+      <div style="display:flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:50%;background:${(FORMC[j.freq]||FORMC.each_op)[0]};flex:none"></span>
+        <b style="font-size:12px;color:#1F2937;white-space:nowrap">${esc(j.jobid)}</b><span style="font-size:11px;color:#475569;white-space:nowrap">${esc(j.mcode)}</span>
+        ${j.ce_name?`<span style="margin-left:auto;font-size:10px;font-weight:700;color:#92400E;background:#FEF3C7;border-radius:99px;padding:0 6px;white-space:nowrap">⚡ ${esc(j.ce_name)}</span>`:''}</div>
+      <div style="font-size:11px;color:#64748B;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(j.mname||'')}${j.line?' · '+esc(j.line):''}</div></div>`;
+  const node=d=>{const a=list.filter(j=>(j.date||'')===d),open=!!q||!!PMPOPEN[d],late=d&&d<td;
+    return `<div onclick="pmPendToggle('${d}')" style="display:flex;align-items:center;gap:7px;padding:7px 10px 7px 14px;border-bottom:1px solid #eef1f4;cursor:pointer;font-size:12px;font-weight:600;color:${late?'#B91C1C':'#334155'};background:#fff">
+        <span style="width:10px;color:#94A3B8">${open?'▾':'▸'}</span><span style="flex:1">${fd(d)}${late?(TH?' · เลยกำหนด (overdue)':' · overdue'):''}</span>
+        ${d?`<span onclick="event.stopPropagation();pmPendGo('${d}')" title="${TH?'ไปที่วันนี้ในปฏิทิน (show this day)':'show this day'}" style="font-size:10.5px;color:#2563EB;font-weight:500;padding:0 4px">${TH?'ดูวัน':'day'} ›</span>`:''}
+        <span class="tvbadge" style="background:${late?'#DC2626':'#64748B'}">${a.length}</span></div>`+(open?a.map(item).join(''):'');};
+  const title=PMELEC?(TH?'รอช่าง CE (no CE tech)':'No CE technician yet')
+                    :(TH?'รอมอบหมาย (to assign)':'To assign');
+  return `<div style="padding:8px 10px;border-bottom:1px solid #eef1f4;background:#f8fafc;position:sticky;top:0;z-index:2">
+      <input id="pmQ" value="${esc(PMQ||'')}" oninput="pmSearch(this.value)" placeholder="${TH?'ค้นหารหัสงาน / รหัสเครื่อง (search job / machine code)':'Search job or machine code'}"
+        style="width:100%;height:32px;padding:4px 9px;border:1px solid var(--bd);border-radius:7px;font-size:12.5px;font-family:inherit"></div>
+    <div style="display:flex;align-items:center;gap:6px;padding:8px 11px;font-weight:600;font-size:12px;color:#334155;border-bottom:1px solid #eef1f4;background:#f8fafc">
+      <span onclick="PMPSEC=!PMPSEC;pmSidePaint()" style="cursor:pointer;color:#94A3B8;width:10px">${PMPSEC?'▾':'▸'}</span>
+      <span onclick="PMPSEC=!PMPSEC;pmSidePaint()" style="cursor:pointer">${title}</span> <span class="tvbadge" style="background:${list.length?'#DC2626':'#16A34A'}">${list.length}</span><span style="flex:1"></span>
+      ${PMPSEC&&days.length?`<button class="btn sm" style="white-space:nowrap" onclick="pmPendAll()">${anyOpen?(TH?'ยุบ (collapse)':'Collapse'):(TH?'ขยาย (expand)':'Expand')}</button>`:''}</div>
+    ${PMPSEC?(days.length?days.map(node).join(''):`<p class="muted" style="padding:8px 11px;font-size:12px;margin:0">${q?(TH?'ไม่พบ (no match)':'No match'):'—'}</p>`):''}`;
+}
+function pmSidePaint(){const el=document.getElementById('pmDaySide');if(!el)return;
+  const f=document.activeElement&&document.activeElement.id==='pmQ',pos=f?document.activeElement.selectionStart:0;
+  el.innerHTML=pmDaySideHtml();
+  if(f){const i=document.getElementById('pmQ');if(i){i.focus();try{i.setSelectionRange(pos,pos);}catch(e){}}}}
+function pmSearch(v){PMQ=v;pmSidePaint();}
+function pmPendToggle(d){PMPOPEN[d]=!PMPOPEN[d];pmSidePaint();}
+function pmPendAll(){const any=Object.values(PMPOPEN).some(Boolean);PMPOPEN={};if(!any)PMPEND.forEach(j=>PMPOPEN[j.date||'']=true);pmSidePaint();}
+function pmPendGo(d){const td=new Date(d);
+  if(document.getElementById('pmcell_'+d))return pmDayClick(d);
+  PMCAL.y=td.getFullYear();PMCAL.m=td.getMonth();if(PMCAL.mode==='week')PMCAL.wk=d;PMDAYSEL=d;renderPM();}
+// the day's rooms all at once — the tree's expand / collapse
+function pmRoomsAll(keys,open){keys.forEach(k=>PMRSTATE.set(PMDAYSEL+'|'+k,open));pmSidePaint();}
+function pmDaySideHtml(){return pmSideTop()+pmDayBodyHtml();}
+function pmDayBodyHtml(){
   const TH=LANG==='TH';
   if(PMELEC)return elSideHtml();
   if(!PMDAYSEL)return `<div style="padding:14px;color:#94A3B8;font-size:13px">${TH?'\u0e04\u0e25\u0e34\u0e01\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48\u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e14\u0e39\u0e40\u0e04\u0e23\u0e37\u0e48\u0e2d\u0e07\u0e17\u0e35\u0e48\u0e27\u0e32\u0e07\u0e41\u0e1c\u0e19 PM \u0e41\u0e25\u0e30\u0e2a\u0e16\u0e32\u0e19\u0e30':'Click a date to see machines with PM planned and their status'}</div>`;
-  const list=(PMDAYS[PMDAYSEL]||[]).filter(j=>PMWITHCM||!j.cm);
+  const list=(PMDAYS[PMDAYSEL]||[]).filter(j=>(PMWITHCM||!j.cm)&&pmQOk(j));
   const d=new Date(PMDAYSEL);const dn=d.toLocaleDateString(LANG==='TH'?'th-TH':'en-US',{weekday:'short',day:'numeric',month:'short'});
   // The day is a round of rooms, not a list of machine numbers. PM is scheduled by
   // location now, so the panel is grouped the way the work is actually walked: the
@@ -6694,7 +7146,8 @@ function pmDaySideHtml(){
     <div style="font-size:11px;color:#64748B;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(j.name||'')}</div></div>`;
   const nRoom=rooms.filter(k=>k!==CMK).length;
   const rw=TH?'\u0e2a\u0e16\u0e32\u0e19\u0e17\u0e35\u0e48':(nRoom===1?'room':'rooms');
-  const head=`<div style="padding:9px 11px;font-weight:600;font-size:13px;border-bottom:1px solid #eef1f4;background:#f8fafc">${dn} \u00b7 ${list.length} ${TH?'\u0e23\u0e32\u0e22\u0e01\u0e32\u0e23':'items'}${nRoom?` \u00b7 ${nRoom} ${rw}`:''}</div>`;
+  const _rk=JSON.stringify(rooms).replace(/"/g,'&quot;'),_anyOpen=rooms.some(k=>pmRoomOpen(PMDAYSEL+'|'+k,k!==CMK));
+  const head=`<div style="display:flex;align-items:center;gap:6px;padding:9px 11px;font-weight:600;font-size:13px;border-bottom:1px solid #eef1f4;border-top:2px solid #E2E8F0;background:#f8fafc"><span style="flex:1">${dn} \u00b7 ${list.length} ${TH?'\u0e23\u0e32\u0e22\u0e01\u0e32\u0e23':'items'}${nRoom?` \u00b7 ${nRoom} ${rw}`:''}</span>${rooms.length?`<button class="btn sm" style="font-weight:500;white-space:nowrap" onclick="pmRoomsAll(${_rk},${_anyOpen?'false':'true'})">${_anyOpen?(TH?'ยุบ (collapse)':'Collapse'):(TH?'ขยาย (expand)':'Expand all')}</button>`:''}</div>`;
   if(!list.length)return head+`<p class="muted" style="padding:12px;font-size:12px">\u2014</p>`;
   return head+rooms.map((k,i)=>{
     const items=groups.get(k), gk=PMDAYSEL+'|'+k, def=(k!==CMK), open=pmRoomOpen(gk,def);
@@ -9855,6 +10308,7 @@ function njType(v){
   // The stopped question only means something for corrective work. A PM is planned
   // and an improvement is not a fault, so neither one asks it.
   const rq=$('#nptReq');if(rq)rq.style.display=v==='CM'?'':'none';
+  const rd=$('#ndReq');if(rd)rd.style.display=v==='CM'?'':'none';
   njDescrGate();
 }
 /* b393 — the planner's corrective job follows the operator's rule: pick the symptom
@@ -9863,7 +10317,7 @@ function njType(v){
 function njDescrGate(){
   const d=$('#n_d');if(!d)return;
   const TH=LANG==='TH';
-  const on=_njT!=='CM'||opIsOther((($('#n_ptype')||{}).value)||'');
+  const on=true; // b464: description always open; CM needs symptom AND description
   d.disabled=!on;d.style.opacity=on?'':'.6';d.style.background=on?'':'#F8FAFC';
   d.placeholder=on?(TH?'อาการ หรือสิ่งที่ต้องทำ…':'the symptom, or what has to be done…')
                   :(TH?'เลือก “อื่น ๆ” ในอาการที่แจ้ง จึงจะพิมพ์รายละเอียดได้':'Pick “Other” as the symptom to type a description');
@@ -10002,7 +10456,7 @@ function plannerNew(){
   <label for="n_p">${t('prio')}</label>
   <select id="n_p"><option value="1" selected>${t('p1')}</option><option value="2">${t('p2')}</option><option value="3">${t('p3')}</option></select>
 
-  <label for="n_d">${t('ac_sum')}</label>
+  <label for="n_d">${t('ac_sum')} <span id="ndReq" style="color:#DC2626;font-weight:600">· ${TH?'ต้องกรอก (งาน CM)':'required (CM)'}</span></label>
   <textarea id="n_d" rows="3" placeholder="${TH?'อาการ หรือสิ่งที่ต้องทำ…':'the symptom, or what has to be done…'}"></textarea>
 
   <label>${TH?'ผู้แจ้ง':'Reported by'}</label>
@@ -10033,12 +10487,15 @@ async function createJob(){
   const TH=LANG==='TH';
   const where=(($('#n_msearch')||{}).value||'').trim();
   // b393: everything missing, in one popup
+  // b464: symptom typed exactly but not tapped in the list — take it
+  if(!((($('#n_ptype')||{}).value)||'').trim()&&COMBOS.npt){const c=COMBOS.npt,s=(($('#nptSearch')||{}).value||'').trim().toLowerCase();
+    const i=s?c.items.findIndex(x=>c.opts.text(x).trim().toLowerCase()===s):-1;if(i>=0)comboPick('npt',i);}
   const _pt=((($('#n_ptype')||{}).value)||'').trim(), _ds=((($('#n_d')||{}).value)||'').trim();
   const miss=[];let first='';
   if(!_njM&&!where){miss.push(TH?'เครื่องจักร หรือสถานที่':'Machine or place');first='n_msearch';}
   if(_njT==='CM'){
     if(!_pt){miss.push(TH?'อาการที่แจ้ง — เลือกจากรายการ (ถ้าไม่มี ให้เลือก “อื่น ๆ”)':'Symptom — pick from the list (not there? pick “Other”)');first=first||'nptSearch';}
-    else if(opIsOther(_pt)&&!_ds){miss.push(TH?'รายละเอียด — เลือก “อื่น ๆ” แล้ว ต้องพิมพ์อธิบาย':'Description — you chose “Other”, so describe the problem');first=first||'n_d';}
+    if(!_ds){miss.push(TH?'รายละเอียด — พิมพ์อธิบายปัญหา':'Description — describe the problem');first=first||'n_d';}
   }
   if(miss.length)return reqMissing(miss,first);
   const m=(BOOT.machines||[]).find(x=>x.id===_njM)||{};
@@ -10888,13 +11345,14 @@ function elDayHtml(){
 function elSideHtml(){
   const TH=LANG==='TH';
   if(!PMDAYSEL)return `<div style="padding:14px;color:#94A3B8;font-size:13px">${TH?'คลิกวันที่เพื่อดูเครื่องที่มีงานไฟฟ้า และมอบหมายช่าง CE (click a date to see the machines and give them to a CE technician)':'Click a date to see its machines and give them to a CE technician'}</div>`;
-  const list=PMDAYS[PMDAYSEL]||[];
+  const list=(PMDAYS[PMDAYSEL]||[]).filter(pmQOk);
   const d=new Date(PMDAYSEL);const dn=d.toLocaleDateString(TH?'th-TH':'en-US',{weekday:'short',day:'numeric',month:'short'});
   const techs=ELST.techs||[];
   const groups=new Map();list.forEach(j=>{const k=j.line||(TH?'ไม่ระบุสถานที่ (no location)':'No location');if(!groups.has(k))groups.set(k,[]);groups.get(k).push(j);});
   const rooms=[...groups.keys()].sort((a,b)=>groups.get(b).length-groups.get(a).length||a.localeCompare(b));
   const done=list.filter(j=>j.ce_done).length;
-  const head=`<div style="padding:9px 11px;font-weight:600;font-size:13px;border-bottom:1px solid #eef1f4;background:#f8fafc">${dn} · ⚡ ${list.length} ${TH?'เครื่อง (machines)':'machines'}${done?` · ✓ ${done}`:''}</div>`;
+  const _rk=JSON.stringify(rooms).replace(/"/g,'&quot;'),_anyOpen=rooms.some(k=>pmRoomOpen(PMDAYSEL+'|'+k,1));
+  const head=`<div style="display:flex;align-items:center;gap:6px;padding:9px 11px;font-weight:600;font-size:13px;border-bottom:1px solid #eef1f4;border-top:2px solid #E2E8F0;background:#f8fafc"><span style="flex:1">${dn} · ⚡ ${list.length} ${TH?'เครื่อง (machines)':'machines'}${done?` · ✓ ${done}`:''}</span>${rooms.length?`<button class="btn sm" style="font-weight:500;white-space:nowrap" onclick="pmRoomsAll(${_rk},${_anyOpen?'false':'true'})">${_anyOpen?(TH?'ยุบ (collapse)':'Collapse'):(TH?'ขยาย (expand)':'Expand all')}</button>`:''}</div>`;
   if(!list.length)return head+`<p class="muted" style="padding:12px;font-size:12px">${TH?'ไม่มีงานไฟฟ้า (no electrical PM)':'No electrical PM'}</p>`;
   const row=j=>{const f=(FORMC[j.freq]||FORMC.each_op)[0];
     const st=j.ce_done?`<span style="font-size:10.5px;font-weight:700;color:#166534;background:#DCFCE7;border-radius:99px;padding:1px 7px;white-space:nowrap">✓ ${esc(j.ce_name||'')}</span>`
@@ -10907,11 +11365,11 @@ function elSideHtml(){
         ${j.ce_started&&!j.ce_done?`<span style="font-size:10px;color:#1D4ED8;white-space:nowrap">▶ ${TH?'กำลังตรวจ':'started'}</span>`:''}</div>
       <div style="font-size:11px;color:#64748B;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(j.name||'')}</div>
       <div style="margin-top:4px">${st}</div></div>`;};
-  return head+rooms.map((k,i)=>{const items=groups.get(k);
-    return `<div style="display:flex;align-items:center;gap:7px;padding:7px 10px;background:#F8FAFC;border-top:1px solid #E2E8F0;border-bottom:1px solid #eef1f4">
+  return head+rooms.map((k,i)=>{const items=groups.get(k),gk=PMDAYSEL+'|'+k,open=pmRoomOpen(gk,1);
+    return `<div onclick="pmRoomToggle(${JSON.stringify(gk).replace(/"/g,'&quot;')},1)" style="display:flex;align-items:center;gap:7px;padding:7px 10px;background:#F8FAFC;border-top:1px solid #E2E8F0;border-bottom:1px solid #eef1f4;cursor:pointer">
       <span style="width:3px;height:15px;border-radius:2px;background:${i===0?'#16A34A':'#2563EB'};flex:none"></span>
       <b style="font-size:12px;color:#0F172A">${esc(k)}</b>
-      <span style="font-size:10.5px;color:#fff;background:#334155;border-radius:99px;padding:0 6px;font-weight:700">${items.length}</span></div>`+items.map(row).join('');}).join('');
+      <span style="font-size:10.5px;color:#fff;background:#334155;border-radius:99px;padding:0 6px;font-weight:700">${items.length}</span><span style="margin-left:auto;color:#94A3B8;font-size:11px">${open?'▾':'▸'}</span></div>`+(open?items.map(row).join(''):'');}).join('');
 }
 async function elAssign(mid,freq,d,tech,jid){
   try{await post('/api/elec/assign',{machine_id:mid,freq,date:d,tech:tech?+tech:null,job_id:jid||undefined});}
@@ -11442,7 +11900,7 @@ function pauseDlg(){
   dlg.showModal();
 }
 async function doPause(){await post('/api/segments/stop',{action:'pause',reason:$('#pz_r').value,progress:+$('#pz_p').value});dlg.close();renderTech()}
-const FAULT_CATS=['','เครื่องกล (Mechanical)','ไฟฟ้า (Electrical)','เซนเซอร์/เครื่องมือวัด (Instrument)','กระบวนการ (Process)','การใช้งานผิด (Operator)','ภายนอก (External)','ตรวจไม่พบปัญหา (No fault found)'];
+const FAULT_CATS=['','เครื่องกล (Mechanical)','ไฟฟ้า (Electrical)','เซนเซอร์/เครื่องมือวัด (Instrument)','กระบวนการ (Process)','แอร์ (Air Condition)','ไอที (IT)','โยธา/อาคาร/สาธารณูปโภค (Facility)','การใช้งานผิด (Operator)','ภายนอก (External)','ตรวจไม่พบปัญหา (No fault found)'];
 const FAULT_COMPS=['','Bearing ลูกปืน','Seal/ปะเก็น','สายพาน/โซ่','มอเตอร์','ปั๊ม','วาล์ว','เซนเซอร์','ฮีตเตอร์','นิวเมติกส์','PLC/คอนโทรล','สายไฟ/ขั้วต่อ','หล่อลื่น','อื่นๆ'];
 const MAINT_ACTS=['','ปรับตั้ง (Adjust)','สอบเทียบ (Calibrate)','หล่อลื่น (Lubricate)','ทำความสะอาด (Clean)','เปลี่ยนอะไหล่ (Replace)','ซ่อม (Repair)',' overhaul (Rebuild)','ตรวจสอบ (Inspect)','ดัดแปลง (Modify)'];
 function finishDlg(){
@@ -11450,7 +11908,7 @@ function finishDlg(){
   // of blank — the technician confirms or corrects rather than starting from nothing.
   const J=window._twJob||{};
   const guess=(J.fault_category||'');
-  const pre=guess?(FAULT_CATS.find(o=>o.toLowerCase().includes(guess.toLowerCase()))||''):'';
+  const pre=guess?(FAULT_CATS.find(o=>o.toLowerCase().endsWith('('+guess.toLowerCase()+')'))||FAULT_CATS.find(o=>o.toLowerCase().includes(guess.toLowerCase()))||''):'';   // b456: exact team first ('IT' is inside 'Condition')
   const sel=(id,opts,lbl,cur)=>`<label>${lbl}</label><select id="${id}">${opts.map(o=>`<option ${o===cur?'selected':''}>${o}</option>`).join('')}</select>`;
   $('#dlg').innerHTML=`<h3>${t('fin_t')}</h3>
   <label>${t('f_p')}</label><input id="f_p">
@@ -12354,67 +12812,97 @@ const ROLEIC={
   technician:svgIcon('<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>'),
   operator:svgIcon('<rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>')};
 async function renderAdmin(){
+  PTONLY=false;
   const [machines,users,factories,pt]=await Promise.all([api('/api/admin/machines'),api('/api/admin/users'),
     api('/api/factories').catch(()=>[]),api('/api/admin/problem-types').catch(()=>({types:[],categories:[]}))]);
   window._adm={machines,users,factories,ptypes:pt.types||[],pcats:pt.categories||[]};
   admDraw();
 }
 function admTab(k){ADMTAB=k;ADMQ='';ADMPAGE=0;admDraw()}
+/* b458 — planners keep their own plant's problem-type list: the same table as the
+   admin page, on its own menu item, without the users / machines / logs tabs. */
+let PTONLY=false;
+async function renderProblemTypes(){
+  PTONLY=true;ADMTAB='ptypes';
+  const pt=await api('/api/admin/problem-types').catch(()=>({types:[],categories:[]}));
+  window._adm={machines:[],users:[],factories:[],ptypes:pt.types||[],pcats:pt.categories||[]};
+  admDraw();
+}
+async function ptReload(){if(PTONLY)return renderProblemTypes();return renderAdmin();}
 // The words the shop floor uses for what is wrong. Each one carries the trade it
 // usually turns out to be, which is the only electrical-or-mechanical signal the
 // system has before a technician looks at the machine. Editing this list is how a
 // plant teaches the system its own vocabulary.
-const PCATTH={Mechanical:'เครื่องกล',Electrical:'ไฟฟ้าและระบบควบคุม',Instrument:'เครื่องมือวัด',Process:'กระบวนการ',Other:'อื่น ๆ'};
+const PCATTH={Mechanical:'เครื่องกล',Electrical:'ไฟฟ้าและระบบควบคุม',Instrument:'เครื่องมือวัด',Process:'กระบวนการ','Air Condition':'ทีมแอร์',IT:'ไอที',Facility:'โยธา / อาคาร / สาธารณูปโภค',Other:'อื่น ๆ'};
 // What the trade is called on the floor, which is not what it is called in the table.
 // The stored value stays 'Electrical' — every job ever reported, every report and every
 // KPI is written against it — while the screens say the plant's own words for it.
-const PCATEN={Mechanical:'Mechanical',Electrical:'Electric and control',Instrument:'Instrument',Process:'Process',Other:'Other'};
-const PCATC={Mechanical:'#0E7A70',Electrical:'#B45309',Instrument:'#3364C4',Process:'#7C3AED',Other:'#64748B'};
+const PCATEN={Mechanical:'Mechanical',Electrical:'Electric and control',Instrument:'Instrument',Process:'Process','Air Condition':'Air Condition',IT:'IT',Facility:'Civil / Facility / Utility',Other:'Other'};
+const PCATC={Mechanical:'#0E7A70',Electrical:'#B45309',Instrument:'#3364C4',Process:'#7C3AED','Air Condition':'#0891B2',IT:'#4F46E5',Facility:'#A16207',Other:'#64748B'};
 function pcatName(c){return LANG==='TH'?(PCATTH[c]||c):(PCATEN[c]||c);}
 function pcatPill(c){const col=PCATC[c]||'#64748B';
   return `<span class="pill" style="background:${col}1A;color:${col}">${esc(pcatName(c))}</span>`;}
+/* b457 — the problem-type list as a spreadsheet: one row per symptom, Thai and English
+   in their own columns, the team as a column you can filter by, and the list downloads
+   as a real .xlsx. Add / edit / switch off work exactly as before. */
+let PTF='',PTST='on',PTSORT='';
+function ptSplit(n){const parts=String(n||'').split(' / ');
+  const isEn=x=>/[A-Za-z]/.test(x)&&!/[฀-๿]/.test(x);
+  let k=parts.length;while(k>0&&isEn(parts[k-1]))k--;
+  return [parts.slice(0,k).join(' / '),parts.slice(k).join(' / ')];}
+function ptSet(k,v){if(k==='f')PTF=(PTF===v?'':v);if(k==='s')PTST=v;if(k==='o')PTSORT=(PTSORT===v?'':v);admDraw();}
 function admPtypesHtml(q){
-  const TH=LANG==='TH',A=window._adm||{},list=(A.ptypes||[]).filter(p=>!q||(p.name||'').toLowerCase().includes(q));
-  const cats=A.pcats||['Mechanical','Electrical','Instrument','Process','Other'];
-  // A running number, because this list is now long enough to talk about: "drop 14"
-  // is a sentence, "drop the one about the flap box" is a hunt. It numbers what is on
-  // SCREEN, so it follows the search box rather than pretending to be a database id.
-  const rows=list.map((p,i)=>`<tr style="${p.active?'':'opacity:.45'}">
-    <td style="text-align:right;color:#94A3B8;font-variant-numeric:tabular-nums;width:44px">${i+1}</td>
-    <td>${esc(p.name)}${p.active?'':` <span class="muted">· ${TH?'ปิดใช้งาน':'off'}</span>`}</td>
-    <td>${pcatPill(p.category)}</td>
-    <td style="text-align:right;font-variant-numeric:tabular-nums">${p.jobs||0}</td>
-    <td style="text-align:right;white-space:nowrap">
-      <button class="btn sm" onclick="ptEdit(${p.id})">&#9998;</button>
-      <button class="btn sm ${p.active?'danger':''}" onclick="ptToggle(${p.id},${p.active?0:1})">${p.active?'&#10005;':'&#8634;'}</button>
-    </td></tr>`).join('');
+  const TH=LANG==='TH',A=window._adm||{},all=(A.ptypes||[]).filter(p=>!q||(p.name||'').toLowerCase().includes(q));
+  const cats=A.pcats||['Mechanical','Electrical','Instrument','Process','Air Condition','IT','Facility','Other'];
+  const inSt=p=>PTST==='all'||(PTST==='on'?p.active:!p.active);
+  let list=all.filter(p=>inSt(p)&&(!PTF||p.category===PTF));
+  if(PTSORT==='used')list=list.slice().sort((a,b)=>(b.jobs||0)-(a.jobs||0));
+  if(PTSORT==='team')list=list.slice().sort((a,b)=>cats.indexOf(a.category)-cats.indexOf(b.category));
+  const cnt={};all.filter(inSt).forEach(p=>{cnt[p.category]=(cnt[p.category]||0)+1;});
+  const chip=(on,click,label)=>`<button onclick="${click}" style="font-size:11.5px;padding:3px 11px;border-radius:999px;border:1px solid ${on?'#1E293B':'#e2e8f0'};background:${on?'#1E293B':'#fff'};color:${on?'#fff':'#334155'};cursor:pointer;font-family:inherit;white-space:nowrap">${label}</button>`;
+  const th=(t,sty,sort)=>`<th ${sort?`onclick="ptSet('o','${sort}')"`:''} style="position:sticky;top:0;z-index:2;background:#1E293B;color:#fff;font-weight:600;font-size:11.5px;padding:7px 9px;border:1px solid #33415580;white-space:nowrap;${sort?'cursor:pointer;':''}${sty||''}">${t}${sort?(PTSORT===sort?' ▾':' ⇅'):''}</th>`;
+  const td=(v,sty)=>`<td style="padding:5px 9px;border:1px solid #e6e9ee;font-size:12.5px;vertical-align:middle;${sty||''}">${v}</td>`;
+  const rows=list.map((p,i)=>{const [th_,en]=ptSplit(p.name);const bg=i%2?'#F7F9FB':'#fff';
+    return `<tr style="background:${bg};${p.active?'':'color:#94A3B8'}">
+      ${td(i+1,'text-align:right;color:#94A3B8;font-variant-numeric:tabular-nums;width:40px')}
+      ${td(esc(th_)||'<span style="color:#CBD5E1">—</span>')}
+      ${td(esc(en)||'<span style="color:#CBD5E1">—</span>')}
+      ${td(pcatPill(p.category),'white-space:nowrap')}
+      ${td(p.jobs||0,'text-align:right;font-variant-numeric:tabular-nums;width:60px'+((p.jobs||0)?';font-weight:600':''))}
+      ${td(p.active?`<span style="color:#15803D;font-weight:600">✓ ${TH?'ใช้งาน':'On'}</span>`:`<span>${TH?'ปิด':'Off'}</span>`,'white-space:nowrap;width:70px')}
+      ${td(`<button class="btn sm" onclick="ptEdit(${p.id})">&#9998;</button>
+        <button class="btn sm ${p.active?'danger':''}" onclick="ptToggle(${p.id},${p.active?0:1})">${p.active?'&#10005;':'&#8634;'}</button>`,'white-space:nowrap;text-align:right;width:84px')}</tr>`;}).join('');
   return `<div class="card" style="margin-top:12px;padding:14px">
     <div class="row" style="align-items:flex-end;gap:8px;margin-bottom:12px">
       <div style="flex:2;min-width:180px"><label>${TH?'อาการใหม่':'New symptom'}</label>
-        <input id="pt_name" placeholder="${TH?'เช่น มีเสียงดังผิดปกติ / Unusual noise':'e.g. Unusual noise'}"></div>
+        <input id="pt_name" placeholder="${TH?'เช่น มีเสียงดังผิดปกติ / Unusual noise':'e.g. มีเสียงดังผิดปกติ / Unusual noise'}"></div>
       <div style="flex:1;min-width:130px"><label>${TH?'ประเภทงาน':'Usually'}</label>
         <select id="pt_cat">${cats.map(c=>`<option value="${c}">${esc(pcatName(c))}</option>`).join('')}</select></div>
       <button class="btn primary" onclick="ptAdd()">+ ${TH?'เพิ่ม':'Add'}</button>
     </div>
-    <p class="muted" style="font-size:12px;margin:0 0 6px">
-      <b style="color:#1E293B">${list.length}</b> ${TH?'อาการในรายการ':list.length===1?'symptom on the list':'symptoms on the list'}${
-        (()=>{const c={};list.forEach(p=>{c[p.category]=(c[p.category]||0)+1;});
-              const k=Object.keys(c).sort((a,b)=>c[b]-c[a]);
-              return k.length?' · '+k.map(x=>`${esc(pcatName(x))} ${c[x]}`).join(' · '):'';})()}</p>
-    <p class="muted" style="font-size:12px;margin:0 0 10px">${TH?'โอเปอเรเตอร์เลือกจากรายการนี้ตอนแจ้งงาน ระบบใช้ “ประเภทงาน” เดาว่าเป็นไฟฟ้าหรือเครื่องกล ช่างยังแก้ได้ตอนปิดงาน'
-                                                             :'Operators pick from this list when they report. The category is the first guess at the trade — the technician sets the real one at Finish.'}</p>
-    <div class="tw" style="margin:0"><table>
-      <thead><tr><th style="text-align:right;width:44px">${TH?'ลำดับ':'#'}</th>
-        <th>${TH?'อาการ':'Symptom'}</th><th>${TH?'ประเภทงาน':'Usually'}</th>
-        <th style="text-align:right">${TH?'ใช้ไปแล้ว':'Used'}</th><th></th></tr></thead>
-      <tbody>${rows||`<tr><td colspan="5" class="muted" style="text-align:center;padding:18px">${TH?'ยังไม่มีรายการ':'Nothing on the list yet'}</td></tr>`}</tbody>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 8px">
+      <span style="font-size:11px;color:#94A3B8">${TH?'ทีม':'Team'}:</span>
+      ${chip(!PTF,"ptSet('f','')",(TH?'ทั้งหมด':'All')+' '+all.filter(inSt).length)}
+      ${cats.filter(c=>cnt[c]).map(c=>chip(PTF===c,`ptSet('f','${c}')`,esc(pcatName(c))+' '+cnt[c])).join('')}
+      <span style="width:10px"></span>
+      <span style="font-size:11px;color:#94A3B8">${TH?'สถานะ':'Status'}:</span>
+      ${chip(PTST==='on',"ptSet('s','on')",TH?'ใช้งาน':'On')}${chip(PTST==='off',"ptSet('s','off')",TH?'ปิด':'Off')}${chip(PTST==='all',"ptSet('s','all')",TH?'ทั้งหมด':'All')}
+      <span style="flex:1"></span>
+      <span style="font-size:11.5px;color:#64748B"><b style="color:#1E293B">${list.length}</b> ${TH?'รายการ':'rows'}</span>
+      <button onclick="ptExport()" class="btn sm" style="background:#16A34A;border:none;color:#fff;white-space:nowrap">⤓ ${TH?'ส่งออก Excel':'Export Excel'}</button>
+    </div>
+    <p class="muted" style="font-size:12px;margin:0 0 8px">${TH?'รายการเดียวใช้ร่วมกันทั้ง 3 โรงงาน (BFL · BFLPC · BFLFP) — เพิ่ม แก้ไข หรือปิด ที่นี่ มีผลทุกโรงงาน · โอเปอเรเตอร์เลือกจากรายการนี้ตอนแจ้งงาน ช่างยืนยันทีมตอนปิดงาน':'One list shared by all 3 plants (BFL · BFLPC · BFLFP) — an add, edit or switch-off here applies to every plant. Operators pick from it when they report; the technician confirms the team at Finish.'}</p>
+    <div style="overflow:auto;max-height:70vh;border:1px solid #e6e9ee;border-radius:6px"><table style="border-collapse:collapse;width:100%;min-width:900px">
+      <thead><tr>${th('#','text-align:right')}${th(TH?'อาการ — ภาษาไทย':'Symptom — Thai','text-align:left')}${th(TH?'อาการ — อังกฤษ':'Symptom — English','text-align:left')}${th(TH?'ทีม':'Team','text-align:left','team')}${th(TH?'ใช้ไปแล้ว (ทุกโรงงาน)':'Used (all plants)','text-align:right','used')}${th(TH?'สถานะ':'Status','text-align:left')}${th('','')}</tr></thead>
+      <tbody>${rows||`<tr><td colspan="7" class="muted" style="text-align:center;padding:18px">${TH?'ไม่มีรายการ':'Nothing to show'}</td></tr>`}</tbody>
     </table></div></div>`;
 }
+function ptExport(){window.location.href='/api/admin/problem-types/export';}
 async function ptAdd(){
   const TH=LANG==='TH',n=($('#pt_name').value||'').trim();
   if(!n){alert(TH?'ใส่ชื่ออาการก่อน':'Type the symptom first');return;}
   try{await post('/api/admin/problem-types',{name:n,category:$('#pt_cat').value});}catch(e){return;}
-  await renderAdmin();
+  await ptReload();
 }
 async function ptToggle(id,on){
   const TH=LANG==='TH';
@@ -12424,7 +12912,7 @@ async function ptToggle(id,on){
     if(on)await patch('/api/admin/problem-types/'+id,{active:1});
     else await api('/api/admin/problem-types/'+id,{method:'DELETE'});
   }catch(e){return;}
-  await renderAdmin();
+  await ptReload();
 }
 function ptEdit(id){
   const TH=LANG==='TH',A=window._adm||{},p=(A.ptypes||[]).find(x=>x.id===id);if(!p)return;
@@ -12444,7 +12932,7 @@ function ptEdit(id){
 }
 async function ptSave(id){
   try{await patch('/api/admin/problem-types/'+id,{name:$('#pe_name').value,category:$('#pe_cat').value});}catch(e){return;}
-  dlg.close();await renderAdmin();
+  dlg.close();await ptReload();
 }
 function admSearch(v){ADMQ=v;ADMPAGE=0;if(ADMTAB==='logs'){admLogsLoad();return}admDraw()}
 function admPage(d){ADMPAGE+=d;admDraw()}
@@ -12452,6 +12940,14 @@ function admFac(code){ADMFAC=code;ADMPAGE=0;admDraw()}   // BFL / FP / PC, or ''
 function admDraw(){
   const TH=LANG==='TH',{machines,users}=window._adm||{machines:[],users:[]};
   const q=ADMQ.toLowerCase();
+  if(PTONLY){
+    $('#app').innerHTML=facBarHtml()+`<div class="card" style="padding:8px 12px"><div class="tabs" style="margin:0;align-items:center;flex-wrap:wrap;gap:7px">
+      <b style="font-size:15px;color:#1F2937">${TH?'อาการที่แจ้ง (problem types)':'Problem types'}</b>
+      <span class="muted" style="font-size:12px">${esc((ME&&ME.factory_code)||'')}</span><span style="flex:1;min-width:8px"></span>
+      <input placeholder="🔍 ${t('search')}" value="${esc(ADMQ)}" style="flex:0 1 260px;min-width:150px;font-size:13px;padding:6px 10px;height:32px" oninput="admSearch(this.value)">
+      </div></div>`+admPtypesHtml(q);
+    return;
+  }
   const nTech=users.filter(u=>u.active&&u.role==='technician').length;
   const tab=(k,label,n)=>`<button class="btn sm ${ADMTAB===k?'on':''}" onclick="admTab('${k}')">${label} <span class="muted">${n}</span></button>`;
   const head=`<div class="card" style="padding:8px 12px">
@@ -12906,7 +13402,7 @@ function admUsersHtml(users,q){
                 TH?'ยังไม่มีคน':'without a person'}</b>`:'');
         })()}</span>
         <span style="flex:1;min-width:8px"></span>
-        <button class="btn sm primary" onclick="userDlg(0)">+ ${TH?'บัญชี':'Account'}</button>
+        <button class="btn sm" onclick="admView('mx')">▦ ${TH?'มุมมองตาราง (Matrix)':'Matrix view'}</button><button class="btn sm primary" onclick="userDlg(0)">+ ${TH?'บัญชี':'Account'}</button>
         <button class="btn sm primary" onclick="techDlg(0,'technician')">+ ${TH?'ช่าง':'Technician'}</button>
         <button class="btn sm primary" style="background:var(--green,#16A34A)" onclick="techDlg(0,'operator')">+ ${TH?'ผู้แจ้ง':'Operator'}</button>
       </div>
@@ -13001,7 +13497,7 @@ function admUsersHtml(users,q){
             noPerson.length?` · <b style="color:#B45309">${noPerson.length} ${
               TH?'ยังไม่มีคน':'without a person'}</b>`:''}</span>
           <span style="flex:1;min-width:8px"></span>
-          <button class="btn sm primary" onclick="userDlg(0)">+ ${TH?'บัญชี':'Account'}</button>
+          <button class="btn sm" onclick="admView('mx')">▦ ${TH?'มุมมองตาราง (Matrix)':'Matrix view'}</button><button class="btn sm primary" onclick="userDlg(0)">+ ${TH?'บัญชี':'Account'}</button>
           <button class="btn sm primary" onclick="techDlg(0,'technician')">+ ${TH?'ช่าง':'Technician'}</button>
           <button class="btn sm primary" style="background:var(--green,#16A34A)" onclick="techDlg(0,'operator')">+ ${TH?'ผู้แจ้ง':'Operator'}</button>
         </div>${gapBanner}</div>
@@ -13017,6 +13513,7 @@ function admUsersHtml(users,q){
                `${roleBtn('technician',TH?'ช่าง':'Technician')}${roleBtn('operator',TH?'ผู้แจ้ง':'Operator')}`)}
       </div></div>`;
 
+  if(ADMVIEW!=='classic')return admUsersMx(users,q,preview,gapBanner);
   // Preview earned a third of this screen and spent most of the day empty. It now
   // appears only once a name is picked, and the table takes the width back.
   return `<div style="display:grid;grid-template-columns:214px minmax(0,1fr)${sel?' 330px':''};gap:12px;margin-top:12px;height:calc(100vh - 200px);min-height:420px">
@@ -13025,6 +13522,225 @@ function admUsersHtml(users,q){
     ${sel?`<div class="card" style="padding:0;overflow:auto;min-height:0">${preview}</div>`:''}
   </div>`;
 }
+/* ══════════ b490: Manage → Users as a DEPARTMENT × PLANT MATRIX (Concept D) ══════════
+   The rail grew a node for every plant, every role inside it and two chase lists, and
+   still never showed the department — the one thing the admin actually sorts people
+   by. Here the whole company is one grid: departments down, plants across. Click a
+   box (or a row name, or a plant name) and the people in it fill the list on the
+   right, which scrolls on its own. Problems are counted on the grid as a small red
+   number and are one click away as chips over the list. Details open in a panel that
+   slides in from the right, with every action the old preview had.
+   The old layout is kept one click away ("Classic") for as long as anyone wants it. */
+let MXF='*',MXD=null,MXI='',MXK='';     // plant code | '*' all | '~' all-plants · dept code | '' none | null all · issue · kind
+let ADMVIEW=(()=>{try{return localStorage.getItem('bflfp_admview')||'mx'}catch(e){return 'mx'}})();
+function admView(v){ADMVIEW=v;try{localStorage.setItem('bflfp_admview',v)}catch(e){}ADMSEL=null;admDraw();}
+function mxGo(f,d){MXF=f;MXD=d;ADMSEL=null;admDraw();}
+function mxSet(k,v){if(k==='i')MXI=MXI===v?'':v;else MXK=v;ADMSEL=null;admDraw();}
+const mxFacOf=u=>u.factory_code||'~';
+function mxIssueDefs(users){
+  const TH=LANG==='TH';
+  const byId={};users.forEach(u=>byId[u.id]=u);
+  const linked={};users.forEach(u=>{if(u.login_id)(linked[u.login_id]=linked[u.login_id]||[]).push(u)});
+  const pnames=new Set(users.filter(admIsPerson).map(u=>String(u.name||'').trim().toLowerCase()));
+  // "No person": a handset nobody can be assigned work through. Managers and planners
+  // sign in as themselves, so only technician handsets and shared logins count.
+  const noPerson=u=>!admIsPerson(u)&&u.active&&u.team!=='CE'&&(u.role==='technician'||u.shared_login)
+    &&!(linked[u.id]||[]).length&&!pnames.has(String(u.name||'').trim().toLowerCase());
+  // "No signature": whoever's signature prints on the report has not registered one
+  const noSig=u=>{
+    if(!u.active||u.sig_path)return false;
+    if(!admIsPerson(u))return !u.shared_login;
+    const lg=u.login_id&&byId[u.login_id];
+    return !!(lg&&lg.shared_login);                  // a person on a shared login signs as themselves
+  };
+  return [
+    {k:'np',t:TH?'ยังไม่มีคน (no person)':'No person linked',f:noPerson,c:'#D97706',cls:'mxt-w',s:TH?'ยังไม่มีคน':'no person'},
+    {k:'ns',t:TH?'ไม่มีลายเซ็น (no signature)':'No signature',f:noSig,c:'#DC2626',cls:'mxt-b',s:TH?'ไม่มีลายเซ็น':'no signature'},
+    {k:'nl',t:TH?'ยังไม่ผูกบัญชี (no login)':'No login yet',f:u=>admInPl(u,'!nologin'),c:'#7C3AED',cls:'mxt-v',s:TH?'ไม่มีบัญชี':'no login'},
+    {k:'of',t:TH?'ปิดใช้งาน (switched off)':'Switched off',f:u=>!u.active,c:'#64748B',cls:'mxt-g',s:TH?'ปิด':'off'}];
+}
+function admUsersMx(users,q,preview,gapBanner){
+  const TH=LANG==='TH';
+  const ISS=mxIssueDefs(users), bad=u=>ISS.slice(0,3).some(x=>x.f(u));
+  const facs=((window._adm||{}).factories||[]).map(f=>f.code).filter(c=>users.some(u=>u.factory_code===c));
+  users.forEach(u=>{if(u.factory_code&&!facs.includes(u.factory_code))facs.push(u.factory_code)});
+  const cols=[...facs,'~'];
+  const colLbl=c=>c==='~'?(TH?'ทุกโรงงาน':'All plants'):facLabel(c);
+  // departments that exist on somebody, in the order of the department list
+  const known=(typeof deptList==='function'?deptList():[]).map(d=>d.code);
+  const used=[...new Set(users.map(u=>u.dept||''))];
+  const rows=[...known.filter(c=>used.includes(c)),...used.filter(c=>c&&!known.includes(c)).sort(),...(used.includes('')?['']:[])];
+  const rowLbl=c=>c?`${esc(c)} <small>${esc((deptName&&deptName(c))||'')}</small>`:`<span style="color:#94A3B8">— ${TH?'ไม่ระบุแผนก':'No department'}</span>`;
+  const inF=(u,f)=>f==='*'||mxFacOf(u)===f, inD=(u,d)=>d===null||(u.dept||'')===d;
+  const cell=(d,f)=>users.filter(u=>inF(u,f)&&inD(u,d));
+  const max=Math.max(1,...rows.flatMap(d=>cols.map(f=>cell(d,f).length)));
+  // ── summary ──
+  const act=users.filter(u=>u.active), ok=act.filter(u=>!bad(u)).length, tot=users.length;
+  const pct=act.length?Math.round(ok/act.length*100):100;
+  const sum=`<div class="card mxsum">
+    <div class="big">${tot} ${TH?'ผู้ใช้':'users'} <span>· ${pct}% ${TH?'ตั้งค่าครบ':'fully set up'}</span></div>
+    <div class="mxhb" title="${TH?'สีเขียว = ตั้งค่าครบ':'green = fully set up'}"><div style="width:${ok/Math.max(1,tot)*100}%;background:#16A34A"></div>${
+      ISS.map(x=>`<div title="${esc(x.t)}" style="width:${users.filter(x.f).length/Math.max(1,tot)*100}%;background:${x.c}"></div>`).join('')}</div>
+    <div class="mxleg">${ISS.map(x=>`<span><i style="background:${x.c}"></i>${esc(x.t)} <b>${users.filter(x.f).length}</b></span>`).join('')}</div>
+    <button class="btn sm" onclick="admView('classic')" title="${TH?'กลับไปหน้าแบบเดิม':'Back to the old layout'}">${TH?'แบบเดิม (Classic)':'Classic view'}</button>
+    <button class="btn sm primary" onclick="mxNew()">＋ ${TH?'เพิ่มผู้ใช้ (New user)':'New user'}</button>
+  </div>`;
+  // ── matrix ──
+  let mx=`<tr><th class="${MXF==='*'&&MXD===null?'on':''}" onclick="mxGo('*',null)" style="text-align:left">${TH?'ทั้งหมด (All)':'All users'}</th>${
+    cols.map(f=>`<th class="${MXD===null&&MXF===f?'on':''}" onclick="mxGo('${f}',null)" title="${esc(colLbl(f))}">${esc(colLbl(f))}</th>`).join('')}<th>${TH?'รวม':'Total'}</th></tr>`;
+  rows.forEach(d=>{
+    mx+=`<tr><td class="rn ${MXD===d&&MXF==='*'?'on':''}" onclick="mxGo('*',${JSON.stringify(d).replace(/"/g,'&quot;')})" title="${esc(d?deptLabel(d):'')}">${rowLbl(d)}</td>`;
+    cols.forEach(f=>{
+      const c=cell(d,f),t=c.length/max,b=c.filter(bad).length;
+      const on=MXD===d&&MXF===f,dim=(MXD!==null&&MXF==='*'&&MXD!==d)||(MXD===null&&MXF!=='*'&&MXF!==f);
+      mx+=`<td class="mxc ${on?'on':''} ${dim?'dim':''} ${c.length?'':'zero'}" onclick="mxGo('${f}',${JSON.stringify(d).replace(/"/g,'&quot;')})"
+        style="background:${c.length?`rgba(37,99,235,${(.07+t*.83).toFixed(2)})`:'#F8FAFC'};color:${t>.55?'#fff':''}">${c.length||'·'}${
+        b?`<span class="dot" title="${b} ${TH?'ต้องแก้ไข':'to fix'}">${b}</span>`:''}</td>`;
+    });
+    mx+=`<td class="tot">${users.filter(u=>inD(u,d)).length}</td></tr>`;
+  });
+  const left=`<div class="card mxpanel">
+    <div class="mxph"><h3>${TH?'แผนก × โรงงาน':'Department × Plant'}</h3><span class="hint">${TH?'คลิกช่อง ชื่อแผนก หรือชื่อโรงงาน':'Click a box, a department or a plant'}</span></div>
+    <div class="mxtbl"><table>${mx}</table></div>
+    <div class="mxlg">${TH?'น้อย':'Fewer'} <span class="sc"></span> ${TH?'มาก':'More users'} · <span class="mxtag" style="background:#fff;color:#DC2626;box-shadow:0 0 0 1px rgba(220,38,38,.25)">3</span> = ${TH?'ต้องแก้ไข':'to fix'}</div>
+  </div>`;
+  // ── list ──
+  const match=u=>!q||(u.name||'').toLowerCase().includes(q)||(u.username||'').toLowerCase().includes(q)
+    ||(u.role||'').includes(q)||(u.department||'').toLowerCase().includes(q)||(u.dept||'').toLowerCase().includes(q);
+  const base=users.filter(u=>inF(u,MXF)&&inD(u,MXD));
+  const iss=ISS.find(x=>x.k===MXI);
+  const list=base.filter(u=>(!MXK||(MXK==='p'?admIsPerson(u):!admIsPerson(u)))&&(!iss||iss.f(u))&&match(u))
+    .sort((a,b)=>(ADMROLES.indexOf(a.role)-ADMROLES.indexOf(b.role))||(admIsPerson(b)-admIsPerson(a))||String(a.name||'').localeCompare(String(b.name||'')));
+  const byId={};users.forEach(u=>byId[u.id]=u);
+  let li='',last='';
+  list.forEach(u=>{
+    if(u.role!==last){last=u.role;li+=`<div class="mxlh">${esc(admRoleLbl(u.role))} · ${list.filter(x=>x.role===u.role).length}</div>`;}
+    const person=admIsPerson(u), lg=u.login_id&&byId[u.login_id];
+    const ppl=person?[]:users.filter(x=>x.login_id===u.id);
+    const sub=[person?(lg?`${TH?'ผ่าน':'via'} ${esc(lg.username||'')}`:(TH?'ไม่มีบัญชีเข้าระบบ':'no login of their own'))
+                     :(`@${esc(u.username||'')}`+(ppl.length?` · ${TH?'ใช้โดย':'used by'} ${ppl.map(x=>esc(x.name)).join(', ')}`:'')),
+               MXF==='*'?(u.factory_code?esc(facLabel(u.factory_code)):(TH?'ทุกโรงงาน':'all plants')):'',
+               MXD===null&&u.dept?esc(u.dept):''].filter(Boolean).join(' · ');
+    const tags=[`<span class="mxtag ${person?'mxt-per':(u.shared_login?'mxt-sh':'mxt-acc')}">${person?(TH?'คน':'Person'):u.shared_login?(TH?'บัญชีร่วม':'Shared login'):(TH?'บัญชีเข้าระบบ':'Login')}</span>`,
+      u.team==='CE'?`<span class="mxtag mxt-sh">⚡ ${TH?'ส่วนกลาง':'Central'}</span>`:'',
+      (!u.factory_code&&MXF!=='~'&&MXF!=='*')?`<span class="mxtag mxt-v">${TH?'ทุกโรงงาน':'all plants'}</span>`:'',
+      ...ISS.filter(x=>x.f(u)).map(x=>`<span class="mxtag ${x.cls}">${esc(x.s)}</span>`)].join('');
+    li+=`<div class="mxit ${ADMSEL===u.id?'on':''}" onclick="admPick(${u.id})">${admAvatar(u,32)}
+      <div class="nm"><b>${esc(u.name||u.username||'')}</b><small>${sub}</small></div><div class="mxtags">${tags}</div></div>`;
+  });
+  const crumb=`${MXF==='*'?(TH?'ทุกโรงงาน':'Every plant'):esc(colLbl(MXF))} <span>›</span> ${
+    MXD===null?(TH?'ทุกแผนก':'Every department'):MXD?esc(deptLabel(MXD)):(TH?'ไม่ระบุแผนก':'No department')} <span>· ${base.length}</span>${
+    (MXF!=='*'||MXD!==null)?` <a onclick="mxGo('*',null)">${TH?'ล้าง':'clear'} ✕</a>`:''}`;
+  const right=`<div class="card mxpanel">
+    <div class="mxph"><div class="mxcrumb">${crumb}</div>
+      <div class="mxseg">${[['',TH?'ทั้งหมด':'All'],['p',TH?'คน':'People'],['a',TH?'บัญชี':'Login accounts']].map(([k,l])=>
+        `<button class="${MXK===k?'on':''}" onclick="mxSet('k','${k}')">${l}</button>`).join('')}</div></div>
+    <div class="mxchips">${ISS.map(x=>{const n=base.filter(x.f).length;
+      return `<button class="mxchip ${n?'':'zero'} ${MXI===x.k?'on':''}" onclick="mxSet('i','${x.k}')"><i style="background:${x.c}"></i>${esc(x.t)} <b>${n}</b></button>`}).join('')}</div>
+    <div class="mxlist">${li||`<div class="mxempty">${TH?'ไม่มีรายชื่อ':'Nobody matches'}<br><br><button class="btn sm" onclick="mxNew()">＋ ${TH?'เพิ่มผู้ใช้ที่นี่':'Add a user here'}</button></div>`}</div>
+  </div>`;
+  const drawer=ADMSEL&&preview?`<div class="mxov" onclick="admPick(null)"></div>
+    <aside class="mxdrw"><div class="mxx"><button onclick="admPick(null)" title="Esc">✕</button></div>${preview}</aside>`:'';
+  return `<div class="mxwrap">${sum}${gapBanner?`<div class="card" style="margin:0;padding:0;overflow:hidden">${gapBanner}</div>`:''}<div class="mxgrid">${left}${right}</div></div>${drawer}`;
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&ADMSEL&&document.querySelector('.mxdrw')&&!(window.dlg&&dlg.open)){admPick(null);}
+});
+/* New user: say WHAT you are adding first, then the right form opens already set to
+   the plant and department you were looking at. */
+function mxNew(){
+  const TH=LANG==='TH';
+  const fl=MXF==='*'?'':MXF==='~'?(TH?'ทุกโรงงาน':'All plants'):facLabel(MXF);
+  const dl=MXD?deptLabel(MXD):'';
+  const opt=(k,ico,t1,p,on)=>`<label class="mxopt"><input type="radio" name="mxk" value="${k}" ${on?'checked':''}>
+    <span class="ico">${ico}</span><span class="tx"><b>${t1}</b><small>${p}</small></span></label>`;
+  $('#dlg').innerHTML=dlgHead(TH?'เพิ่มผู้ใช้ (New user)':'New user')+`<div class="dlgbd mxnew">
+    <div class="mxq">${TH?'ต้องการเพิ่มอะไร? (What are you adding?)':'What are you adding?'}</div>
+    ${opt('tech','🧑‍🔧',TH?'ช่าง (Technician)':'Technician',TH?'คนจริง มอบหมายงานได้ — โทรศัพท์ตามทีมที่อยู่':'A real person who can be assigned jobs; the phone follows their team',1)}
+    ${opt('op','👷',TH?'ผู้แจ้ง (Operator)':'Operator',TH?'แจ้งซ่อมผ่านบัญชีของแผนก':'Reports faults through a department login')}
+    ${opt('acc','📱',TH?'บัญชีเข้าระบบ (Login account)':'Login account',TH?'ชื่อผู้ใช้ + รหัสผ่าน — ผู้จัดการ ผู้วางแผน แอดมิน หรือโทรศัพท์ของทีม':'Username + password — managers, planners, admins or a team handset')}
+    ${fl||dl?`<div class="mxpre">${TH?'ตั้งค่าไว้ให้แล้ว (pre-filled)':'Pre-filled'}: <b>${esc([fl,dl].filter(Boolean).join(' › '))}</b></div>`:''}
+    <div class="mxbtns"><button class="btn primary" onclick="mxNewGo((document.querySelector('input[name=mxk]:checked')||{}).value||'tech')">${TH?'ถัดไป (Next) ›':'Next ›'}</button>
+      <button class="btn" onclick="dlg.close()">${TH?'ยกเลิก (Cancel)':'Cancel'}</button></div>
+  </div>`;
+  dlg.showModal();
+}
+function mxNewGo(k){
+  try{dlg.close();}catch(e){}
+  if(k==='acc')userDlg(0);else techDlg(0,k==='op'?'operator':'technician');
+  const fs=((window._adm||{}).factories||[]),fid=MXF==='~'?'0':MXF==='*'?null:((fs.find(f=>f.code===MXF)||{}).id);
+  const set=(id,v)=>{const el=document.getElementById(id);if(el&&v!=null&&v!==''&&[...el.options].some(o=>String(o.value)===String(v)))el.value=String(v);};
+  if(k==='acc'){set('u_f',fid);set('u_d',MXD);}else{set('tk_f',fid);set('tk_d',MXD);}
+}
+/* ── Menu style on a PC (b490): 'auto' = side menu shows icons and opens under the
+   mouse · 'side' = side menu always open · 'top' = every page across the top, Odoo
+   style, groups open as a drop-down. Remembered per browser. Phones are untouched. */
+function menuMode(){try{return localStorage.getItem('bflfp_menu')||(localStorage.getItem('bflfp_sbauto')==='0'?'side':'auto')}catch(e){return 'auto'}}
+function menuApply(m){
+  m=m||menuMode();
+  document.body.classList.toggle('sbauto',m==='auto');
+  document.body.classList.toggle('topnav',m==='top');
+}
+function menuSet(m){try{localStorage.setItem('bflfp_menu',m)}catch(e){}menuApply(m);tnavClose();try{buildNav()}catch(e){}
+  if(typeof NAVI==='number')try{navMarkTree(NAVI)}catch(e){}}
+function sbPin(){menuSet(menuMode()==='auto'?'side':'auto');}
+function sbDecorate(){
+  const br=document.querySelector('#sidebar .sbrand');if(!br||br.querySelector('.sbpin'))return;
+  const TH=LANG==='TH',auto=menuMode()==='auto';
+  br.insertAdjacentHTML('beforeend',`<button class="sbpin" onclick="sbPin()" title="${auto?(TH?'ตรึงเมนูให้เปิดค้าง (keep open)':'Keep the menu open'):(TH?'ซ่อนเมนูอัตโนมัติ (auto-hide)':'Auto-hide the menu')}">${auto?'📌':'⇤'}</button><button class="sbpin" style="margin-left:2px" onclick="menuSet('top')" title="${TH?'ย้ายเมนูไปด้านบน (menu on top)':'Put the menu across the top'}">⬒</button>`);
+}
+function tnavClose(){document.querySelectorAll('#tnav .tng.open').forEach(g=>g.classList.remove('open'))}
+function tnavOpen(ev,id){ev.stopPropagation();const g=document.getElementById(id);const was=g&&g.classList.contains('open');tnavClose();if(g&&!was)g.classList.add('open');}
+document.addEventListener('click',e=>{if(!e.target.closest||!e.target.closest('#tnav .tng'))tnavClose();});
+function tnavBuild(){
+  const hd=document.querySelector('header');if(!hd)return;
+  let nv=document.getElementById('tnav');
+  if(!nv){nv=document.createElement('nav');nv.id='tnav';const h1=document.getElementById('htitle');(h1&&h1.nextSibling)?hd.insertBefore(nv,h1.nextSibling):hd.appendChild(nv);}
+  if(!ME||(typeof OPTECH==='function'&&OPTECH())||menuMode()!=='top'){nv.innerHTML='';return;}
+  const TH=LANG==='TH',KI={};NAV.forEach((n,i)=>{if(n[3])KI[n[3]]=i});
+  const lay=navLayout();
+  const item=(k,dd)=>{const i=KI[k];if(i==null)return '';const n=NAV[i];
+    return dd?`<button id="tb${i}" onclick="tnavClose();navGo(${i})"><span class="ic">${n[0]}</span>${n[1]}</button>`
+             :`<button id="tb${i}" onclick="navGo(${i})">${n[1]}</button>`;};
+  let h='';
+  lay.top.forEach(k=>{
+    const kids=(lay.kids[k]||[]).filter(c=>KI[c]!=null);
+    if(!kids.length){h+=item(k);return}
+    const i=KI[k];if(i==null)return;
+    h+=`<div class="tng" id="tg_${k}" data-kids="${[k,...kids].map(c=>KI[c]).join(',')}"><button onclick="tnavOpen(event,'tg_${k}')">${NAV[i][1]}</button><div class="tdd">${item(k,1)}<hr>${kids.map(c=>item(c,1)).join('')}</div></div>`;
+  });
+  const sv=s=>`<span class="ic">${svgIcon(s)}</span>`;
+  h+=`<div class="tng rt" id="tg__more" style="margin-left:auto"><button onclick="tnavOpen(event,'tg__more')">☰ ${TH?'เมนู':'Menu'}</button><div class="tdd" id="tnmore">
+    <div id="tnover"></div>
+    <button onclick="tnavClose();menuFindMachine()">${sv('<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>')}${TH?'เปิดหน้าเครื่องจักร':'Open machine page'}</button>
+    <button onclick="tnavClose();mySigOpen()">${sv('<path d="M3 17c3-4 5-9 7-9s-1 9 1 9 3-5 5-5 1 4 3 4"/><path d="M3 21h18"/>')}${TH?'ลายเซ็นของฉัน':'My signature'}</button>
+    <hr><button onclick="menuSet('auto')">${sv('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>')}${TH?'ใช้เมนูด้านข้าง (side menu)':'Use the side menu'}</button></div></div>`;
+  nv.innerHTML=h;
+  // too many pages for one line → the last ones fold into More, never a second row
+  requestAnimationFrame(tnavFit);
+  if(typeof NAVI==='number')tnavMark(NAVI);
+}
+function tnavFit(){
+  const nv=document.getElementById('tnav'),ov=document.getElementById('tnover');if(!nv||!ov)return;
+  const more=document.getElementById('tg__more');
+  let guard=40;
+  while(nv.scrollWidth>nv.clientWidth+1&&guard--){
+    const kids=[...nv.children].filter(x=>x!==more);const last=kids[kids.length-1];if(!last)break;
+    const btns=last.classList.contains('tng')?[...last.querySelectorAll('.tdd button')]:[last];
+    const html=btns.map(b=>{const c=b.cloneNode(true);c.setAttribute('onclick','tnavClose();'+(b.getAttribute('onclick')||'').replace('tnavClose();',''));
+      if(!c.querySelector('.ic'))c.insertAdjacentHTML('afterbegin','<span class="ic"></span>');return c.outerHTML}).join('');
+    ov.insertAdjacentHTML('afterbegin',html+(ov.innerHTML?'':'<hr>'));last.remove();
+  }
+}
+window.addEventListener('resize',()=>{if(menuMode()==='top'){clearTimeout(window._tnr);window._tnr=setTimeout(tnavBuild,150)}});
+function tnavMark(i){
+  document.querySelectorAll('#tnav button.on').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('#tnav [id="tb'+i+'"]').forEach(b=>b.classList.add('on'));
+  document.querySelectorAll('#tnav .tng').forEach(g=>{if((g.dataset.kids||'').split(',').includes(String(i))){const b=g.querySelector(':scope>button');if(b)b.classList.add('on')}});
+}
+{ const _bn=buildNav; buildNav=function(){const r=_bn.apply(this,arguments);try{menuApply();sbDecorate();tnavBuild();}catch(e){}return r;};
+  const _nm=navMarkTree; navMarkTree=function(i){_nm(i);try{tnavMark(i)}catch(e){}}; }
+menuApply();
 // Deleting a name never throws its work away: everything they reported, led,
 // approved, logged or signed moves to somebody else first — the admin by default.
 function admDelete(id){
@@ -13249,9 +13965,23 @@ function userDlg(id){
   ${id?`<label style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="u_a" style="width:auto" ${u.active?'checked':''}> ${t('enable')}</label>`:''}
   <label id="u_cr_w" style="display:${u.role==='technician'?'flex':'none'};gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="u_cr" style="width:auto" ${u.can_report?'checked':''}> ${
     LANG==='TH'?'แจ้งซ่อมได้ด้วย (ใช้เป็นผู้แจ้งได้ในบัญชีเดียวกัน)':'Can also report problems (works as operator too, same login)'}</label>
+  ${ME.role==='admin'?`<label style="margin-top:10px">${LANG==='TH'?'งานเพิ่มเติม (FG Stock / คลังสินค้า) — เลือกได้หลายงาน':'Extra functions (FG Stock / Warehouse) — tick several'}</label>
+  <div id="u_fgl" style="display:grid;gap:4px">${[['packing','แพคกิ้ง','Packing'],['packcheck','Checker แพคกิ้ง','Packing checker'],['receiver','รับเข้า FG','FG receiver'],['issuer','จ่ายออก FG','FG issuer'],['checker','ผู้ตรวจสอบ (คลังสินค้า)','Warehouse checker']]
+    .map(r=>`<label style="display:flex;gap:8px;align-items:center;margin:0"><input type="checkbox" class="u_fgr" value="${r[0]}" style="width:auto" onchange="ufgDef()"> ${LANG==='TH'?r[1]+' / '+r[2]:r[2]}</label>`).join('')}</div>
+  <label style="margin-top:8px">${LANG==='TH'?'เปิดก่อนหลังล็อกอิน':'Opens first after login'}</label><select id="u_fgd"><option value="cmms">CMMS</option></select>
+  <label style="display:flex;gap:8px;align-items:center;margin-top:6px"><input type="checkbox" id="u_fgo" style="width:auto" onchange="ufgDef()"> ${LANG==='TH'?'เฉพาะ FG (ไม่เห็น CMMS)':'FG only (no CMMS)'}</label>`:''}
   <div class="row" style="margin-top:14px"><button class="btn primary" onclick="saveUser(${id})">${t('save')}</button>
   <button class="btn ghost" onclick="dlg.close()">${t('cancel')}</button></div></div>`;
   dlg.showModal();
+  if(ME.role==='admin'&&$('#u_fgl')){ufgDef();if(id)api('/api/fg/users/'+id).then(r=>{
+    document.querySelectorAll('.u_fgr').forEach(x=>x.checked=(r.fg_roles||[]).includes(x.value));
+    $('#u_fgo').checked=!!r.fg_only;ufgDef(r.fg_default);}).catch(()=>{});}
+}
+const UFGN={cmms:'CMMS',packing:'แพคกิ้ง / Packing',packcheck:'Checker แพคกิ้ง / Packing checker',receiver:'รับเข้า FG / FG receiver',issuer:'จ่ายออก FG / FG issuer',checker:'คลังสินค้า / Warehouse'};
+function ufgDef(want){
+  const sel=$('#u_fgd');if(!sel)return;const cur=want||sel.value;
+  const rs=[...document.querySelectorAll('.u_fgr:checked')].map(x=>x.value),opts=($('#u_fgo').checked&&rs.length?[]:['cmms']).concat(rs);
+  sel.innerHTML=opts.map(o=>`<option value="${o}" ${o===cur?'selected':''}>${UFGN[o]}</option>`).join('');
 }
 async function saveUser(id){
   // 0 is a real answer here — every plant — so it must not be read as "nothing chosen"
@@ -13262,10 +13992,16 @@ async function saveUser(id){
     can_report:($('#u_r').value==='technician'&&$('#u_cr').checked)?1:0,
     team:($('#u_tm')||{}).value||'',
     password:$('#u_p').value||undefined});
-  else await post('/api/admin/users',{username:$('#u_u').value,name:$('#u_n').value,
+  let newId=id;
+  if(!id)newId=(await post('/api/admin/users',{username:$('#u_u').value,name:$('#u_n').value,
     role:$('#u_r').value,factory_id:fac,department:dept,can_login:1,password:$('#u_p').value,
     can_report:($('#u_r').value==='technician'&&$('#u_cr').checked)?1:0,
-    team:($('#u_tm')||{}).value||''});
+    team:($('#u_tm')||{}).value||''})).id;
+  // FG Stock / Warehouse role lives in the FG app (users.fg_role); admins are always FG admin
+  if(newId&&$('#u_fgl')&&$('#u_r').value!=='admin'){
+    const rs=[...document.querySelectorAll('.u_fgr:checked')].map(x=>x.value);
+    try{await post('/api/fg/users/'+newId,{fg_roles:rs,fg_default:$('#u_fgd').value,fg_only:$('#u_fgo').checked});}catch(e){alert(e.message);}
+  }
   dlg.close();renderAdmin();
 }
 
@@ -13463,7 +14199,7 @@ async function renderDash(){
   ${/* 1 — the three rings lead. They are the only thing on this page that answers
         "did we keep the schedule and were the machines there" in one look. */''}
   <div id="mixpanel" style="margin-bottom:6px"></div>
-  <div id="pmline" style="margin-bottom:6px"></div>
+  <div id="pmcm" style="margin-bottom:6px"></div>
   ${/* 2 — MTTR and MTBF ride directly under the rings, on the same window.
 
         MTTR here is the ENG STANDARD's MTTR: repair hours ÷ breakdowns. It reads low
@@ -13591,7 +14327,7 @@ async function renderDash(){
   loadDowntime();
   loadIssues();
   loadTechs();
-  loadPmLine();
+  loadPmCm();          // b461: replaces the PM planned-vs-completed line
 }
 
 // ── Downtime: engineering vs production ──────────────────────────────────────
@@ -13908,6 +14644,129 @@ function drawPmLine(){
     <text x="${W-R+8}" y="${Y(last[kp])+(up?-3:13)}" font-size="12" fill="#64748B">${TH?'แผน':'planned'} ${last[kp]}</text>
     <text x="${W-R+8}" y="${Y(last[kd])+(up?13:-3)}" font-size="12" fill="#15803D" font-weight="700">${TH?'เสร็จ':'done'} ${last[kd]}</text>
    </svg></div>`;
+}
+/* b460: PM done vs corrective work (CM + BD reported) on the plant's machines, week by
+   week or month by month — the line that should fall as PM takes hold. Air-con, IT and
+   civil/facility jobs are not machine maintenance and are left out. Its own window
+   (last 12 weeks / 12 months) because a trend needs more than the dashboard's dates. */
+let PMCM=(()=>{let b='week',c='';try{b=localStorage.getItem('bflfp_pmcm_b')||'week';c=localStorage.getItem('bflfp_pmcm_c')||'';}catch(e){}return {b,c,d:null};})();
+async function loadPmCm(){
+  const box=$('#pmcm'); if(!box)return;
+  const o=PMCM.o||0;
+  const [a,b]=await Promise.all([api(`/api/kpi/pmcm?bucket=${PMCM.b}&n=12&cls=${PMCM.c}&off=${o}`).catch(()=>null),
+    api(`/api/kpi/pmcm-compare?bucket=${PMCM.b}&cls=${PMCM.c}&off=${o}`).catch(()=>null)]);
+  PMCM.d=a;PMCM.cmp=b;
+  drawPmCm();
+}
+/* b461 — last week | this week (or last month | this month), side by side, day by day.
+   Same rules as the trend below it; the right-hand panel runs only to today. */
+function pmcmSide(p,isCur,TH,bucket,mxAll){
+  const PMC='#2a78d6',CMC='#eb6834';
+  const W=480,H=170,L=30,R=12,T=10,B=24,n=p.days.length;
+  const shown=isCur?p.days.filter(x=>x.d<=p.upto):p.days;
+  const X=i=>n<2?L+(W-L-R)/2:L+i*(W-L-R)/(n-1), Y=v=>T+(H-T-B)*(1-v/mxAll);
+  const path=k=>shown.map((x,i)=>`${i?'L':'M'}${X(i).toFixed(1)},${Y(x[k]+(k==='cm'?x.bd:0)).toFixed(1)}`).join('');
+  const fd=s=>new Date(s).toLocaleDateString(TH?'th-TH':'en-GB',{day:'numeric',month:'short'});
+  const step=Math.max(1,Math.ceil(n/8));
+  const back=PMCM.o||0;
+  const title=back?(isCur?(bucket==='week'?(TH?'สัปดาห์ที่เลือก':'Selected week'):(TH?'เดือนที่เลือก':'Selected month'))
+                         :(bucket==='week'?(TH?'สัปดาห์ก่อนหน้า':'Week before'):(TH?'เดือนก่อนหน้า':'Month before')))
+     :isCur?(bucket==='week'?(TH?'สัปดาห์นี้':'This week'):(TH?'เดือนนี้':'This month'))
+                   :(bucket==='week'?(TH?'สัปดาห์ที่แล้ว':'Last week'):(TH?'เดือนที่แล้ว':'Last month'));
+  const stat=(v,l,col)=>`<div style="min-width:78px"><div style="font-size:20px;font-weight:700;color:${col||'#0F172A'};line-height:1.15">${v}</div><div style="font-size:11px;color:#64748B">${l}</div></div>`;
+  const ratio=(p.cm+p.bd)?(p.pm/(p.cm+p.bd)).toFixed(1):(p.pm?'∞':'—');
+  return `<div style="flex:1;min-width:300px;border:1px solid #e8edf2;border-radius:9px;padding:9px 11px;background:#fff">
+    <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+      <b style="font-size:13.5px;color:#0F172A">${title}</b>
+      <span style="font-size:11.5px;color:#64748B">${fd(p.from)} – ${fd(p.to)}${isCur&&p.upto<p.to?` · ${TH?'ถึงวันนี้':'so far'}`:''}</span></div>
+    <div style="display:flex;gap:12px;margin:6px 0 2px;flex-wrap:wrap">
+      ${stat(p.pm,TH?'PM ทำเสร็จ':'PM done',PMC)}${stat(p.cm,'CM')}${stat(p.bd,'BD',p.bd?'#B91C1C':'')}${stat(ratio,TH?'PM ต่อ 1 งานซ่อม':'PM per repair')}</div>
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
+      ${[0,.5,1].map(f=>Math.round(mxAll*f)).map(t=>`<line x1="${L}" x2="${W-R}" y1="${Y(t)}" y2="${Y(t)}" stroke="#EEF2F6"/><text x="${L-5}" y="${Y(t)+4}" font-size="10.5" fill="#94A3B8" text-anchor="end">${t}</text>`).join('')}
+      <path d="${path('pm')}" fill="none" stroke="${PMC}" stroke-width="2"/>
+      <path d="${path('cm')}" fill="none" stroke="${CMC}" stroke-width="2"/>
+      ${shown.map((x,i)=>`<g><title>${x.d} · PM ${x.pm} · CM ${x.cm} · BD ${x.bd}</title>
+        <rect x="${X(i)-(W-L-R)/n/2}" y="${T}" width="${(W-L-R)/n}" height="${H-T-B}" fill="transparent"/>
+        <circle cx="${X(i)}" cy="${Y(x.pm)}" r="3.5" fill="${PMC}" stroke="#fff" stroke-width="1.5"/>
+        <circle cx="${X(i)}" cy="${Y(x.cm+x.bd)}" r="3.5" fill="${CMC}" stroke="#fff" stroke-width="1.5"/></g>`).join('')}
+      ${p.days.map((x,i)=>(i%step===0||i===n-1)?`<text x="${X(i)}" y="${H-7}" font-size="10.5" fill="#64748B" text-anchor="middle">${bucket==='week'?new Date(x.d).toLocaleDateString(TH?'th-TH':'en-GB',{weekday:'short'}):+x.d.slice(8)}</text>`:'').join('')}
+    </svg></div>`;
+}
+function pmcmCompareHtml(TH){
+  const c=PMCM.cmp;if(!c)return '';
+  const all=[...c.prev.days,...c.cur.days];
+  const mx=Math.max(1,...all.map(x=>Math.max(x.pm,x.cm+x.bd)));
+  const dv=(a,b,good)=>{if(!a&&!b)return '';const d=b-a;if(!d)return `<span style="color:#64748B">=</span>`;
+    const ok=good==='up'?d>0:d<0;return `<b style="color:${ok?'#15803D':'#B91C1C'}">${d>0?'▲':'▼'} ${Math.abs(d)}</b>`;};
+  const P=c.prev,C=c.cur;
+  return `<div style="display:flex;gap:10px;flex-wrap:wrap;margin:8px 0 6px">${pmcmSide(P,false,TH,c.bucket,mx)}${pmcmSide(C,true,TH,c.bucket,mx)}</div>
+    <div style="font-size:12px;color:#475569;margin:0 2px 8px">${TH?'เทียบกับช่วงก่อน':'Compared with the period before'}:
+      PM ${dv(P.pm,C.pm,'up')} · CM ${dv(P.cm,C.cm,'down')} · BD ${dv(P.bd,C.bd,'down')}
+      ${C.upto<C.to?`<span class="muted"> · ${TH?'ช่วงนี้ยังไม่จบ ตัวเลขยังเพิ่มได้':'this period is not over yet — its numbers can still grow'}</span>`:''}</div>`;
+}
+function pmcmSet(k,v){PMCM[k]=v;if(k==='b')PMCM.o=0;try{localStorage.setItem('bflfp_pmcm_'+k,v)}catch(e){}loadPmCm();}
+// b462: ‹ › step both charts back / forward one week (or month); never past the current one
+function pmcmStep(d){PMCM.o=Math.max(0,(PMCM.o||0)+d);loadPmCm();}
+function drawPmCm(){
+  const box=$('#pmcm'); if(!box)return;
+  const TH=LANG==='TH', d=PMCM.d;
+  const head=`📉 ${TH?'PM ที่ทำเสร็จ เทียบกับงานซ่อม (CM + BD)':'PM done vs corrective work (CM + BD)'}`;
+  if(!d){box.innerHTML='';return;}
+  const pts=d.points,n=pts.length,PMC='#2a78d6',CMC='#eb6834';
+  const W=1000,H=220,L=38,R=110,T=14,B=28;
+  const mx=Math.max(1,...pts.map(p=>Math.max(p.pm,p.cm)));
+  const X=i=>n<2?L+(W-L-R)/2:L+i*(W-L-R)/(n-1), Y=v=>T+(H-T-B)*(1-v/mx);
+  // the last week / month is still running: drawn dashed, so a half-finished period does
+  // not read as a collapse
+  const live=!(d.off>0);
+  const path=k=>pts.slice(0,live?n-1:n).map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)},${Y(p[k]).toFixed(1)}`).join('');
+  const tail=k=>live&&n>1?`M${X(n-2).toFixed(1)},${Y(pts[n-2][k]).toFixed(1)}L${X(n-1).toFixed(1)},${Y(pts[n-1][k]).toFixed(1)}`:'';
+  const ticks=[0,.5,1].map(f=>Math.round(mx*f));
+  const lbl=k=>d.bucket==='week'?`${k.slice(8)}/${k.slice(5,7)}`:new Date(k+'-01').toLocaleDateString(TH?'th-TH':'en-US',{month:'short'});
+  const tip=p=>(d.bucket==='week'?(TH?'สัปดาห์ ':'week of ')+p.k:p.k)+` · PM ${p.pm} · CM+BD ${p.cm}`;
+  const last=pts[n-1],up=last.pm>=last.cm;
+  const btn=(k,v,l)=>`<button class="btn sm${PMCM[k]===v?' dark':''}" onclick="pmcmSet('${k}','${v}')">${l}</button>`;
+  const ap=d.after_pm||[];
+  box.innerHTML=`<div class="card" style="padding:11px 13px">
+   <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+     <h2 style="font-size:15px;margin:0">${head}</h2>
+     ${(()=>{const o=PMCM.o||0,c=PMCM.cmp,cur=c&&c.cur;
+        const fd=s=>new Date(s).toLocaleDateString(TH?'th-TH':'en-GB',{day:'numeric',month:'short',year:'numeric'});
+        const lab=cur?(d.bucket==='week'?`${fd(cur.from)} – ${fd(cur.to)}`:new Date(cur.from).toLocaleDateString(TH?'th-TH':'en-GB',{month:'long',year:'numeric'})):'';
+        return `<span style="display:inline-flex;align-items:center;gap:5px">
+          <button class="btn sm" onclick="pmcmStep(1)" title="${TH?'ก่อนหน้า':'previous'}">‹ ${TH?'ก่อนหน้า':'Prev'}</button>
+          <b style="font-size:12.5px;color:#334155;min-width:150px;text-align:center">${lab}</b>
+          <button class="btn sm" ${o?'':'disabled style="opacity:.4"'} onclick="pmcmStep(-1)" title="${TH?'ถัดไป':'next'}">${TH?'ถัดไป':'Next'} ›</button>
+          ${o?`<button class="btn sm" onclick="PMCM.o=0;loadPmCm()">${d.bucket==='week'?(TH?'สัปดาห์นี้':'This week'):(TH?'เดือนนี้':'This month')}</button>`:''}</span>`;})()}
+     <span style="margin-left:auto;display:flex;gap:5px;flex-wrap:wrap">
+       ${btn('c','',TH?'ทุกระดับ':'All classes')}${btn('c','A','A')}${btn('c','B','B')}${btn('c','C','C')}
+       <span style="width:6px"></span>${btn('b','week',TH?'รายสัปดาห์':'Weekly')}${btn('b','month',TH?'รายเดือน':'Monthly')}</span></div>
+   <div class="muted" style="font-size:11.5px;margin:3px 0 4px">${TH
+     ?`เฉพาะเครื่องจักรที่ลงทะเบียน${d.cls?' ระดับ '+d.cls:''} · 12 ${d.bucket==='week'?'สัปดาห์':'เดือน'}ล่าสุด · ไม่นับงานแอร์ ไอที และอาคาร (${d.non_machine_left_out} งาน) · เป้าหมาย: เส้นสีส้มลดลง`
+     :`Registered machines${d.cls?' · class '+d.cls:''} · last 12 ${d.bucket==='week'?'weeks':'months'} · air-con, IT and facility jobs left out (${d.non_machine_left_out}) · the goal: the orange line falls`}</div>
+   ${pmcmCompareHtml(TH)}
+   <div style="font-size:12.5px;font-weight:600;color:#1E293B;margin:4px 0 2px">${TH?`แนวโน้ม 12 ${d.bucket==='week'?'สัปดาห์':'เดือน'}`:`Trend — last 12 ${d.bucket==='week'?'weeks':'months'}`}</div>
+   <div style="display:flex;gap:14px;font-size:11.5px;color:#64748B;flex-wrap:wrap">
+     <span><i style="display:inline-block;width:12px;height:3px;background:${PMC};vertical-align:3px;margin-right:5px"></i>${TH?'PM ทำเสร็จ':'PM done'} <b style="color:#1E293B">${d.pm_total}</b></span>
+     <span><i style="display:inline-block;width:12px;height:3px;background:${CMC};vertical-align:3px;margin-right:5px"></i>${TH?'CM + BD ที่แจ้ง':'CM + BD reported'} <b style="color:#1E293B">${d.cm_total}</b></span></div>
+   <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;margin-top:4px">
+    ${ticks.map(t=>`<line x1="${L}" x2="${W-R}" y1="${Y(t)}" y2="${Y(t)}" stroke="#EEF2F6"/><text x="${L-6}" y="${Y(t)+4}" font-size="11" fill="#94A3B8" text-anchor="end">${t}</text>`).join('')}
+    <path d="${path('pm')}" fill="none" stroke="${PMC}" stroke-width="2.5"/>
+    <path d="${path('cm')}" fill="none" stroke="${CMC}" stroke-width="2.5"/>
+    <path d="${tail('pm')}" fill="none" stroke="${PMC}" stroke-width="2" stroke-dasharray="5 5"/>
+    <path d="${tail('cm')}" fill="none" stroke="${CMC}" stroke-width="2" stroke-dasharray="5 5"/>
+    ${pts.map((p,i)=>`<g><title>${tip(p)}</title><rect x="${X(i)-(W-L-R)/n/2}" y="${T}" width="${(W-L-R)/n}" height="${H-T-B}" fill="transparent"/>
+      <circle cx="${X(i)}" cy="${Y(p.pm)}" r="4" fill="${PMC}" stroke="#fff" stroke-width="2"/><circle cx="${X(i)}" cy="${Y(p.cm)}" r="4" fill="${CMC}" stroke="#fff" stroke-width="2"/></g>
+      <text x="${X(i)}" y="${H-8}" font-size="11" fill="#64748B" text-anchor="middle">${lbl(p.k)}</text>`).join('')}
+    <text x="${W-R+10}" y="${Y(last.pm)+(up?-3:13)}" font-size="12" fill="#1E293B">PM ${last.pm}</text>
+    <text x="${W-R+10}" y="${Y(last.cm)+(up?13:-3)}" font-size="12" fill="#1E293B">CM+BD ${last.cm}</text>
+    ${live?`<text x="${X(n-1)}" y="${T+2}" font-size="10.5" fill="#94A3B8" text-anchor="end">${TH?'ช่วงนี้ยังไม่จบ ┄':'so far ┄'}</text>`:''}
+   </svg>
+   ${ap.length?`<div style="margin-top:8px;border-top:1px solid #EEF2F6;padding-top:8px">
+     <div style="font-size:12.5px;font-weight:600;color:#1E293B;margin-bottom:4px">${TH?`PM ที่ยังไม่ช่วย — เครื่องที่มี CM/BD ภายใน 30 วันหลังทำ PM (${d.after_pm_machines} เครื่อง)`:`PM that did not hold — machines with CM/BD within 30 days after a PM (${d.after_pm_machines})`}</div>
+     <div style="display:flex;flex-wrap:wrap;gap:6px">${ap.map(a=>`<span style="font-size:11.5px;border:1px solid #e2e8f0;border-radius:7px;padding:3px 8px;background:#fff" title="${esc(a.name||'')} · ${TH?'ล่าสุด':'last'} ${a.last}">
+       ${critBadge(a.cls)} <b>${esc(a.code||'')}</b> ${esc((a.name||'').slice(0,26))} · <b style="color:#B91C1C">${a.n}</b>${a.bd?` (${a.bd} BD)`:''}</span>`).join('')}</div></div>`:''}
+   </div>`;
 }
 let DTK=null, TECHK=null;
 function dashLower(k){

@@ -135,7 +135,8 @@ async def login(req: Request):
                          # shows the plant switcher on this, not on the role any more
                          "all_plants": all_plants(r),
                          "can_report": bool(sess.get("can_report")) and r["role"] == "technician",
-                         "team": sess.get("team") or ""})
+                         "team": sess.get("team") or "",
+                         "wms_role": _wms_role(sess), **_fg_flags(sess)})
     max_age = 86400 * 30 if b.get("remember") else 86400   # remember me = 30 days
     resp.set_cookie("bflfp", tok, httponly=True, max_age=max_age)
     return resp
@@ -204,7 +205,30 @@ async def me(req: Request):
             "factory_name": u.get("factory_name", ""),
             "all_plants": all_plants(u),
             "can_report": bool(u.get("can_report")) and u.get("role") == "technician",
-            "team": u.get("team") or ""}
+            "team": u.get("team") or "",
+            "wms_role": _wms_role(u), **_fg_flags(u)}
+
+
+def _fg_flags(u):
+    """FG Stock app access (users.fg_role) and whether the login goes straight to it."""
+    try:
+        from . import fg
+        return {"fg_role": fg.role_of(u), "fg_roles": fg.roles_of(u), "fg_default": fg.fg_default(u),
+                "fg_only": fg.fg_only(u)}
+    except Exception:
+        return {"fg_role": "", "fg_roles": [], "fg_default": "", "fg_only": False}
+
+
+def _wms_role(u):
+    """Warehouse app access, so the CMMS menu can offer the Warehouse link."""
+    if u.get("role") == "admin":
+        return "super"
+    try:
+        with closing(db()) as c:
+            r = c.execute("SELECT COALESCE(wms_role,'') r FROM users WHERE id=?", (u["id"],)).fetchone()
+        return (r["r"] if r else "") or ""
+    except Exception:
+        return ""          # column not made yet — the Warehouse app adds it on first use
 
 
 @router.post("/factory")

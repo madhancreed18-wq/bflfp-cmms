@@ -573,6 +573,37 @@ async def jobs(req: Request, view: str = "", d: str = "", q_text: str = "", fac:
         open_seg = c.execute(
             "SELECT id, job_id, seg_type, activity, start FROM timelogs WHERE tech=? AND end IS NULL",
             (u["id"],)).fetchone()
+    # b452: whose move a PM really is. "Planner: to assign" was printed on every PM with
+    # no plant technician — including all-electrical PMs the CE planner had already given
+    # to a named CE technician. Each PM row now carries that technician (ce_name) and
+    # whether the sheet is electrical only (el_only), so the screen can say who.
+    try:
+        _pmr = [r for r in rows if (r.get("jobtype") or "").upper() == "PM" and r.get("machine_id")]
+        if _pmr:
+            from .elec import counts as _elc
+            from . import pm as _pm
+            with closing(db()) as _c3:
+                _qs = ",".join("?" * len(_pmr))
+                _el = {e["job_id"]: e for e in _c3.execute(
+                    f"SELECT job_id, tech, done_at FROM pm_elec WHERE job_id IN ({_qs})",
+                    [r["id"] for r in _pmr])}
+                _nm = user_names(_c3)
+                _fm = {r["id"]: r["factory_id"] for r in _c3.execute(
+                    f"SELECT id, factory_id FROM machines WHERE id IN ({','.join('?' * len(_pmr))})",
+                    [r["machine_id"] for r in _pmr])}
+                _cache = {}
+                for r in _pmr:
+                    f = _fm.get(r["machine_id"])
+                    if f not in _cache:
+                        _cache[f] = (_elc(_c3, f), _pm._match_all(_c3, f))
+                    _cnt, _m2t = _cache[f]
+                    na, ne = _cnt.get((_m2t.get(r["machine_id"]), r.get("pm_freq") or "weekly")) or (0, 0)
+                    r["el_only"] = 1 if (na and na == ne) else 0
+                    e = _el.get(r["id"])
+                    if e and e["tech"] and not (e["done_at"] or ""):
+                        r["ce_name"] = _nm.get(str(e["tech"]), "")
+    except Exception:
+        pass
     # The KPI-exclude flag is the admin's own bookkeeping. The job DETAIL endpoint has
     # always stripped it for every other role; this list was selecting j.* and shipping
     # it to everyone, so the rule only half held. It holds properly now — and because an
@@ -707,12 +738,15 @@ async def export_jobs(req: Request, d: str = "", q_text: str = "", jtype: str = 
             cc.alignment = Alignment(vertical="top", wrap_text=ci in (6, 25, 26, 27))
     ws.freeze_panes = "B2"
     ws.auto_filter.ref = ws.dimensions
+    from .xlstamp import stamp, file_name
+    fname = file_name("jobs", fac)                            # b469: plant + download time
+    stamp(wb, fac, fname, u, "Jobs / งาน")
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
     return StreamingResponse(
         buf, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f'attachment; filename="jobs_{d}.xlsx"'})
+        headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 
 
 @router.get("/pulse")
@@ -1199,8 +1233,34 @@ async def job_detail(jid: int, req: Request):
         row["helper_names"] = ", ".join(
             names.get(h, "") for h in (row["helpers"] or "").split(",") if h)
         row["team"] = _team_of(c, row)          # the only names the phone may pick from
+        # b475: the machine's class (A / B / C) travels with the job to the phone
+        if row.get("machine_id") and not row.get("mcrit"):
+            _mc = c.execute("SELECT COALESCE(criticality,'') k FROM machines WHERE id=?", (row["machine_id"],)).fetchone()
+            row["mcrit"] = (_mc["k"] if _mc else "") or ""
         row["creator_name"] = names.get(str(row["created_by"]), "")
         row["requester_name"] = names.get(str(row.get("requester_id")), "") or row["creator_name"]
+        # b468: who did each step — the page shows "by <name>" under every stage, and
+        # every change of crew or day with the person who made it
+        try:
+            _ev = [dict(r) for r in c.execute(
+                "SELECT e.status, e.created_at, COALESCE(u.name,'') who FROM job_events e"
+                " LEFT JOIN users u ON u.id=e.user_id WHERE e.job_id=? ORDER BY e.id", (jid,))]
+        except Exception:
+            _ev = []
+        def _first(st):
+            return next((e for e in _ev if e["status"] == st), None)
+        def _last(st):
+            return next((e for e in reversed(_ev) if e["status"] == st), None)
+        _st = c.execute("SELECT u.name FROM timelogs t LEFT JOIN users u ON u.id=t.tech"
+                        " WHERE t.job_id=? ORDER BY t.start LIMIT 1", (jid,)).fetchone()
+        row["step_who"] = {
+            "reported": (_first("Reported") or {}).get("who") or row["creator_name"],
+            "assigned": (_last("Assigned") or {}).get("who", ""),
+            "started": (_st[0] if _st else "") or (_first("InProgress") or {}).get("who", ""),
+            "completed": (_last("ServiceCompleted") or {}).get("who", ""),
+            "approved": names.get(str(row.get("approver_id")), "") or (_last("Done") or {}).get("who", ""),
+        }
+        row["assign_log"] = [e for e in _ev if e["status"] in ("Assigned", "Hold", "Rework", "Cancelled", "WaitingAssignment")]
         # where each photo came from, so the screen can badge an uploaded one rather
         # than leaving the reader to assume every picture was taken at the machine
         try:
@@ -1812,6 +1872,23 @@ async def seg_start(req: Request):
         # the crew member taking this on, so an unassigned job is booked to a real person
         # rather than to the shared account the phone happens to be signed in with
         actor = _acting_tech(c, job, u, b.get("as_tech")) if jid else u["id"]
+        # b455 (technicians only): a phone may start work only for the people who sign
+        # in on it. Choke on tech1 pressed Start on Mark's job, the crew list offered
+        # only "mark", and the timer was booked to Mark — whose own phone (tech3) was
+        # then locked out by a timer he never started. Someone with a login of their
+        # own starts their work on that login; anyone else asks the planner first.
+        if jid and u["role"] == "technician" and actor not in _ids:
+            a = c.execute("SELECT name, username, login_id, COALESCE(can_login,0) cl"
+                          " FROM users WHERE id=?", (actor,)).fetchone()
+            if a and (a["cl"] or a["login_id"]):
+                ph = a["username"]
+                if not a["cl"]:
+                    r = c.execute("SELECT username FROM users WHERE id=?", (a["login_id"],)).fetchone()
+                    ph = r["username"] if r else ""
+                raise HTTPException(409, f"{a['name']} ใช้เครื่องของตัวเอง ({ph}) — เริ่มงานในชื่อ {a['name']} จากเครื่องนี้ไม่ได้"
+                                         f" ให้ {a['name']} เริ่มเอง หรือให้ผู้วางแผนเพิ่มคุณเข้างานนี้ /"
+                                         f" {a['name']} signs in on {ph} — this phone cannot start work as {a['name']}."
+                                         f" {a['name']} starts it on {ph}, or the planner adds you to the job")
         close_open_segment(c, _look, b.get("pause_reason", "switch"))
         c.execute("INSERT INTO timelogs(job_id,tech,seg_type,activity,start) VALUES(?,?,?,?,?)",
                   (b.get("job_id"), actor, b.get("seg_type", "work"), b.get("activity", ""), now()))

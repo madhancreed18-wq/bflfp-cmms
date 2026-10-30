@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from .config import STATIC, UPLOADS, APP_VERSION, ENV, DATA
 from .db import init, db
 from . import (auth, push, jobs, reports, admin, chat, kpi, planreport, pm, pmreport, signature, elec,
-               teams, logs, live, projects, help, qrlabels)
+               teams, logs, live, projects, help, qrlabels, wms, fg)
 
 import logging
 # the app's own logger — the file handler is attached by logs.setup(), and everything
@@ -22,7 +22,23 @@ def create_app():
     # them went to a console instead of the file, which is to say nowhere anybody looks.
     logs.setup()
     init()
+    try:                                  # Warehouse app tables (wms_*) + users.wms_role
+        with closing(db()) as _c:
+            wms.ensure(_c)
+            _c.commit()
+    except Exception as e:
+        _log.error("[wms] table setup failed: %s", e)
+    try:                                  # FG Stock app tables (fg_*) + users.fg_role / fg_only
+        with closing(db()) as _c:
+            fg.ensure(_c)
+            _c.commit()
+    except Exception as e:
+        _log.error("[fg] table setup failed: %s", e)
     app = FastAPI(title="BFLFP CMMS", version=APP_VERSION, docs_url="/api/docs")
+
+    # b481: compress pages and API answers (index.html 1.7 MB -> ~0.3 MB, big FG lists ~10x smaller)
+    from starlette.middleware.gzip import GZipMiddleware
+    app.add_middleware(GZipMiddleware, minimum_size=1024, compresslevel=5)
 
     @app.middleware("http")
     async def _no_cache(request, call_next):
@@ -35,8 +51,13 @@ def create_app():
         if p.startswith("/api/"):
             resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
             resp.headers["Pragma"] = "no-cache"
-        elif p == "/" or p.endswith(".html") or p.endswith("/sw.js") or p.endswith("/manifest.json"):
+        elif p.endswith("/sw.js"):
             resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        elif p == "/" or p.endswith(".html") or p.endswith("/manifest.json") or p.endswith(".js"):
+            # b481: "no-cache" (not "no-store") — the browser keeps its copy and asks the server
+            # each time; an unchanged page comes back as a tiny 304 instead of 1.7 MB again.
+            # A new build is still picked up on the very next open.
+            resp.headers["Cache-Control"] = "no-cache, must-revalidate"
         elif (p == "/logo.png" or p.startswith("/Logo") or (p.startswith("/fac_") and p.endswith(".png"))
               or p.startswith("/techphotos/")):
             resp.headers["Cache-Control"] = "no-cache, must-revalidate"
@@ -54,7 +75,7 @@ def create_app():
         except Exception as e:
             return {"ok": False, "version": APP_VERSION, "error": str(e)}
     for m in (auth, push, jobs, reports, admin, chat, kpi, planreport, pm, pmreport,
-              teams, logs, live, projects, help, qrlabels, signature, elec):
+              teams, logs, live, projects, help, qrlabels, signature, elec, wms, fg):
         app.include_router(m.router)
     # …and the middleware that writes an unhandled exception to the log instead of
     # losing it to a console nobody is watching. Defined since the log was written,

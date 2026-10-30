@@ -18,7 +18,187 @@ the footer.) The service worker carries the matching `bflfp-vNNN` at `/sw.js`.
 
 ---
 
+> **Live server = b475 (CMMS only, built on server b464)** — confirmed 30 Oct 2026 (server\audit.py present).
+> 30 Oct: raja's b489 static\index.html + sw.js were copied to live by mistake (live has no fnbar.js / FG server) → login failed "Not Found".
+> Fixed by copying `_to_server\RESTORE-live-b475\static\` (index.html + sw.js) back to live. Never copy raja's static files straight to live.
+
+> **READY 30 Oct: `_to_server\bflfp-cmms-b489.zip`** = live becomes the same as dev (CMMS b476–b489 + FG Stock + Warehouse/WMS; b490 NOT included).
+> Tested: starts on an Aug-2026 database and the Oct-27 dev database, adds fg_*/wms_* tables, sign-in + main CMMS pages + FG + WMS open with no errors.
+> FG / Warehouse DATA on raja is NOT in the package — live starts with them empty.
+
 ## WAITING — not yet on live
+
+### b493 — Side menu: user badge pinned to the bottom (30 Oct 2026)
+`static/index.html` (b493), `static/sw.js` (v493). No restart. Includes b490–b492.
+- User badge (avatar / name / logout) always sits fully on screen at the bottom of the side menu; the page list scrolls above it. Fixes the cut-off badge on short 14" screens.
+
+### b492 — New user pop-up Windows style; fits 14" / 15.6" laptops (30 Oct 2026)
+`static/index.html` (b492), `static/sw.js` (v492). No restart. Includes b490 + b491.
+- New user: normal pop-up — 3 radio options (Technician / Operator / Login account), Next / Cancel bottom-right. Was 3 wide cards that scrolled sideways.
+- Users page tested at 1280×650, 1366×650, 1536×730, 1920×950: no sideways scroll; shorter screens use smaller matrix boxes; narrow screens hide the legend text.
+- Collapsed side menu no longer shows a clipped user name at the bottom.
+
+### b491 — Font changed to Sarabun (30 Oct 2026)
+`static/index.html` (b491), `static/fg.html`, `static/wms.html`, `static/sw.js` (v491). No restart. Includes b490.
+- CMMS, FG Stock and Warehouse now use Sarabun (Google font) instead of Prompt; Warehouse also loads it (was Windows system font).
+
+### b490 — Manage → Users as a department × plant matrix; PC menu auto-hide / top bar (30 Oct 2026)
+**Back on dev 30 Oct (afternoon) after testing on a real server copy: admin / planner / technician sign-in and every page OK, top-menu mode fixed. Waiting for the user to test on raja before it goes in a package.**
+`static/index.html` (b490), `static/sw.js` (v490). No restart.
+- Users page: summary bar (users · % fully set up · problem counts), matrix of departments × plants (click a box, a department or a plant), scrollable list on the right grouped by role, problem chips (no person linked · no signature · no login yet · switched off), All / People / Login accounts switch. Details slide in from the right (same actions as before). "Classic view" button returns to the old layout (remembered per browser).
+- "+ New user" first asks Technician / Operator / Login account, then opens the usual form pre-filled with the plant and department being viewed.
+- "No person linked" now counts only technician handsets and shared logins (managers/planners sign in as themselves).
+- PC menu (mouse screens only, phones unchanged): side menu shows icons only and opens while the mouse is over it; 📌 keeps it open; ⬒ moves the whole menu to a top bar (Odoo style, groups as drop-downs, extra pages fold into ☰ Menu). Choice remembered per browser.
+
+### b489 — Packing page: date range, All dates, search across dates (28 Oct 2026)
+`static/fg.html`, `static/index.html` (b489), `static/sw.js` (v489). No restart.
+- From / To dates + quick buttons Today / 7 days / 30 days / All dates (top right).
+- Search box now searches the server over the chosen range (or every slip with All dates); drop-down suggests products and lots. Newest 3,000 shown, the title says so when cut.
+- Register title shows the range and search; the Time column becomes Date / time when the range is more than one day.
+
+### b488 — QR pallet slips for the Access receive history (28 Oct 2026)
+`server/fg.py` (new `GET/POST /api/fg/access-slips`; Access import now also makes the slips), `static/fg.html`, `static/index.html` (b488), `static/sw.js` (v488). **Restart the server**, then press the admin button once.
+- Admin button on the Packing page: "Make QR slips from Access history (n)". One slip per Access receive row: pallet no. 1, 2, 3 … per product + lot in receive date order (after any slip numbers the lot already has), status Moved to FG, packing-approved, source Access, packed date = Access receive date, MFG/EXP from the lot / "Net weight" text. Test data: 28,456 slips in ~10 s.
+- Each receive row is linked to its slip (pkey, pallet_no, packing_id). Stock does not change. Running again only adds slips for new unlinked rows; a new Access import makes them automatically.
+- Packing register / preview: pick the date to browse and print them (A6). Register now sorted by packed date.
+- Pallet Checker scan of these slips: read-only "Already received in the old system (Access)" with that pallet's receive row. Pallet Loader: loads the pallet, capped at the lot balance (Access issues were booked per lot).
+
+### b487 — Packing form: compact date / staff / bags / kg row (28 Oct 2026)
+`static/fg.html`, `static/index.html` (b487), `static/sw.js` (v487). No restart.
+- Row 1: PD line, Packing M/C, Document no. Row 2: MFG date (1 / 1.5 / 2 yr shelf-life buttons under it), Expiry date, then narrower Staff, Bags, kg/bag side by side.
+- Phone: MFG + Expiry on one line, Staff + Bags + kg/bag on the next.
+
+### b486 — Packing form: Save next to the dates, QR of this slip in the form (27 Oct 2026)
+`static/fg.html`, `static/index.html` (b486), `static/sw.js` (v486). No restart.
+- Total weight + Save slip sit under kg/bag, MFG and Expiry; the box on the right of that row shows the live QR of the slip being made (lot · #n).
+- Phone: fields -> Total weight + Save -> QR; the preview card below no longer repeats the QR.
+
+### b485 — Packing page in the new layout (27 Oct 2026)
+`static/fg.html`, `static/index.html` (b485), `static/sw.js` (v485). No restart.
+- Header with "Pallet slip management" + date on the right; 4 stat cards with icons (Pending, Accepted, Total slips, Total bags + weight).
+- "Create new pallet slip" card: Product & traceability row (FG code with search, formula name, lot, product type), Packing details row (PD line, M/C, document, staff, bags), then kg/bag, MFG, expiry + shelf-life chips | Total weight box + Save slip. "Next slip #n" badge.
+- Right: "Generated slip preview" card — QR, slip id, product / lot / bags / weight / MFG-EXP. ‹ Previous / Next › browse saved slips (or click a row); Next back to the new slip.
+- Full-width "Pallet slip register": status chips (All / Pending / Accepted / Rejected / Rejected by FG), search, Print selected, Excel-style table with icon actions (view A6, print, ⋯ copy / edit / audit trail) and 10-per-page pagination (new xTable pageSize option).
+
+### b484 — Choose-app tiles: icon + name only (27 Oct 2026)
+`static/index.html` (b484), `static/sw.js` (v484). No restart.
+- Removed the white card behind each tile; only the icon (white square with shadow), name and sub-name remain. ★ sits on the icon corner.
+
+### b483 — Read-only re-scan, new Pallet Loader steps with audit trail, 2-column app tiles (27 Oct 2026)
+`server/fg.py` (new `POST /api/fg/issue-step`; `/scan/receive` + `/scan/issue` changed; `/log` open to all FG users), `static/fg.html`, `static/index.html` (b483), `static/sw.js` (v483). **Restart the server.**
+- Pallet Checker: scanning a pallet that is already in FG shows a read-only page (status, who approved / checker, checklist as accepted, audit trail). A lot already received in the old Access system (imported history = approved) also shows read-only with those Access rows.
+- Pallet Loader: scan -> "Is this the pallet you are about to load?" (product, lot, pallet, bags, kg, MFG/EXP, lot balance, FEFO) -> Correct / Not correct (reason) -> Full pallet or Part (bags + photo) -> customer / type / plate -> Confirm load -> stock reduced (waiting for checker).
+- Pallets received in Access can be loaded from the lot balance (bags from the slip, capped at the lot balance).
+- Audit trail: every step (scanned, correct / not correct + reason, full / part, photo, back, cancel, saved) is logged; on save the steps are copied onto the release. "Steps" button in Release history, My issue jobs, and the checker queue detail.
+- Choose-app screen: 2-column icon tiles (3 on wider screens) like the PC app grid.
+
+### b482 — Choose CMMS or Pallet Checker / Pallet Loader after sign-in; 7-day default dates (27 Oct 2026)
+`static/index.html` (b482), `static/fg.html`, `static/fnbar.js`, `static/sw.js` (v482). No restart.
+- A non-admin with 2+ functions (e.g. CMMS + FG receiver) gets a "Choose what you want to open" screen after sign-in, and again from the Apps (▦) button. Big cards: CMMS, Pallet Checker (FG receiver), Pallet Loader (FG issuer), etc. ★ = their default. Reloading the tab keeps the last choice. Admin and multi-plant users keep the plant app grid.
+- Names: receiver = Pallet Checker / ตรวจรับพาเลท, issuer = Pallet Loader / โหลดพาเลท (scan page titles + bottom tabs).
+- Date filters open on the last 7 days (today + 6 days before): receive / release history, daily report, slip list, my receive / issue jobs. Users can still pick any range.
+
+### b481 — Faster opening: compression, browser cache, cached stock, show-then-refresh (27 Oct 2026)
+`server/app.py`, `server/fg.py`, `static/fg.html`, `static/index.html` (b481), `static/sw.js` (v481). **Restart the server.**
+- Gzip on every page and API answer (index.html 1.7 MB -> ~0.5 MB on the wire, full receive history 2.3 MB -> 150 KB).
+- HTML / JS now "no-cache" instead of "no-store": the browser keeps its copy and gets a 304 when nothing changed; a new build still shows on the next open. sw.js stays no-store.
+- Stock balance is computed once and re-used until receive / release data changes (fg_ver counter + triggers). Badge poll /summary 545 -> 17 ms, /stock 285 -> 57 ms, dashboard 491 -> 145 ms (test data).
+- New indexes on receive / release dates and status for history, today counters and lot lookups. First start after the update builds them (a few seconds).
+- FG pages remember the last answer: going back to Dashboard / Stock / History / Stock card / Products shows it at once, refreshes in the background and redraws only if changed. Any save clears the memory. Grey placeholder bars instead of "Loading…".
+
+### b480 — Excel-style tables with filters + type-ahead search (27 Oct 2026)
+`static/fg.html`, `static/index.html` (b480), `static/sw.js` (v480), `server/fg.py` (new `GET /api/fg/suggest`). **Restart the server.**
+- Every FG data table (checker queue, receive / release history, stock balance, stock card, packing records, pallet-slip lists, products, customers) is now an Excel-like grid: cell borders, sticky header, click a header to sort, ▾ opens a filter (search + tick values, A→Z / Z→A), "Clear filters", Total row for qty / kg.
+- CSV, Print A4 and Checker queue Excel export use the filtered + sorted rows.
+- Search / code boxes show a drop-down of matches while typing (products by code or name, lot numbers from receive history): history, stock, stock card (product + lot), products, slip form FG code, slip edit, slip list search, customers.
+- Fixed: admin "Packing records" page called the slip-page loader by mistake (renamed pkrLoad).
+
+### b479 — Alignment / sizing clean-up on every FG page (27 Oct 2026)
+`static/fg.html`, `static/index.html` (b479), `static/sw.js` (v479). No restart.
+- One control height (40 px PC, 44 px phone) for inputs, selects and buttons, so filter rows line up; labels small grey above fields.
+- Filter rows sit in a white card; content uses the full width; table cells centred vertically.
+- Sidebar items never wrap ("Checker queue" + badge on one line).
+- Users page: light role cards with a colour dot, function tick boxes as tidy chips, fixed-width "Opens first" select, bigger tick boxes.
+
+### b478 — Packing page redesigned to a standard layout (27 Oct 2026)
+`static/fg.html`, `static/index.html` (b478), `static/sw.js` (v478). No restart — reopen the app.
+- Page title + date at top; one row of 6 stat cards (pending / accepted / rejected / slips / bags / weight).
+- Left: "New pallet slip" white card, labels above fields, grouped Product / Packing / Quantity / Dates, QR preview, Save button always visible at the bottom.
+- Right: slip list card with one search box, "Rejected by FG" filter chip, Print selected; light table header.
+- All FG tables now use a light header instead of charcoal.
+
+### b477 — Packing slip page like the old VB Pallet Form (27 Oct 2026)
+`server/fg.py` (/api/fg/slips-next), `static/fg.html`, `static/index.html` (b477), `static/sw.js` (v477). **Restart needed** (new API).
+- One page: left = Pallet information (pending / accepted / rejected rings, form, 1 / 1.5 / 2-year expiry buttons, live QR of the next slip with its number);
+  right = Filter data (date, FG code, lot), totals (slips, bags, weight, rejected by FG), slip list with A6 / Copy / Edit.
+- Save asks "how many slips?" — each gets the next slip number and its own QR, all other data the same; optional print right away.
+- Fixed: expiry date from shelf life could land one day early (time-zone).
+
+### b476 — BFL colours on the app screen and FG Stock (27 Oct 2026)
+`static/index.html` (b476), `static/fg.html`, `static/sw.js` (v476). No restart — reopen the app.
+- App screen: charcoal #202020 top bar with the white logo pill, "BFL Group - Apps" in orange, light blue-grey background, plant panels; icons in BFL blue #1B75BC / dark blue #0F3D6E / orange #F97316; current plant = orange chip, FG on = blue.
+- FG Stock: same charcoal header + sidebar as CMMS, orange bar on the active menu item, BFL blue buttons/tabs, Prompt font, dark table headers.
+
+### b475 — Odoo-style app screen, apps per plant (27 Oct 2026)
+`server/fg.py` (fg_plants table, /api/fg/plants), `static/index.html` (b475), `static/sw.js` (v475). **Restart needed.**
+- App screen: light background, white icon cards, one section per plant (BFL / BFLFP / BFLPC), each showing only the apps that person may open there.
+- FG apps appear only in plants where FG Stock is on. Admin switches it per plant with the "FG Stock: on/off" button on the app screen (BFLPC on by default — it holds the Access data).
+- Opening an app in another plant moves the session to that plant first.
+- Admin lands on the app screen after login; others still land on their "Opens first" function. Apps button (▦) reopens it.
+- FG API refuses non-admin users in a plant where FG Stock is off.
+
+### b474 — Warehouse dashboard (27 Oct 2026)
+`server/fg.py` (new /api/fg/dashboard), `static/fg.html`, `static/index.html` (b474), `static/sw.js` (v474). **Restart needed** (new API).
+- Warehouse › แดชบอร์ด / Dashboard (was Home): period 7 / 30 / 90 days / 12 months; stock on hand, received, released, waiting checker, waiting packing check;
+  received vs released chart (per day / per month, hover for values); stock by product type, stock age, stock by group, released by type; top 10 products in stock; top 10 customers.
+- Built on the imported Access history + the app's own records.
+
+### b473 — Switch bar removed (27 Oct 2026)
+`static/fg.html`, `static/index.html` (b473), `static/sw.js` (v473). No restart needed — refresh / reopen the app.
+- No slider under the header any more. A person with 2+ functions gets the Apps (grid) button in the header; it opens one tile per function they hold.
+- Login still lands on the person's "Opens first" function.
+
+### b472 — Access import button, paper form fits one sheet (27 Oct 2026)
+`server/fg.py`, `server/auth.py`, `static/fg.html`, `static/index.html` (b472), `static/fnbar.js`, `static/sw.js` (v472).
+Note: the b471 files did not land on the first copy; they are in this push too. **Restart needed.**
+- Warehouse home shows "Import Access data now" (admin) while no Access history is loaded — runs fg_import/*.csv.gz on the server (~30 s, safe to repeat).
+- Paper form F-WI04-WHD01-04: 20 rows per sheet, signatures on every sheet, never pushed to a second page; switch bar hidden in print.
+- A4 reports: totals + signatures kept together.
+- An FG-only login with one function now lands in FG (was CMMS).
+
+### b471 — One login, several functions + switch bar; receiver job details (27 Oct 2026)
+`server/fg.py`, `server/auth.py`, `static/fg.html`, `static/index.html` (b471), `static/fnbar.js` (new), `static/sw.js` (v471).
+**Restart needed** (adds users.fg_roles + users.fg_default; old single fg_role is copied across).
+- Manage › Users: tick several functions (Packing, Packing checker, FG receiver, FG issuer, Warehouse checker) + "Opens first" + "FG only".
+- Switch bar under the header in CMMS and FG Stock: 2–3 functions = equal segments; 4+ = 3 visible, swipe for more (PC shows all). Title stays the same. Launcher no longer shown after login.
+- FG receiver: My receive jobs grouped by date (newest first, newest job first inside each day); tap a job for full details (checklist, timeline, packing fix / reprint).
+- Issuer table also grouped by date, newest first.
+
+### b470 — Launcher: FG Stock (floor) + Warehouse (checker); FG role in CMMS Manage › Users (27 Oct 2026)
+`server/fg.py`, `static/fg.html`, `static/index.html` (b470), `static/sw.js` (v470). No restart needed beyond the usual reload.
+- Warehouse tile now opens the FG checker side (/fg.html?app=wh); the old rack WMS (wms.html) is no longer on the launcher.
+- FG Stock tile = packing, receive, issue (/fg.html?app=fg).
+- Manage › Users dialog has "FG Stock / Warehouse access" + "FG only".
+
+### b469 — FG roles tightened, part-pallet issue with photo, A4 reports (27 Oct 2026)
+`server/fg.py`, `static/fg.html`, `static/index.html` (b469), `static/sw.js` (v469). Restart needed (new fg_release / fg_packing columns).
+- FG Receiver sees only Receive (scan) + My receive jobs (approved / rejected, and for rejected: packing fixed? reprinted? received again?).
+- FG Issuer: scan → checklist → Accept → Full pallet / Part (bags + photo, date-time stamped on the picture, saved in data/uploads/fg/) + My issue jobs table.
+- Packing can fix + reprint a slip FG rejected; prints are counted.
+- Stock, stock card, daily report, history = checker/admin only, each with Print A4.
+
+### b468 — Packing room A6 QR pallet slip (27 Oct 2026)
+`server/fg.py`, `static/fg.html`, `import_palletslip.py` (new), `static/index.html` (UIBUILD b468), `static/sw.js` (bflfp-v468).
+Restart needed (adds fg_packing columns + fg_lists). New roles packing / packcheck. Optional: run import_palletslip.py for the old slips.
+
+### b467 — FG Stock app (27 Oct 2026) — replaces the FG team's Access database
+New files: `server/fg.py`, `static/fg.html`, `import_fg_access.py`, `fg_import/*.csv.gz`, `docs/FG-STOCK.md`.
+Changed: `server/app.py` (router + table setup), `server/auth.py` (`fg_role` / `fg_only` in login + /me),
+`static/index.html` (FG Stock tile in the app launcher, FG-only logins go straight to /fg.html, UIBUILD b467),
+`static/sw.js` (bflfp-v467).
+Needs an **app restart** (creates the `fg_*` tables and `users.fg_role` / `users.fg_only`), then once:
+`python import_fg_access.py --plant PC --csv fg_import` (Access history; safe to re-run).
+Packing DB not linked yet — see docs/FG-STOCK.md.
 
 **dev build: ui b421 / sw bflfp-v421**
 
@@ -253,6 +433,8 @@ Item 100 adds `jobs.asset_text` the same way, so that restart covers it too.
 | 221 | **Breakdown closed ring (b419).** Dashboard + Report PDF: BD closed ÷ BD raised in the chosen period, beside Corrective closed. No database change. | `static/index.html`, `static/sw.js` |
 | 222 | **Rings box + Week = last week (b420).** Corrective + Breakdown rings in one box; Week chip = previous Mon–Sun (› to current week). No database change. | `static/index.html`, `static/sw.js` |
 | 223 | **Plant planners: no electrical corrective work (b421).** BFL/BFLPC plant planners/managers: Jobs, counts, CM Plan and crew board hide non-PM jobs with Trade = Electrical (unless already given a plant crew). Admins and BFLFP unchanged. No database change. | `server/elec.py`, `server/jobs.py`, `server/pm.py`, `server/teams.py`, `static/index.html`, `static/sw.js` |
+| 224 | **Warehouse app (WMS) inside the CMMS login (b465).** New page `/wms.html` + API `/api/wms/*`: QC check by scanning the pallet-slip QR (bag count must match, Hold/Reject need a reason), put-away with suggested slot + slot QR, rack map (rows AA–AL, 42 bays × 5 levels × 2 = 5,040 slots, editable in Setup), stock in FEFO order with expiry alerts, dispatch orders with FEFO-enforced picking (supervisor override with reason), lot traceability, slot QR label printing, per-user Warehouse roles (view/qc/store/super; admins = super). Data per plant. Warehouse is opened from the app launcher (b466). **DB: creates wms_* tables and users.wms_role at startup — restart the app.** | `server/wms.py` (new), `server/app.py`, `server/auth.py`, `static/wms.html` (new), `static/index.html`, `static/sw.js` |
+| 225 | **App launcher after sign-in (b466).** Anyone with Warehouse access (the FG team, set in Warehouse › Setup › FG team) lands on an app screen with two icons, CMMS and Warehouse; everyone else goes straight into the CMMS as before. A grid button in the CMMS header and the Warehouse header returns to the launcher; a reload keeps the app already chosen; job/asset links skip the launcher. Replaces b465's Warehouse menu item. No database change. | `static/index.html`, `static/sw.js`, `static/wms.html`, `server/auth.py` |
 
 ## AWAITING YOUR ANSWER
 

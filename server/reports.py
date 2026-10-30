@@ -697,9 +697,12 @@ async def daily_report_archived(req: Request, d: str = "", inline: str = "",
 FORM06_ROWS = 14          # lines on the printed sheet, filled or not
 FORM06_CODE = "F-SP-ENG02-06 Rev.01"
 FORM06_DEPT = "แผนกวิศวกรรม"
-FORM06_HEAD = ["ชื่อเครื่องจักร", "ตั้งแต่เวลา-เวลา", "อาการที่เกิด",
-               "สาเหตุปัญหาที่เกิดขึ้น", "การปรับแต่ง/การแก้ไข/แนวทางการปรับปรุง",
+# b494: the job number leads the row, so each line on the sheet can be traced to its
+# job in the app; the cause column (almost always blank) is gone and its width shared out.
+FORM06_HEAD = ["เลขที่งาน", "ชื่อเครื่องจักร", "ตั้งแต่เวลา-เวลา", "อาการที่เกิด",
+               "การปรับแต่ง/การแก้ไข/แนวทางการปรับปรุง",
                "เคลียร์หลังซ่อม", "ผู้ปรับแต่ง"]
+FORM06_LAYOUT = "v2-jobno"   # bump to re-issue every filed sheet in the new layout
 FORM06_NOTE = ("หมายเหตุ : เจ้าหน้าที่ซ่อมบำรุงดำเนินการเคลียร์สิ่งแปลกปลอมและความสะอาด"
                "หลังซ่อมเสร็จ ใส่เครื่องหมาย / หลังเคลียร์เรียบร้อย")
 
@@ -770,8 +773,10 @@ def build_maintenance_form(d, path=None, fac=None):
                              max(b or s["end"], s["end"]))
 
     BLUE = colors.HexColor("#1F4E9C")
-    S  = ParagraphStyle("s",  fontName="APP",  fontSize=FS(7.5), leading=FS(10), textColor=BLUE)
+    S  = ParagraphStyle("s",  fontName="APP",  fontSize=FS(8.5), leading=FS(10.5), textColor=BLUE)
     SC = ParagraphStyle("sc", fontName="APP",  fontSize=FS(9),   leading=FS(11), alignment=1,
+                        textColor=BLUE)
+    SJ = ParagraphStyle("sj", fontName="APPB", fontSize=FS(8.5), leading=FS(10.5), alignment=1,
                         textColor=BLUE)
     H  = ParagraphStyle("h",  fontName="APPB", fontSize=FS(8.5), leading=FS(11), alignment=1)
     T1 = ParagraphStyle("t1", fontName="APPB", fontSize=FS(14),  leading=FS(18), alignment=1)
@@ -817,12 +822,24 @@ def build_maintenance_form(d, path=None, fac=None):
         for x in str(j.get("helpers") or "").split(","):
             if x.strip().isdigit() and names.get(int(x)) and names[int(x)] not in who:
                 who.append(names[int(x)])
-        symptom = (j.get("problem") or j.get("problem_type")
-                   or (j.get("descr") or "").split("\n")[0] or "")
-        data.append([Paragraph(str(j.get("mname") or j.get("mcode") or ""), S),
+        # "Other — described below" says nothing on paper: print what was described.
+        base = str(j.get("problem") or j.get("problem_type") or "").strip()
+        first = (j.get("descr") or "").strip().split("\n")[0].strip()
+        if first and (not base or base.startswith("อื่น") or "Other" in base):
+            symptom = first
+        else:
+            symptom = base or first
+        # a job raised on something not in the asset register still names it — the text
+        # the reporter typed, so the machine cell is never left blank (b494)
+        mach = (str(j.get("mname") or j.get("mcode") or "").strip()
+                or str(j.get("asset_text") or "").strip()
+                or str(j.get("report_name") or "").strip())
+        if not j.get("mname") and not j.get("mcode") and j.get("asset_text"):
+            mach = "ไม่มีในทะเบียน: " + mach
+        data.append([Paragraph(str(j.get("jobid") or j.get("code") or j.get("id") or ""), SJ),
+                     Paragraph(mach, S),
                      Paragraph(when, SC),
                      Paragraph(symptom, S),
-                     Paragraph(str(j.get("root_cause") or ""), S),
                      Paragraph(str(j.get("solution") or ""), S),
                      (_tick(4.4*mm, BLUE) if j.get("cleared_worksite") else ""),
                      Paragraph(", ".join(who), S)])
@@ -830,7 +847,7 @@ def build_maintenance_form(d, path=None, fac=None):
     for _ in range(max(0, FORM06_ROWS - len(jobs))):
         data.append(["", "", "", "", "", "", ""])
 
-    tbl = Table(data, colWidths=[40*mm, 30*mm, 41*mm, 40*mm, 70*mm, 27*mm, 29*mm],
+    tbl = Table(data, colWidths=[30*mm, 44*mm, 26*mm, 54*mm, 71*mm, 20*mm, 32*mm],
                 rowHeights=[12*mm] + [9.4*mm] * (len(data) - 1),
                 repeatRows=1,
                 style=TableStyle([("GRID", (0, 0), (-1, -1), .6, colors.black),
@@ -1013,8 +1030,42 @@ def auto_file_day(d, only_missing=False):
     return out
 
 
+def rebuild_all_forms():
+    """Re-issue every filed F-SP-ENG02-06 sheet in the current layout, once (b494).
+
+    Only the PDF is rewritten — who issued it and when stays on the shelf row as it was.
+    Runs at start-up in the background; a state key stops it repeating.
+    """
+    from .db import state_get, state_set
+    key = "form06_layout"
+    with closing(db()) as c:
+        if state_get(c, key) == FORM06_LAYOUT:
+            return 0
+        rows = [(r["factory_id"], r["plan_date"]) for r in c.execute(
+            "SELECT DISTINCT factory_id, plan_date FROM plan_reports"
+            " WHERE COALESCE(kind,'plan')='done' AND plan_date IS NOT NULL")]
+    n = 0
+    for fid, d in rows:
+        try:
+            if not _done_rows(d, fid):
+                continue
+            build_maintenance_form(d, archive_path(d, fid), fid)
+            n += 1
+        except Exception as e:
+            _log.warning("[form06] re-issue %s plant %s failed: %s", d, fid, e)
+    with closing(db()) as c:
+        state_set(c, key, FORM06_LAYOUT)
+        c.commit()
+    _log.info("[form06] re-issued %d filed daily report(s) in layout %s", n, FORM06_LAYOUT)
+    return n
+
+
 def auto_catch_up():
     from datetime import timedelta
+    try:
+        rebuild_all_forms()
+    except Exception as e:
+        _log.warning("[form06] bulk re-issue skipped: %s", e)
     today_d = datetime.now().date()
     filed = []
     for k in range(AUTO_CATCHUP_DAYS, 0, -1):

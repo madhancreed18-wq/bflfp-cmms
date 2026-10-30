@@ -17,6 +17,7 @@
 
     -WhatIf            show what would be copied and change nothing.
     -AppUrl <url>      check the app is STOPPED before writing, and refuse if it answers.
+                       Skipped for a web-only release (only static\ files): no stop needed.
     -NoBackup          skip the database backup (not advised).
     -Force             copy even though the app is answering. You will lose the changes
                        a running app writes after the copy, and a release that alters
@@ -57,23 +58,28 @@ if (-not (Test-Path (Join-Path $Dest 'run.py'))) {
 # A .py file copied under a running app does nothing until it restarts, which is
 # survivable. A release that CHANGES THE DATABASE copied under a running app is not:
 # the app rewrites the file it is holding open and the migration lands on top.
-if ($AppUrl) {
-    $running = $false
-    try {
-        $r = Invoke-WebRequest -Uri ("{0}/api/health" -f $AppUrl.TrimEnd('/')) `
-                               -TimeoutSec 4 -UseBasicParsing
-        if ($r.StatusCode -eq 200) { $running = $true }
-    } catch { $running = $false }
-    if ($running) {
-        if (-not $Force) {
-            throw "The app at $AppUrl is still running. Stop it on the server, then run this again. (-Force overrides, and you should not.)"
+# b464: only a release that touches more than web files (static\) needs the app
+# stopped. index.html / sw.js are read from disk on every request, so they can be
+# swapped under a running app; .py files and database changes cannot.
+function Assert-Stopped {
+    if ($AppUrl) {
+        $running = $false
+        try {
+            $r = Invoke-WebRequest -Uri ("{0}/api/health" -f $AppUrl.TrimEnd('/')) `
+                                   -TimeoutSec 4 -UseBasicParsing
+            if ($r.StatusCode -eq 200) { $running = $true }
+        } catch { $running = $false }
+        if ($running) {
+            if (-not $Force) {
+                throw "The app at $AppUrl is still running. Stop it on the server, then run this again. (-Force overrides, and you should not.)"
+            }
+            Write-Warning "The app at $AppUrl is answering and -Force was given. Copying anyway."
+        } else {
+            Say "  app at $AppUrl is not answering - good, it is stopped"
         }
-        Write-Warning "The app at $AppUrl is answering and -Force was given. Copying anyway."
     } else {
-        Say "  app at $AppUrl is not answering - good, it is stopped"
+        Write-Warning "No -AppUrl given, so I cannot check the app is stopped. Make sure it is."
     }
-} else {
-    Write-Warning "No -AppUrl given, so I cannot check the app is stopped. Make sure it is."
 }
 
 # -- 3 - back the live database up, on the server, before writing anything ---------
@@ -133,6 +139,10 @@ $items = Get-ChildItem -Path $root -Recurse -File | ForEach-Object {
 }
 
 if (-not $items) { throw "Nothing to copy - the zip or source held no files." }
+
+$webOnly = -not ($items | Where-Object { $_.Rel -notlike 'static\*' })
+if ($webOnly) { Say '  web files only (static\) - the app can keep running, no stop needed' }
+else { Assert-Stopped }
 
 # The build's own identity, so what lands is never a guess.
 $ui = ''

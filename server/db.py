@@ -468,6 +468,32 @@ def _migrate(c):
                 _log.info("[db] %d utility and wet-food symptoms added" % n)
         except Exception as e:
             _log.warning("[db] utility symptoms skipped: %s", e)
+    # b456: Air Condition / IT / Civil-Facility-Utility teams, and the reasons that
+    # used to be filed as "Other" — once, so an entry an admin deletes stays deleted
+    if state_get(c, "ptypes:b456-teams") != "done":
+        try:
+            ensure_problem_types(c)
+            moved = c.execute("UPDATE problem_types SET category='Air Condition' WHERE name IN (%s)"
+                              " AND category IN ('Mechanical','Electrical')"
+                              % ",".join("?" * len(AIRCON_NAMES)), AIRCON_NAMES).rowcount
+            n = add_symptoms(c, OTHER_CONSOLIDATED)
+            for f in c.execute("SELECT id FROM factories").fetchall():
+                regroup_problem_types(c, f["id"])
+            state_set(c, "ptypes:b456-teams", "done")
+            _log.info("[db] b456: %d symptoms added, %d air-con symptoms moved" % (n, moved))
+        except Exception as e:
+            _log.warning("[db] b456 symptoms skipped: %s", e)
+    # b459: ONE problem-type list for all three plants. Each plant kept its own copy and
+    # they drifted (BFL/BFLPC 150, BFLFP 132, same symptom filed under two trades). Every
+    # plant now carries the same entries, same trade, same on/off; the admin and planner
+    # screens write every change to all three, so they cannot drift again.
+    if state_get(c, "ptypes:shared-b459") != "done":
+        try:
+            n = share_problem_types(c)
+            state_set(c, "ptypes:shared-b459", "done")
+            _log.info("[db] b459: problem types merged into one shared list (%d rows added)" % n)
+        except Exception as e:
+            _log.warning("[db] b459 shared list skipped: %s", e)
     # The role called "manager" was, in practice, group oversight: every plant's
     # numbers on one dashboard and no work orders at all. That is Engineering Center,
     # and it now has its own name — leaving "manager" free for what a plant manager
@@ -495,7 +521,7 @@ def _migrate(c):
 # category it usually turns out to be. That gives the planner an electrical /
 # mechanical hint the moment the job is reported, hours before anyone opens the panel.
 # It is a hint and nothing more: the technician sets the real category at Finish.
-PROBLEM_CATS = ("Mechanical", "Electrical", "Instrument", "Process", "Other")
+PROBLEM_CATS = ("Mechanical", "Electrical", "Instrument", "Process", "Air Condition", "IT", "Facility", "Other")
 
 PROBLEM_SEED = [
     ("เสียงดังผิดปกติ / Unusual noise", "Mechanical"),
@@ -937,6 +963,55 @@ UTILITY_SYMPTOMS = [
     ("เครื่องตรวจโลหะไม่ตรวจจับ / ตัวคัดแยกไม่ทำงาน / Metal detector not detecting, or reject not firing", "Instrument"),
 ]
 
+# ── b456: what "Other" was really used for ────────────────────────────────────
+# 307 jobs were filed under "Other — described below" (to 16 Oct 2026). Read one by one
+# they fall into a handful of plain reasons, and three of them are not maintenance
+# trades at all: air conditioning (its own team), IT, and civil / facility / utility
+# work (toilets, roofs, doors, drains, pests). Each reason is a short line here, so the
+# reporter can pick it instead of "Other" and the job goes to the right team.
+# Category keys are stored as-is: "Air Condition", "IT", "Facility".
+OTHER_CONSOLIDATED = [
+    # air conditioning team
+    ("แอร์เปิดไม่ติด / Air conditioner will not switch on", "Air Condition"),
+    ("ท่อน้ำทิ้งแอร์รั่ว / ขาด / Air conditioner drain pipe leaking or broken", "Air Condition"),
+    # IT
+    ("กล้องวงจรปิด (CCTV) ใช้งานไม่ได้ / ย้ายมุมกล้อง / CCTV camera not working or to be moved", "IT"),
+    ("อินเทอร์เน็ต / WiFi ใช้งานไม่ได้ / Internet or Wi-Fi not working", "IT"),
+    ("โทรศัพท์สายในใช้งานไม่ได้ / Internal phone not working", "IT"),
+    ("คอมพิวเตอร์ / จอ / เครื่องพิมพ์ ใช้งานไม่ได้ / Computer, screen or printer not working", "IT"),
+    # civil / facility / utility
+    ("ชักโครก / โถปัสสาวะ / ที่ฉีดชำระ เสีย / Toilet, urinal or bidet spray faulty", "Facility"),
+    ("ก๊อกน้ำ / อ่างล้างมือ น้ำไหลไม่หยุด หรือไม่ไหล / Tap or wash basin running or not flowing", "Facility"),
+    ("หลังคา / ฝ้าเพดาน / รางน้ำฝน รั่ว / Roof, ceiling or rain gutter leaking", "Facility"),
+    ("พื้น / กำแพง แตก ทรุด หรือน้ำซึม / Floor or wall cracked, sunken or seeping water", "Facility"),
+    ("ประตู / บานพับ / กุญแจ / ม่าน ชำรุด / Door, hinge, lock or curtain broken", "Facility"),
+    ("มีรู / ช่อง ให้นก หนู มด เข้า / Gap letting birds, rats or ants in", "Facility"),
+    ("ท่อระบาย / รางระบายน้ำ ตัน หรือน้ำเอ่อ / Floor drain blocked or water backing up", "Facility"),
+    ("งานระบบบำบัด / Wet scrubber / บ่อน้ำ / Wastewater, wet scrubber or pond work", "Facility"),
+    ("ทาสี / ซ่อมชั้นวาง ตู้ล็อกเกอร์ เฟอร์นิเจอร์ / Painting, shelf, locker or furniture repair", "Facility"),
+    ("งานปรับปรุงอาคาร / ที่จอดรถ / สแลน / Building improvement — parking, shade net", "Facility"),
+    # machine reasons that kept landing in Other
+    ("เครื่องบรรจุ: ซองยับ / ตัดไม่ขาด / ฟิล์มลอก / Packing: pouch wrinkled, not cut, or film peeling", "Mechanical"),
+    ("วาล์วอาหาร / หัวฉีด ค้าง หรือปิดไม่สนิท / Food valve or nozzle sticking or not closing", "Mechanical"),
+    ("รอยเชื่อมแตก / ชิ้นงานหัก — ต้องเชื่อม / Weld cracked or part broken — needs welding", "Mechanical"),
+    ("ผ้าใบ / ยาง / ซีลประตูเครื่อง ขาด / Canvas sleeve, rubber or machine door seal torn", "Mechanical"),
+    ("ขอดัดแปลง / ติดตั้งเพิ่ม (การ์ด แผ่นกั้น จุดเก็บตัวอย่าง) / Modification request (guard, plate, sample point)", "Mechanical"),
+    ("รถเข็น / แฮนด์ลิฟท์ / ตัวลากพ่วง ชำรุด / Trolley, hand-lift or tow hitch broken", "Mechanical"),
+    ("เครื่องยิงวันที่ / Inkjet ไม่พิมพ์ หรือขึ้น Alarm / Date coder not printing or alarming", "Electrical"),
+    ("ปลั๊ก / เต้ารับ ช็อต หรือต้องการเพิ่ม / Socket shorting, or an extra socket needed", "Electrical"),
+    ("รอก / เครน ไม่มี Limit, Emergency หรือเสียงเตือน / Hoist or crane missing limit, E-stop or alarm", "Electrical"),
+    ("Level ถัง (High / Low) โชว์ค้าง หรือไม่โชว์ / Bin level (high/low) stuck or not showing", "Instrument"),
+    ("เครื่องชั่ง: ตัวเลขหาย / แบตเสื่อม / Scale display blank or battery weak", "Instrument"),
+]
+# the air-conditioning symptoms that went in with the utilities, moved to the new team
+AIRCON_NAMES = (
+    "แอร์ไม่เย็น / Air conditioner not cooling",
+    "แอร์มีน้ำหยด / Air conditioner dripping water",
+    "แอร์มีเสียงดัง / สั่น / Air conditioner noisy or vibrating",
+    "รีโมท / แผงควบคุมแอร์ ไม่ทำงาน / Air conditioner remote or control panel not working",
+)
+
+
 # ── Wet food: retort, seamer, filler, can washer ───────────────────────────────
 # BFLFP cans and pouches; none of this equipment exists in the dry plants, so the list
 # would only be noise there.
@@ -959,7 +1034,7 @@ WETFOOD_PLANTS = ("FP", "BFLFP")
 # the entry an operator reaches for only after failing to find a real one, and putting
 # it anywhere else invites it to be picked first. Its 18 uses on the live list are the
 # argument for the whole exercise.
-PCAT_ORDER = ["Mechanical", "Electrical", "Instrument", "Process", "Other"]
+PCAT_ORDER = ["Mechanical", "Electrical", "Instrument", "Process", "Air Condition", "IT", "Facility", "Other"]
 
 
 def regroup_problem_types(c, fac):
@@ -979,6 +1054,34 @@ def regroup_problem_types(c, fac):
         if r["seq"] != i:
             c.execute("UPDATE problem_types SET seq=? WHERE id=?", (i, r["id"]))
     return len(rows)
+
+
+def share_problem_types(c):
+    """b459 — make every plant's problem-type list the same: the union of all names,
+    each with the trade most plants gave it, on wherever it was on anywhere."""
+    import collections
+    ensure_problem_types(c)
+    facs = [r["id"] for r in c.execute("SELECT id FROM factories ORDER BY id")]
+    by = collections.defaultdict(dict)
+    order = {}
+    for r in c.execute("SELECT factory_id,name,category,active,seq FROM problem_types ORDER BY factory_id,seq"):
+        by[r["name"]][r["factory_id"]] = (r["category"] or "Other", r["active"])
+        order.setdefault(r["name"], (r["seq"], r["factory_id"]))
+    added = 0
+    for name, per in by.items():
+        cat = collections.Counter(v[0] for v in per.values()).most_common(1)[0][0]
+        on = 1 if any(v[1] for v in per.values()) else 0
+        for f in facs:
+            if f in per:
+                c.execute("UPDATE problem_types SET category=?, active=? WHERE factory_id=? AND name=?",
+                          (cat, on, f, name))
+            else:
+                c.execute("INSERT INTO problem_types(factory_id,name,category,seq,active) VALUES(?,?,?,?,?)",
+                          (f, name, cat, 10000 + order[name][0], on))
+                added += 1
+    for f in facs:
+        regroup_problem_types(c, f)
+    return added
 
 
 def add_symptoms(c, rows, codes=None):

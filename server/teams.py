@@ -1144,10 +1144,12 @@ async def by_tech_export(req: Request, d_from: str = "", d_to: str = "", open_an
             r += 1
             n += 1
     ws.auto_filter.ref = f"A3:{get_column_letter(len(heads))}{max(r - 1, 3)}"
+    from .xlstamp import stamp, file_name
+    fn = file_name(f"assigned-jobs_{d_from}_to_{d_to}", fac)   # b469
+    stamp(wb, fac, fn, u, "Assigned jobs / งานที่มอบหมาย")
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
-    fn = f"assigned-jobs-{fcode}-{d_from}_{d_to}.xlsx"
     return StreamingResponse(buf, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                              headers={"Content-Disposition": f'attachment; filename="{fn}"'})
 
