@@ -702,7 +702,7 @@ FORM06_DEPT = "แผนกวิศวกรรม"
 FORM06_HEAD = ["เลขที่งาน", "ชื่อเครื่องจักร", "ตั้งแต่เวลา-เวลา", "อาการที่เกิด",
                "การปรับแต่ง/การแก้ไข/แนวทางการปรับปรุง",
                "เคลียร์หลังซ่อม", "ผู้ปรับแต่ง"]
-FORM06_LAYOUT = "v2-jobno"   # bump to re-issue every filed sheet in the new layout
+FORM06_LAYOUT = "v2b-jobno"   # bump to re-issue every filed sheet in the new layout
 FORM06_NOTE = ("หมายเหตุ : เจ้าหน้าที่ซ่อมบำรุงดำเนินการเคลียร์สิ่งแปลกปลอมและความสะอาด"
                "หลังซ่อมเสร็จ ใส่เครื่องหมาย / หลังเคลียร์เรียบร้อย")
 
@@ -847,7 +847,7 @@ def build_maintenance_form(d, path=None, fac=None):
     for _ in range(max(0, FORM06_ROWS - len(jobs))):
         data.append(["", "", "", "", "", "", ""])
 
-    tbl = Table(data, colWidths=[30*mm, 44*mm, 26*mm, 54*mm, 71*mm, 20*mm, 32*mm],
+    tbl = Table(data, colWidths=[30*mm, 44*mm, 26*mm, 54*mm, 67*mm, 24*mm, 32*mm],
                 rowHeights=[12*mm] + [9.4*mm] * (len(data) - 1),
                 repeatRows=1,
                 style=TableStyle([("GRID", (0, 0), (-1, -1), .6, colors.black),

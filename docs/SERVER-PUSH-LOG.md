@@ -28,6 +28,13 @@ the footer.) The service worker carries the matching `bflfp-vNNN` at `/sw.js`.
 
 ## WAITING — not yet on live
 
+### b494 — Daily report F-SP-ENG02-06: job no. column, no cause column, sharp zoomable preview (30 Oct 2026)
+`server/reports.py`, `static/index.html` (b494), `static/sw.js` (v494). **Server file — restart.** Includes b490–b493.
+- Columns now: เลขที่งาน (job no.) · ชื่อเครื่องจักร · ตั้งแต่เวลา-เวลา · อาการที่เกิด · การปรับแต่ง/การแก้ไข · เคลียร์หลังซ่อม · ผู้ปรับแต่ง. Removed สาเหตุปัญหาที่เกิดขึ้น (cause). Text slightly larger.
+- Machine cell never blank: unlisted assets print "ไม่มีในทะเบียน: <typed text>". "Other — described below" symptoms print the description.
+- On start-up the server re-issues EVERY filed daily report in the new layout once (state key form06_layout); shelf rows (who/when) unchanged. Test data: 134 reports re-issued.
+- Preview: pages fill the window, drawn at 2-3x resolution, − / % / + zoom buttons and Ctrl+wheel; re-drawn sharp at each zoom.
+
 ### b493 — Side menu: user badge pinned to the bottom (30 Oct 2026)
 `static/index.html` (b493), `static/sw.js` (v493). No restart. Includes b490–b492.
 - User badge (avatar / name / logout) always sits fully on screen at the bottom of the side menu; the page list scrolls above it. Fixes the cut-off badge on short 14" screens.
