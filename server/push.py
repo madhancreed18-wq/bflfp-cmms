@@ -114,6 +114,6 @@ async def push_test(req: Request):
     u = user_from(req)
     with closing(db()) as c:
         n = c.execute("SELECT COUNT(*) FROM push_subs WHERE user_id=?", (u["id"],)).fetchone()[0]
-    notify_users([u["id"]], "🔔 Test — BFLFP CMMS",
+    notify_users([u["id"]], "🔔 Test — BFL Smart Factory",
                  "Notifications are working. You'll be alerted on new job requests.")
     return {"enabled": PUSH_OK, "devices": n}

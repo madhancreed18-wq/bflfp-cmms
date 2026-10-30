@@ -77,7 +77,7 @@ input.in,select.in{width:100%}
 .ph{max-width:560px;margin:0 auto}
 .scanbig{width:100%;min-height:120px;border:0;border-radius:16px;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font-size:20px;font-weight:700;cursor:pointer}
 .scanbig svg{width:42px;height:42px}
-/* b491 packing checker: USB scanner box + verify card */
+/* b497 packing checker: USB scanner box + verify card */
 .usbw{border:2px dashed #CBD5E1;border-radius:16px;padding:18px;background:#fff;margin:10px 0 14px;text-align:center}
 .usbw.on{border-color:#16A34A;background:#F0FDF4}
 .usbw .st{font-weight:700;font-size:15px;margin-bottom:10px;color:#64748B;display:flex;align-items:center;justify-content:center;gap:8px}
@@ -212,7 +212,7 @@ let ME=null,PAGE='home',CNT={};
 let FN='';
 const FN_PAGES={packing:['slip'],packcheck:['pscan','papproved'],receiver:['recv','myrecv'],issuer:['issue','myissue'],
   checker:['home','queue','hrecv','hrel','stock','card','daily'],
-  admin:['paudit','packing','lists','prod','cust','people','users']};      // admin's setup pages live in the Warehouse function
+  admin:['paudit','packing','lists','prod','cust','people','users','accimp','accarch']};      // admin's setup pages live in the Warehouse function
 const isAdmin=()=>!!(ME&&(ME.fg_roles||[]).includes('admin'));
 function fnPages(){return (FN_PAGES[FN]||[]).concat(FN==='checker'&&isAdmin()?FN_PAGES.admin:[]);}
 const $=s=>document.querySelector(s);
@@ -292,7 +292,9 @@ function pages(){return [
   ['prod',IC.master,L('สินค้า','Products'),'admin','M'],
   ['cust',IC.master,L('ลูกค้า','Customers'),'admin','M'],
   ['people',IC.master,L('ผู้ตรวจสอบ / หัวหน้ากะ','Checkers & leaders'),'admin','M'],
-  ['users',IC.user,L('ผู้ใช้งาน','Users & roles'),'admin','M']].filter(p=>fnPages().includes(p[0])&&(p[3]==='home'||can(p[3])))
+  ['users',IC.user,L('ผู้ใช้งาน','Users & roles'),'admin','M'],
+  ['accimp',IC.master,L('นำเข้า Access','Import Access'),'admin','M'],
+  ['accarch',IC.hist,L('ข้อมูลเก่า Access (ทุกตาราง)','Old Access data (all tables)'),'admin','M']].filter(p=>fnPages().includes(p[0])&&(p[3]==='home'||can(p[3])))
     .sort((a,b)=>fnPages().indexOf(a[0])-fnPages().indexOf(b[0]));}
 function buildNav(){
   let h='',g=false;
@@ -311,7 +313,7 @@ function go(p,keep){
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.id==='nv-'+p||b.id==='nb-'+p));
   stopScan();closeDlg();
   ({home:pgHome,myrecv:pgMyRecv,myissue:pgMyIssue,slip:pgSlip,slips:pgSlips,slipchk:pgSlipChk,pscan:pgPScan,papproved:pgPApproved,paudit:pgPAudit,lists:pgLists,recv:pgRecv,issue:pgIssue,queue:pgQueue,hrecv:()=>pgHist('recv'),hrel:()=>pgHist('issue'),stock:pgStock,card:pgCard,
-    daily:pgDaily,packing:pgPacking,prod:pgProd,cust:pgCust,people:pgPeople,users:pgUsers}[p])();
+    daily:pgDaily,packing:pgPacking,prod:pgProd,cust:pgCust,people:pgPeople,users:pgUsers,accimp:pgAccImp,accarch:pgAccArch}[p])();
   window.scrollTo(0,0);
 }
 function dlg(html){closeDlg();const o=document.createElement('div');o.className='ov';o.id='dlg';o.onclick=e=>{if(e.target===o)closeDlg();};o.innerHTML=`<div class="modal">${html}</div>`;document.body.appendChild(o);}
@@ -863,7 +865,7 @@ function myRecvDlg(id){
    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin:14px 0">
     ${kv('จำนวน','Qty',`${n0(r.qty)} ${esc(r.unit||'')}`)}${kv('น้ำหนักรวม','Total weight',n0(r.total_kg)+' kg')}
     ${kv('วันผลิต','MFG',fmtD(r.mfg))}${kv('หมดอายุ','EXP',fmtD(r.exp))}
-    ${kv('เครื่อง / ไลน์','Machine / line',esc((r.pack_machine||'-')+' · '+(r.pd_line||'-')))}${kv('เอกสาร','Doc no.',esc(r.doc_no||'-'))}</div>
+    ${kv('เครื่อง / ไลน์','Machine / line',esc((r.pack_machine||'-')+' · '+(r.pd_line||'-')))}${kv('เอกสาร','Doc no.',esc(ME.slip_form_code||r.doc_no||'-'))}</div>
    <h2 style="font-size:15px">${L('เช็คลิสต์ที่ฉันตรวจ','My checklist')}</h2>
    ${(r.checklist||[]).map(c=>`<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-top:1px solid var(--soft)"><span class="pill ${c.v==='ok'?'p-confirmed':'p-rejected'}" style="min-width:36px;text-align:center">${esc((c.v||'-').toUpperCase())}</span>
      <div style="flex:1"><div style="font-size:12px;color:var(--ink2)">${esc(TH()?c.th+' · '+c.en:c.en+' · '+c.th)}</div><div>${esc(c.value)}</div>${c.note?`<div style="color:var(--bad)">${esc(c.note)}</div>`:''}</div></div>`).join('')}
@@ -1086,11 +1088,51 @@ let CARD={p:'',l:''},CARDD=null;
 function cA4(){if(!CARDD)return;
   printA4('สต็อกการ์ด / Stock card',`${CARD.p} ${CARDD.product.name||''}${CARD.l?' · lot '+CARD.l:''}`,['Date','Lot','Movement','By / customer','In','Out','Balance'],
    CARDD.rows.map(e=>[fmtD(e.d)+' '+(e.t||''),e.lot_no,e.info||'',e.who||'',e.kind==='in'?n0(e.qty):'',e.kind==='out'?n0(e.qty):'',n0(e.balance)]),'',[4,5,6]);}
+/* b498: STOCK CARD สินค้าสำเร็จรูป — the FG team's own form (rpt_StockCard), A4 portrait.
+   One card per lot: brought forward (ยกมา), in (รับเข้า), out (จ่ายออก), balance (คงเหลือ),
+   remark (หมายเหตุ), Thai Buddhist-year dates, two signature lines. With no lot typed,
+   every lot of the product prints on its own page. */
+function thDate(s){s=String(s||'').slice(0,10);const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s);return m?`${+m[3]}/${+m[2]}/${+m[1]+543}`:s;}
+function cCardPrint(){
+  if(!CARDD||!CARDD.rows.length)return alert(L('ยังไม่มีรายการ — กด แสดง ก่อน','Nothing to print — press Show first'));
+  const p=CARDD.product||{},lots={};
+  CARDD.rows.forEach(e=>{const k=e.lot_no||'-';(lots[k]=lots[k]||[]).push(e);});
+  const keys=Object.keys(lots).sort();
+  const page=(lot,rows)=>{let bal=0;
+    const tr=rows.map(e=>{const bf=bal,qi=e.kind==='in'?+e.qty||0:0,qo=e.kind==='out'?+e.qty||0:0;bal=bf+qi-qo;
+      const rm=e.kind==='in'?('FG - '+(e.info&&e.info!=='-'?e.info:'')).trim():(e.info||'').replace(/^.*·\s*/,'')||'';
+      return `<tr><td>${esc(thDate(e.d))}</td><td>${n0(bf)}</td><td>${n0(qi)}</td><td>${n0(qo)}</td><td>${n0(bal)}</td><td>${esc(rm)}${e.status==='waiting'?' (รอยืนยัน)':''}</td></tr>`;}).join('');
+    return `<section class="pg"><div class="hd"><img src="/logo.png?v=2" alt=""><h1>STOCK CARD สินค้าสำเร็จรูป</h1></div>
+      <div class="mt"><div><span>รหัสสินค้าสำเร็จรูป :</span> <b>${esc(CARD.p)}</b></div><div><span>ชื่อสินค้าสำเร็จรูป :</span> <b>${esc(p.name||'')}</b></div></div>
+      <div class="mt"><div><span>Lot No. :</span> <b>${esc(lot)}</b></div></div>
+      <div class="mt"><div style="flex:1;display:flex"><span>รายละเอียด :</span><i class="ln">${esc([p.packaging,p.weight?n0(p.weight)+' kg':''].filter(Boolean).join(' · '))}</i></div></div>
+      <table><thead><tr><th style="width:15%">วันที่</th><th style="width:12%">ยกมา</th><th style="width:12%">รับเข้า</th><th style="width:12%">จ่ายออก</th><th style="width:12%">คงเหลือ</th><th>หมายเหตุ</th></tr></thead><tbody>${tr}</tbody></table>
+      <div class="ft"><div><div class="dot"></div>(&nbsp;${' '.repeat(1)}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)<br><b>พนักงานหน่วยสินค้าสำเร็จรูป</b></div>
+        <div><div class="dot"></div>(&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)<br><b>หัวหน้าหน่วยสินค้าสำเร็จรูป</b></div></div>
+      <div class="pr">FG ${esc(ME.factory_code||'')} · ${L('พิมพ์โดย','printed by')} ${esc(ME.name||'')} ${esc(thDate(today()))}</div></section>`;};
+  const w=window.open('','_blank');if(!w){alert(L('อนุญาต pop-up เพื่อพิมพ์','Allow pop-ups to print'));return;}
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Stock card ${esc(CARD.p)}</title>
+   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+   <style>@page{size:A4 portrait;margin:12mm 12mm 14mm}*{box-sizing:border-box}
+   body{font-family:"Sarabun",Tahoma,sans-serif;font-size:11pt;color:#000;margin:0}
+   .pg{position:relative;min-height:268mm;page-break-after:always;padding-bottom:40mm}.pg:last-child{page-break-after:auto}
+   .hd{display:flex;align-items:center;gap:18mm;margin-bottom:4mm}.hd img{height:24mm}.hd h1{font-size:18pt;margin:0;font-weight:700}
+   .mt{display:flex;gap:16mm;margin:3mm 0 0 6mm;font-size:11pt}.mt span{font-weight:700}.mt b{font-weight:700}
+   .ln{flex:1;border-bottom:.2mm solid #999;margin-left:3mm;font-style:normal;min-height:5mm}
+   table{border-collapse:collapse;width:100%;margin-top:8mm}th,td{border:.2mm solid #bbb;padding:1.5mm 2mm;text-align:center;font-weight:700}
+   th{font-weight:700}thead{display:table-header-group}tr{page-break-inside:avoid}
+   .ft{position:absolute;left:0;right:0;bottom:6mm;border-top:.5mm solid #000;padding-top:8mm;display:flex;justify-content:space-between;font-size:10pt;text-align:center}
+   .ft>div{width:45%}.dot{border-bottom:.3mm dotted #999;margin:0 12mm 2mm;height:4mm}
+   .pr{position:absolute;right:0;bottom:0;font-size:7.5pt;color:#888}</style></head><body>
+   ${keys.map(k=>page(k,lots[k])).join('')}
+   <script>window.onload=function(){setTimeout(function(){window.print()},500)}<\/script></body></html>`);
+  w.document.close();
+}
 async function pgCard(){
   $('#app').innerHTML=`<h1>${L('สต็อกการ์ด','Stock card')}</h1><p class="sub">${L('ความเคลื่อนไหวรับ-จ่ายตามวันที่ พร้อมยอดคงเหลือ','in / out movements by date with running balance')}</p>
    <div class="bar"><label class="f">${L('รหัสสินค้า','Product code')}<input class="in" id="cp" value="${esc(CARD.p)}" placeholder="${L('พิมพ์รหัสหรือชื่อ','type code or name')}" style="min-width:240px" onkeydown="if(event.key==='Enter')cLoad()"></label>
     <label class="f">${L('ล็อต (ไม่บังคับ)','Lot (optional)')}<input class="in" id="cl" value="${esc(CARD.l)}" placeholder="${L('พิมพ์เลขล็อต','type a lot')}" onkeydown="if(event.key==='Enter')cLoad()"></label>
-    <button class="btn pri" onclick="cLoad()">${L('แสดง','Show')}</button><button class="btn" onclick="cA4()">${L('พิมพ์ A4','Print A4')}</button></div><div id="cBody"></div>`;
+    <button class="btn pri" onclick="cLoad()">${L('แสดง','Show')}</button><button class="btn pri" onclick="cCardPrint()">🖨 ${L('พิมพ์สต็อกการ์ด (Stock card)','Print stock card')}</button><button class="btn" onclick="cA4()">${L('พิมพ์ตาราง A4','Print table A4')}</button></div><div id="cBody"></div>`;
   ta($('#cp'),taSrv('product'),()=>{$('#cl').value='';cLoad();});ta($('#cl'),taSrv('lot',()=>$('#cp').value.trim()),()=>cLoad(),0);
   if(CARD.p)cLoad();
 }
@@ -1174,7 +1216,7 @@ function slipForm(v,pre){
   pre=pre||'sf';v=v||{};
   const sel=(id,opts,val)=>`<select class="in" id="${pre}${id}"><option value="">—</option>${opts.map(o=>`<option ${o===val?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
   return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
-   <label class="f">${L('เลขที่เอกสาร','Document No.')}<input class="in" id="${pre}Doc" value="${esc(v.doc_no||'')}"></label>
+   <label class="f">${L('เลขที่เอกสาร','Document No.')}<input class="in" id="${pre}Doc" value="${esc(ME.slip_form_code||'')}" readonly tabindex="-1" style="background:#F1F5F9;color:#334155;font-weight:600" title="${L('เลขเอกสารจากฝ่ายควบคุมเอกสาร (แก้ไม่ได้)','Fixed number from Document Control')}"></label>
    <label class="f">${L('เครื่องแพค','Packing machine')} *${sel('Mc',LISTS.machine,v.pack_machine)}</label>
    <label class="f">${L('ไลน์ผลิต','Production line')} *${sel('Ln',LISTS.line,v.pd_line)}</label>
    <label class="f">${L('ประเภทแพค','Pack type')}${sel('Pt',LISTS.pack_types,v.pack_type||LISTS.pack_types[0])}</label>
@@ -1318,7 +1360,7 @@ async function pgSlip(){
      <div class="pg5">
       ${fld(L('ไลน์ผลิต','PD line')+' *',sel('Ln',LISTS.line,v.pd_line))}
       ${fld(L('เครื่องแพค','Packing M/C')+' *',sel('Mc',LISTS.machine,v.pack_machine))}
-      ${fld(L('เลขที่เอกสาร','Document no.'),`<input class="in" id="sfDoc" value="${esc(v.doc_no||'')}" placeholder="${L('ใส่เลขเอกสาร','Enter document')}">`)}</div>
+      ${fld(L('เลขที่เอกสาร','Document no.'),`<input class="in" id="sfDoc" value="${esc(ME.slip_form_code||'')}" readonly tabindex="-1" style="background:#F1F5F9;color:#334155;font-weight:600" title="${L('เลขเอกสารจากฝ่ายควบคุมเอกสาร (แก้ไม่ได้)','Fixed number from Document Control')}">`)}</div>
      <div class="pgb"><div><div class="pgr">
       <div class="pf"><span>${L('วันผลิต','MFG date')} *</span><input class="in" type="date" id="sfMfg" value="${esc(v.mfg||'')}" onchange="slipExp('sf');pkExpChip();pkLive()">
        <div class="pkx">${[[12,L('1 ปี','1 yr')],[18,L('1.5 ปี','1.5 yr')],[24,L('2 ปี','2 yr')]].map(([m,t])=>`<button type="button" data-m="${m}" title="${L('อายุสินค้า','Shelf life')}" onclick="pkExpM(${m})">${t}</button>`).join('')}</div></div>
@@ -1364,7 +1406,7 @@ function pkExpM(m){const mf=$('#sfMfg').value;if(!mf){alert(L('ใส่วั�
   const d=new Date(mf+'T00:00:00');d.setMonth(d.getMonth()+m);$('#sfExp').value=ymd(d);pkExpChip();pkLive();}
 function pkExpChip(){const mf=$('#sfMfg').value,ex=$('#sfExp').value;
   document.querySelectorAll('.pkx button').forEach(b=>{let on=false;if(mf&&ex){const d=new Date(mf+'T00:00:00');d.setMonth(d.getMonth()+(+b.dataset.m));on=ymd(d)===ex;}b.classList.toggle('on',on);});}
-function pkClear(){['sfDoc','sfPc','sfPn','sfLot','sfBg','sfBw','sfTw','sfMfg','sfExp'].forEach(i=>{const e=$('#'+i);if(e)e.value='';});pkName();pkExpChip();pkLive();}
+function pkClear(){['sfPc','sfPn','sfLot','sfBg','sfBw','sfTw','sfMfg','sfExp'].forEach(i=>{const e=$('#'+i);if(e)e.value='';});pkName();pkExpChip();pkLive();}
 /* preview card: the next slip (live, exactly what its QR will hold) or a saved slip (‹ › browse the register) */
 const PKKV=(k,v)=>`<div class="kv"><span>${k}</span><b>${v}</b></div>`;
 function pkPvDraw(){
@@ -1490,7 +1532,7 @@ async function qrSvgStr(text){
   return `<svg viewBox="0 0 ${n+2*m} ${n+2*m}" shape-rendering="crispEdges" style="width:100%;height:100%;display:block"><rect width="100%" height="100%" fill="#fff"/><path d="${p}" fill="#000"/></svg>`;
 }
 const A6CSS=`@page{size:148mm 105mm;margin:0}*{box-sizing:border-box}body{margin:0;font-family:"Sarabun",Tahoma,sans-serif;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.a6{width:148mm;height:105mm;padding:4mm 5mm;display:flex;flex-direction:column;gap:2mm;page-break-after:always;overflow:hidden;background:#fff}
+.a6{position:relative;width:148mm;height:105mm;padding:4mm 5mm;display:flex;flex-direction:column;gap:2mm;page-break-after:always;overflow:hidden;background:#fff}
 .a6:last-child{page-break-after:auto}
 .a6 .hd{display:flex;align-items:stretch;gap:3mm;border-bottom:.6mm solid #000;padding-bottom:1.5mm}
 .a6 .tt{flex:1}.a6 .tt b{font-size:15pt;display:block;line-height:1.1}.a6 .tt span{font-size:8pt}
@@ -1505,7 +1547,7 @@ const A6CSS=`@page{size:148mm 105mm;margin:0}*{box-sizing:border-box}body{margin
 async function slipHtml(s,copy){
   const q=await qrSvgStr(s.qr);
   const dt=s.packed_at||'',row=(th,en,v,cls)=>`<tr><td class="l">${th}<br>${en}</td><td class="v ${cls||''}">${v}</td></tr>`;
-  return `<div class="a6"><div class="hd"><div class="tt"><b>ใบพาเลท · PALLET SLIP</b><span>${copy>1?`<b style="border:1.5px solid #000;padding:0 4px;margin-right:4px">REPRINT · COPY ${copy}</b>`:''}FG ${esc(ME.factory_code)} · ${esc(s.pack_type||'')} · Doc ${esc(s.doc_no||'-')} · ${fmtD(dt.slice(0,10))} ${esc(dt.slice(11,16))}</span></div>
+  return `<div class="a6"><div class="hd"><div class="tt"><b>ใบพาเลท · PALLET SLIP</b><span>${copy>1?`<b style="border:1.5px solid #000;padding:0 4px;margin-right:4px">REPRINT · COPY ${copy}</b>`:''}FG ${esc(ME.factory_code)} · ${esc(s.pack_type||'')} · ${fmtD(dt.slice(0,10))} ${esc(dt.slice(11,16))}</span></div>
     <div class="no"><small>Pallet / Slip No.</small><b>${esc(s.pallet_no)}</b></div></div>
    <div class="bd"><div style="flex:1;min-width:0"><table>
     ${row('เบอร์อาหาร','Formula code',esc(s.product_code))}
@@ -1518,9 +1560,10 @@ async function slipHtml(s,copy){
     ${row('ผู้แพค','Staff name',esc(s.staff_name||s.operator||'-'))}
    </table></div>
    <div class="qr"><div class="q">${q}</div><div class="c">${esc(s.lot_no)} · #${esc(s.pallet_no)}</div><div class="s">${esc(s.product_code)} · ID ${s.id}</div></div></div>
-   <div class="ft"><div>Checker แพคกิ้ง / Packing checker</div><div>ผู้รับ FG / FG receiver</div></div></div>`;
+   <div class="ft"><div>Checker แพคกิ้ง / Packing checker</div><div>ผู้รับ FG / FG receiver</div></div>
+   <div style="position:absolute;right:3mm;bottom:1mm;font-size:7.5pt;color:#000">${esc(ME.slip_form_code||'')}</div></div>`;
 }
-/* b491 — every print goes through a confirm step. A slip that was printed before is a REPRINT:
+/* b497 — every print goes through a confirm step. A slip that was printed before is a REPRINT:
    red warning (printed N× · last by · when), a reason is required, and the copy is marked on the slip. */
 let PRQ=null;
 const PRWHY=()=>[['jam',L('กระดาษติด / พิมพ์ไม่ออก','Printer jam / bad print')],['damaged',L('ใบพาเลทชำรุด / เปื้อน','Slip damaged / dirty')],
@@ -1650,7 +1693,7 @@ async function pcAct(action){
   try{await post('/api/fg/slips-check',{ids,action,note});}catch(e){alert(e.message);return;}pcLoad();
 }
 
-/* ════════ b491 Packing checker: scan the printed slip → verify → approve. PC = USB scanner, phone = camera ════════ */
+/* ════════ b497 Packing checker: scan the printed slip → verify → approve. PC = USB scanner, phone = camera ════════ */
 let PSMODE=(()=>{try{const v=localStorage.getItem('fg_scan_mode');if(v)return v;}catch(e){}return matchMedia('(pointer:fine)').matches?'usb':'camera';})();
 let PS=null,PSLAST='';
 function pgPScan(){
@@ -1854,6 +1897,68 @@ async function pgPeople(){
 async function peSet(kind,name,active){if(!(name||'').trim())return;try{await post('/api/fg/people',{kind,name,active:!!active});pgPeople();}catch(e){alert(e.message);}}
 
 /* ════════ Users ════════ */
+/* ════════ b499: Import Access database (admin, while the FG team is still on Access) ════════ */
+async function pgAccImp(){
+  $('#app').innerHTML=`<h1>${L('นำเข้าฐานข้อมูล Access','Import Access database')}</h1>
+   <p class="sub">${L('อัปโหลดไฟล์ Access ของทีม FG เพื่อดึงข้อมูลใหม่เข้าระบบ — เพิ่มเฉพาะรายการที่ยังไม่มี (ตาม Access ID) ไม่ลบหรือแก้ของเดิม',
+     'Upload the FG team\'s Access file to pull new rows in — only rows with new Access IDs are added; nothing existing is changed or deleted')}</p>
+   <div class="card" style="max-width:760px">
+    <ol style="margin:0 0 12px 18px;padding:0;line-height:1.8">
+     <li>${L('เลือกไฟล์ Stock_FinishedGoods New.accdb (หรือ .mdb)','Choose Stock_FinishedGoods New.accdb (or .mdb)')}</li>
+     <li>${L('หรือไฟล์ .zip ที่มีตาราง Access ส่งออกเป็น CSV (tbl_Product.csv, tbl_Receive_Product.csv …)','or a .zip of the Access tables exported as CSV (tbl_Product.csv, tbl_Receive_Product.csv …)')}</li>
+     <li>${L('กด อัปโหลดและนำเข้า — ใช้เวลาประมาณ 1 นาที','Press Upload & import — takes about a minute')}</li></ol>
+    <div class="bar" style="align-items:center">
+     <input type="file" id="accF" accept=".accdb,.mdb,.zip" class="in" style="flex:1;min-width:260px">
+     <button class="btn pri" id="accB" onclick="accUpload()">⬆ ${L('อัปโหลดและนำเข้า','Upload & import')}</button></div>
+    <div class="muted" style="font-size:12.5px;margin-top:8px">${L('ไฟล์ .accdb ต้องการ Microsoft Access Database Engine บนเครื่องเซิร์ฟเวอร์ ถ้าอ่านไม่ได้ให้ใช้ .zip ของ CSV แทน',
+      'An .accdb needs the Microsoft Access Database Engine on the server PC; if it cannot be read, upload a .zip of CSV exports instead')}</div>
+    <div id="accR" style="margin-top:12px"></div></div>`;
+}
+async function accUpload(){
+  const f=$('#accF').files&&$('#accF').files[0],R=$('#accR'),b=$('#accB');
+  if(!f)return alert(L('เลือกไฟล์ก่อน','Choose a file first'));
+  if(!confirm(L(`นำเข้า “${f.name}” เข้าโรงงาน ${ME.factory_code||''}?`,`Import “${f.name}” into plant ${ME.factory_code||''}?`)))return;
+  b.disabled=true;b.textContent=L('กำลังนำเข้า…','Importing…');
+  R.innerHTML=`<div class="msg">${L('กำลังอัปโหลด','Uploading')} ${(f.size/1048576).toFixed(1)} MB …</div>`;
+  try{
+    const r=await fetch('/api/fg/import-accdb?name='+encodeURIComponent(f.name),{method:'POST',body:await f.arrayBuffer(),
+      headers:{'Content-Type':'application/octet-stream'},credentials:'same-origin'});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error((d.detail&&d.detail.msg)||d.detail||('HTTP '+r.status));
+    R.innerHTML=`<div class="msg m-ok"><b>${L('นำเข้าแล้ว','Imported')}</b><br>${L('เพิ่ม','Added')}: ${Object.entries(d.added||{}).map(([k,v])=>esc(k)+' +'+n0(v)).join(' · ')}
+      <br><span class="muted">${L('อ่านจากไฟล์','Read from file')}: ${Object.entries(d.read||{}).map(([k,v])=>esc(k)+' '+n0(v)).join(' · ')}</span></div>`;
+  }catch(e){R.innerHTML=`<div class="msg m-bad">${esc(e.message||e)}</div>`;}
+  b.disabled=false;b.textContent='⬆ '+L('อัปโหลดและนำเข้า','Upload & import');
+}
+/* ════════ b502: the whole old Access database — every table, every column, newest first ════════ */
+let ARC={tbl:'',q:'',page:1},ARCD=null;
+async function pgAccArch(){
+  let d;try{d=await api('/api/fg/access-archive');}catch(e){$('#app').innerHTML=err(e);return;}
+  if(!ARC.tbl||!d.tables.some(t=>t.tbl===ARC.tbl))ARC.tbl=(d.tables.find(t=>t.tbl==='tbl_Receive_Product')||d.tables[0]||{}).tbl||'';
+  $('#app').innerHTML=`<h1>${L('ข้อมูลเก่าจาก Access','Old Access data')}</h1>
+   <p class="sub">${L('ทุกตารางและทุกคอลัมน์จากไฟล์ Access ที่นำเข้า — เก็บไว้ครบ ไม่มีอะไรหาย (ใหม่สุดอยู่บน)','every table and every column from the imported Access file — kept in full, nothing lost (newest on top)')}</p>
+   ${d.tables.length?`<div class="card" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+    <label class="f">${L('ตาราง','Table')}<select class="in" id="arT" onchange="ARC.tbl=this.value;ARC.page=1;arLoad()">${d.tables.map(t=>`<option value="${esc(t.tbl)}" ${t.tbl===ARC.tbl?'selected':''}>${esc(t.tbl)} · ${n0(t.n)}</option>`).join('')}</select></label>
+    <label class="f" style="flex:1;min-width:180px">${L('ค้นหา (ทุกคอลัมน์)','Search (any column)')}<input class="in" id="arQ" value="${esc(ARC.q)}" onkeydown="if(event.key==='Enter'){ARC.q=this.value.trim();ARC.page=1;arLoad()}"></label>
+    <button class="btn pri" onclick="ARC.q=$('#arQ').value.trim();ARC.page=1;arLoad()">${L('ค้นหา','Search')}</button>
+    <button class="btn" onclick="arCsv()">CSV ${L('ทั้งตาราง','whole table')}</button></div><div id="arB"></div>`
+   :`<div class="msg m-warn">${L('ยังไม่มีข้อมูล — นำเข้าไฟล์ Access ก่อน (นำเข้า Access)','Nothing yet — import the Access file first (Import Access)')}</div>`}`;
+  if(d.tables.length)arLoad();
+}
+async function arLoad(){
+  const B=$('#arB');B.innerHTML=LOADH;
+  try{ARCD=await api(`/api/fg/access-archive/rows?tbl=${encodeURIComponent(ARC.tbl)}&q=${encodeURIComponent(ARC.q)}&page=${ARC.page}&size=200`);}catch(e){B.innerHTML=err(e);return;}
+  const d=ARCD,pages=Math.max(1,Math.ceil(d.total/d.size));
+  B.innerHTML=`<div class="muted" style="margin:8px 2px">${n0(d.total)} ${L('แถว','rows')} · ${L('หน้า','page')} ${d.page}/${pages}</div>
+   <div class="tw" style="max-height:calc(100vh - 330px);overflow:auto"><table><thead><tr>${d.cols.map(c=>`<th class="nw">${esc(c)}</th>`).join('')}</tr></thead><tbody>
+   ${d.rows.map(r=>`<tr>${d.cols.map(c=>`<td class="nw">${esc(r[c]==null?'':r[c])}</td>`).join('')}</tr>`).join('')||`<tr><td class="muted" style="padding:20px">${L('ไม่มีรายการ','Nothing here')}</td></tr>`}</tbody></table></div>
+   <div class="btns" style="margin-top:8px"><button class="btn sm" ${d.page<=1?'disabled':''} onclick="ARC.page--;arLoad()">‹ ${L('ใหม่กว่า','Newer')}</button>
+    <button class="btn sm" ${d.page>=pages?'disabled':''} onclick="ARC.page++;arLoad()">${L('เก่ากว่า','Older')} ›</button></div>`;
+}
+async function arCsv(){
+  let d;try{d=await api(`/api/fg/access-archive/rows?tbl=${encodeURIComponent(ARC.tbl)}&q=${encodeURIComponent(ARC.q)}&all=1`);}catch(e){alert(e.message);return;}
+  csv(`${ARC.tbl}.csv`,d.cols,d.rows.map(r=>d.cols.map(c=>r[c])));
+}
 async function pgUsers(){
   let d;try{d=await api('/api/fg/users');}catch(e){$('#app').innerHTML=err(e);return;}
   const rl=r=>r?L(ROLE[r][0],ROLE[r][1]):'—';

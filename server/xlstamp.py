@@ -91,7 +91,7 @@ def stamp(wb, fac_id, fname, user=None, title=""):
             ws.auto_filter.ref = _shift(filt, n)
         band = PatternFill("solid", fgColor="EEF4FB")
         lines = [
-            (f"BFL Group CMMS  ·  {title or ws.title}", True),
+            (f"BFL Smart Factory  ·  {title or ws.title}", True),
             (f"โรงงาน / Plant:  {code}  —  {pname}", True),
             (f"วันที่ดาวน์โหลด / Downloaded:  {stamp_txt}" + (f"   ·   โดย / by: {who}" if who else ""), False),
             (f"ชื่อไฟล์ / File:  {fname}", False),
@@ -113,7 +113,7 @@ def stamp(wb, fac_id, fname, user=None, title=""):
     p = wb.properties
     p.title = title or fname
     p.subject = f"Plant {code}"
-    p.creator = "BFL Group CMMS" + (f" · {who}" if who else "")
+    p.creator = "BFL Smart Factory" + (f" · {who}" if who else "")
     p.keywords = f"{code}; {stamp_txt}; {fname}"
     p.created = when
     return wb

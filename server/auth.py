@@ -136,7 +136,7 @@ async def login(req: Request):
                          "all_plants": all_plants(r),
                          "can_report": bool(sess.get("can_report")) and r["role"] == "technician",
                          "team": sess.get("team") or "",
-                         "wms_role": _wms_role(sess), **_fg_flags(sess)})
+                         "wms_role": _wms_role(sess), **_fg_flags(sess), **_master_flags(sess)})
     max_age = 86400 * 30 if b.get("remember") else 86400   # remember me = 30 days
     resp.set_cookie("bflfp", tok, httponly=True, max_age=max_age)
     return resp
@@ -206,7 +206,16 @@ async def me(req: Request):
             "all_plants": all_plants(u),
             "can_report": bool(u.get("can_report")) and u.get("role") == "technician",
             "team": u.get("team") or "",
-            "wms_role": _wms_role(u), **_fg_flags(u)}
+            "wms_role": _wms_role(u), **_fg_flags(u), **_master_flags(u)}
+
+
+def _master_flags(u):
+    """b495: Production → Master Data — who sees the menu, who may change the list."""
+    try:
+        from . import master
+        return {"master_see": master.can_see(u), "master_edit": master.can_edit(u)}
+    except Exception:
+        return {"master_see": False, "master_edit": False}
 
 
 def _fg_flags(u):

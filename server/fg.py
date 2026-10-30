@@ -55,7 +55,7 @@ FG_ROLES = ("admin", "packing", "packcheck", "receiver", "issuer", "checker")
 CAN = {
     "admin": {"view", "pack", "packcheck", "receive", "issue", "check", "admin"},
     "packing": {"view", "pack"},                 # packing room: make + print the A6 QR slip
-    "packcheck": {"view", "packcheck"},          # b491 packing-room checker: scan slip QR -> verify -> approve / reject
+    "packcheck": {"view", "packcheck"},          # b497 packing-room checker: scan slip QR -> verify -> approve / reject
     "checker": {"view", "check"},
     "receiver": {"view", "receive"},
     "issuer": {"view", "issue"},
@@ -172,7 +172,12 @@ def ensure(c):
     c.execute("""CREATE TABLE IF NOT EXISTS fg_log(
         id INTEGER PRIMARY KEY AUTOINCREMENT, factory_id INTEGER, kind TEXT, ref_id INTEGER,
         action TEXT, note TEXT DEFAULT '', user_name TEXT DEFAULT '', created_at TEXT DEFAULT '')""")
-    # b491: every pallet-slip print, one row per slip per print, by user (reprint audit)
+    # b502: the whole old Access database, every table and every column, row by row as JSON
+    c.execute("""CREATE TABLE IF NOT EXISTS fg_access_raw(
+        id INTEGER PRIMARY KEY AUTOINCREMENT, factory_id INTEGER, tbl TEXT, row_key TEXT, sort_key TEXT DEFAULT '',
+        data TEXT DEFAULT '', imported_at TEXT DEFAULT '', UNIQUE(factory_id, tbl, row_key))""")
+    c.execute("CREATE INDEX IF NOT EXISTS ix_fg_raw_t ON fg_access_raw(factory_id, tbl, sort_key)")
+    # b497: every pallet-slip print, one row per slip per print, by user (reprint audit)
     c.execute("""CREATE TABLE IF NOT EXISTS fg_print_log(
         id INTEGER PRIMARY KEY AUTOINCREMENT, factory_id INTEGER, packing_id INTEGER, copy_no INTEGER DEFAULT 1,
         reprint INTEGER DEFAULT 0, reason TEXT DEFAULT '', user_id INTEGER DEFAULT 0, user_name TEXT DEFAULT '',
@@ -192,6 +197,14 @@ def ensure(c):
         c.execute("UPDATE users SET fg_roles=COALESCE(fg_role,'') WHERE COALESCE(fg_role,'')<>''")
     if "fg_default" not in cols:
         c.execute("ALTER TABLE users ADD COLUMN fg_default TEXT DEFAULT ''")
+    # b503: slips made from the Access history were stored with no QR text, so their QR was a
+    # code of nothing — it scanned as blank. Give every such slip the same QR a new slip carries.
+    try:
+        for r in c.execute("SELECT * FROM fg_packing WHERE COALESCE(raw_qr,'')='' AND COALESCE(lot_no,'')<>''"
+                           " AND COALESCE(pallet_no,'')<>''").fetchall():
+            c.execute("UPDATE fg_packing SET raw_qr=? WHERE id=?", (slip_qr(dict(r)), r["id"]))
+    except Exception:
+        pass
 
 
 _READY = False
@@ -538,7 +551,7 @@ async def me(req: Request):
     rs = roles_of(u)
     return {"id": u["id"], "name": _who(u), "username": u.get("username", ""), "fg_role": fr,
             "fg_roles": rs, "fg_default": fg_default(u), "cmms_role": u.get("role"),
-            "can": sorted(can_set(rs)), "role_can": {r: sorted(CAN.get(r, set())) for r in FG_ROLES}, "factory_id": fac,
+            "slip_form_code": _slip_form_code(), "can": sorted(can_set(rs)), "role_can": {r: sorted(CAN.get(r, set())) for r in FG_ROLES}, "factory_id": fac,
             "factory_code": f["code"] if f else "", "factory_name": f["name"] if f else "",
             "fg_only": fg_only(u), "checkers": checkers, "release_types": RELEASE_TYPES}
 
@@ -974,7 +987,7 @@ async def queue(req: Request, kind: str = "recv"):
     with closing(conn()) as c:
         prods = _prods(c, fac)
         if kind == "issue":
-            rows = c.execute("SELECT * FROM fg_release WHERE factory_id=? AND status='waiting' ORDER BY id", (fac,)).fetchall()
+            rows = c.execute("SELECT * FROM fg_release WHERE factory_id=? AND status='waiting' ORDER BY id DESC", (fac,)).fetchall()
             cust = {r["code"]: r["name"] for r in c.execute("SELECT code,name FROM fg_customers WHERE factory_id=?", (fac,))}
             out = []
             for r in rows:
@@ -984,7 +997,7 @@ async def queue(req: Request, kind: str = "recv"):
                 out.append(d)
         else:
             out = [_recv_row(r, prods) for r in c.execute(
-                "SELECT * FROM fg_receive WHERE factory_id=? AND status='waiting' ORDER BY id", (fac,))]
+                "SELECT * FROM fg_receive WHERE factory_id=? AND status='waiting' ORDER BY id DESC", (fac,))]
     return {"rows": out}
 
 
@@ -1071,7 +1084,7 @@ async def stock(req: Request, q: str = "", all: int = 0):
                          "issued": b["sq"] or 0, "balance": bal, "kg": bal * _num(p.get("weight")),
                          "type": types.get(p.get("type_id"), p.get("type_id", "")), "group": group_of(p.get("owner")),
                          "mfg": mfg, "age_days": (datetime.date.today() - datetime.date.fromisoformat(mfg)).days if mfg else None})
-    rows.sort(key=lambda r: (r["product_id"], r["mfg"] or r["lot_no"] or ""))
+    rows.sort(key=lambda r: (r["mfg"] or r["lot_no"] or "", r["product_id"]), reverse=True)   # b502: newest lot on top
     return {"rows": rows}
 
 
@@ -1130,7 +1143,7 @@ async def log(req: Request, kind: str, ref: int):
     u, fac, _ = ctx(req, "view")
     with closing(conn()) as c:
         return {"rows": [dict(r) for r in c.execute(
-            "SELECT action,note,user_name,created_at FROM fg_log WHERE factory_id=? AND kind=? AND ref_id=? ORDER BY id",
+            "SELECT action,note,user_name,created_at FROM fg_log WHERE factory_id=? AND kind=? AND ref_id=? ORDER BY id DESC",
             (fac, kind, ref))]}
 
 
@@ -1215,6 +1228,11 @@ def _next_slip(c, fac, product, lot):
     return m + 1
 
 
+def _slip_form_code():
+    from .config import SLIP_FORM_CODE
+    return SLIP_FORM_CODE
+
+
 def _slip_fields(c, fac, b):
     code = (b.get("product_code") or "").strip()
     lot = (b.get("lot_no") or "").strip().upper()
@@ -1243,7 +1261,7 @@ def _slip_fields(c, fac, b):
     pt = b.get("pack_type") or PACK_TYPES[0]
     return {"product_code": code, "product_name": p["name"], "packaging": p.get("packaging", ""), "lot_no": lot,
             "qty": bags, "unit": "กระสอบ", "weight_unit": wu, "bag_weight": bw, "total_weight": wu * bags,
-            "mfg": mfg, "exp": exp, "doc_no": (b.get("doc_no") or "").strip()[:60],
+            "mfg": mfg, "exp": exp, "doc_no": _slip_form_code(),   # b503: fixed Document Control number, not typed
             "pack_machine": (b.get("pack_machine") or "").strip()[:60], "pd_line": (b.get("pd_line") or "").strip()[:60],
             "pack_type": pt if pt in PACK_TYPES else PACK_TYPES[0], "staff_name": (b.get("staff_name") or "").strip()[:60]}
 
@@ -1372,6 +1390,9 @@ def access_to_slips(c, fac, who):
              "Access receive #" + str(r.get("access_id") or r["id"]), who))
         c.execute("UPDATE fg_receive SET pkey=?, pallet_no=?, packing_id=?, mfg=CASE WHEN mfg='' THEN ? ELSE mfg END, exp=CASE WHEN exp='' THEN ? ELSE exp END WHERE id=?",
                   (pkey, str(pal), pid, mfg, exp, r["id"]))
+        _pk = c.execute("SELECT * FROM fg_packing WHERE id=?", (pid,)).fetchone()      # b503: a real QR, not a blank one
+        if _pk:
+            c.execute("UPDATE fg_packing SET raw_qr=? WHERE id=?", (slip_qr(dict(_pk)), pid))
         _log(c, fac, "packing", pid, "slip_from_access", f'{key[1]} #{pal} · Access receive {r.get("receive_date", "")[:10]}', who)
         made += 1
     return made
@@ -1411,7 +1432,7 @@ async def slip_list(req: Request, d1: str = "", d2: str = "", q: str = "", pc: s
         conds.append("id IN (" + ",".join("?" * len(idl)) + ")")
         args += idl
     else:
-        dcol = "pc_at" if datef == "pc" else "packed_at"     # b491: approved list filters on approval time
+        dcol = "pc_at" if datef == "pc" else "packed_at"     # b497: approved list filters on approval time
         if d1 and (not status or datef):
             conds.append(dcol + ">=?")
             args.append(d1)
@@ -1481,7 +1502,7 @@ def _ip(req):
 
 
 def _last_prints(c, fac, ids):
-    """b491: {packing_id: {print_count, last_by, last_at}} for slips that were printed before."""
+    """b497: {packing_id: {print_count, last_by, last_at}} for slips that were printed before."""
     out = {}
     for i in ids:
         r = c.execute("SELECT id,lot_no,pallet_no,product_code,product_name,COALESCE(print_count,0) n,printed_at FROM fg_packing WHERE id=? AND factory_id=?",
@@ -1490,7 +1511,7 @@ def _last_prints(c, fac, ids):
             continue
         l = c.execute("SELECT user_name,printed_at FROM fg_print_log WHERE factory_id=? AND packing_id=? ORDER BY id DESC LIMIT 1",
                       (fac, i)).fetchone()
-        if not l:   # printed before b491: only fg_log knows who
+        if not l:   # printed before b497: only fg_log knows who
             l = c.execute("SELECT user_name, created_at printed_at FROM fg_log WHERE factory_id=? AND kind='packing' AND ref_id=? AND action IN ('printed','reprinted') ORDER BY id DESC LIMIT 1",
                           (fac, i)).fetchone()
         out[i] = {"id": i, "lot_no": r["lot_no"], "pallet_no": r["pallet_no"], "product_code": r["product_code"],
@@ -1501,7 +1522,7 @@ def _last_prints(c, fac, ids):
 
 @router.post("/slips-print-check")
 async def slips_print_check(req: Request):
-    """b491: asked before the print window opens — which of these slips were already printed (and by whom)."""
+    """b497: asked before the print window opens — which of these slips were already printed (and by whom)."""
     u, fac, _ = ctx(req, "pack")
     b = await req.json()
     ids = [int(x) for x in (b.get("ids") or [])][:200]
@@ -1511,7 +1532,7 @@ async def slips_print_check(req: Request):
 
 @router.post("/slips-printed")
 async def slips_printed(req: Request):
-    """The print window opened for these slips. b491: one fg_print_log row per slip (copy no, user, ip);
+    """The print window opened for these slips. b497: one fg_print_log row per slip (copy no, user, ip);
     a second or later copy is a REPRINT and must carry a reason — written to the audit trail."""
     u, fac, _ = ctx(req, "pack")
     b = await req.json()
@@ -1534,7 +1555,7 @@ async def slips_printed(req: Request):
     return {"ok": True}
 
 
-# ---------------------------------------------------------------- b491 packing checker: scan the printed slip
+# ---------------------------------------------------------------- b497 packing checker: scan the printed slip
 _TH_KEYS = dict(zip(
     "_ๅ/-ภถุึคตจขชๆไำพะัีรนยบลฃฟหกดเ้่าสวงผปแอิืทมใฝ%+๑๒๓๔ู฿๕๖๗๘๙๐\"ฎฑธํ๊ณฯญฐ,ฅฤฆฏโฌ็๋ษศซ.()ฉฮฺ์?ฒฬฦ",
     "`1234567890-=qwertyuiop[]\\asdfghjkl;'zxcvbnm,./~!@#$%^&*()_+QWERTYUIOP{}|ASDFGHJKL:\"ZXCVBNM<>?"))
@@ -1583,17 +1604,17 @@ async def slips_scan(req: Request):
         _log(c, fac, "packing", r["id"], "checker_scanned", via, _who(u))
         c.commit()
         log = [dict(x) for x in c.execute(
-            "SELECT action,note,user_name,created_at FROM fg_log WHERE factory_id=? AND kind='packing' AND ref_id=? ORDER BY id",
+            "SELECT action,note,user_name,created_at FROM fg_log WHERE factory_id=? AND kind='packing' AND ref_id=? ORDER BY id DESC",
             (fac, r["id"]))]
         prints = [dict(x) for x in c.execute(
-            "SELECT copy_no,reprint,reason,user_name,printed_at FROM fg_print_log WHERE factory_id=? AND packing_id=? ORDER BY id",
+            "SELECT copy_no,reprint,reason,user_name,printed_at FROM fg_print_log WHERE factory_id=? AND packing_id=? ORDER BY id DESC",
             (fac, r["id"]))]
         return {"slip": _slip_out(r), "log": log, "prints": prints}
 
 
 @router.get("/packing-audit")
 async def packing_audit(req: Request, d1: str = "", d2: str = "", user: str = "", action: str = "", q: str = ""):
-    """b491: who printed / reprinted / scanned / approved / rejected which pallet slip — per user."""
+    """b497: who printed / reprinted / scanned / approved / rejected which pallet slip — per user."""
     u, fac, _ = ctx(req, "view")
     if not ({"admin", "packcheck"} & can_set(roles_of(u))):
         raise HTTPException(403, {"msg": "ไม่มีสิทธิ์ (no permission)"})
@@ -1645,7 +1666,7 @@ async def slip_check(req: Request):
     b = await req.json()
     ids, action = [int(x) for x in (b.get("ids") or [])], b.get("action")
     note = (b.get("note") or "").strip()[:300]
-    via = (b.get("via") or "").strip()[:20]     # b491: 'usb' / 'camera' / 'typed' = verified by scanning the slip
+    via = (b.get("via") or "").strip()[:20]     # b497: 'usb' / 'camera' / 'typed' = verified by scanning the slip
     if action not in ("approve", "reject") or not ids:
         raise HTTPException(400, {"msg": "nothing selected"})
     if action == "reject" and not note:
@@ -1897,22 +1918,96 @@ async def import_access_now(req: Request):
     return {"ok": True, "added": n}
 
 
+@router.post("/import-accdb")
+async def import_accdb_upload(req: Request, name: str = ""):
+    """b499 (admin, while FG is still on Access): upload the Access file itself and load it.
+
+    Body = the file's bytes. Accepts:
+      * .accdb / .mdb  — read directly (server needs pyodbc + Microsoft Access Database Engine)
+      * .zip           — the Access tables exported as CSV (tbl_Product.csv, tbl_Receive_Product.csv …)
+    Rows are keyed on the Access ID, so uploading again only adds what is new."""
+    import asyncio, tempfile, zipfile, io, gzip, shutil
+    u, fac, _ = ctx(req, "admin")
+    body = await req.body()
+    if not body:
+        raise HTTPException(400, {"msg": "ไม่มีไฟล์ (no file received)"})
+    ext = os.path.splitext(name or "")[1].lower()
+    tmp = tempfile.mkdtemp(prefix="fgacc_")
+    try:
+        if ext in (".accdb", ".mdb"):
+            path = os.path.join(tmp, "upload" + ext)
+            with open(path, "wb") as f:
+                f.write(body)
+            try:
+                data = await asyncio.to_thread(read_accdb, path)
+            except ImportError:
+                raise HTTPException(400, {"msg": "เซิร์ฟเวอร์อ่านไฟล์ Access ไม่ได้ — ต้องติดตั้ง pyodbc + Microsoft Access Database Engine "
+                                                 "(server cannot read .accdb: install pyodbc and the Access Database Engine), "
+                                                 "or upload a .zip of the tables exported as CSV"})
+            except Exception as e:
+                raise HTTPException(400, {"msg": f"อ่านไฟล์ Access ไม่ได้ (cannot read the Access file): {e}. "
+                                                 "Check the Microsoft Access Database Engine (same 64/32-bit as Python) is installed, "
+                                                 "or upload a .zip of CSV exports instead."})
+        elif ext == ".zip" or body[:2] == b"PK":
+            try:
+                zf = zipfile.ZipFile(io.BytesIO(body))
+            except zipfile.BadZipFile:
+                raise HTTPException(400, {"msg": "ไฟล์ zip เสีย (bad zip file)"})
+            for m in zf.namelist():
+                b = os.path.basename(m)
+                if b.endswith((".csv", ".csv.gz")):
+                    with zf.open(m) as src, open(os.path.join(tmp, b), "wb") as dst:
+                        shutil.copyfileobj(src, dst)
+            data = read_csv_folder(tmp)
+        else:
+            raise HTTPException(400, {"msg": "ใช้ไฟล์ .accdb / .mdb หรือ .zip (use an .accdb, .mdb or .zip file)"})
+        if not data.get("tbl_Receive_Product") and not data.get("tbl_Product"):
+            raise HTTPException(400, {"msg": "ไม่พบตาราง tbl_Product / tbl_Receive_Product ในไฟล์ (FG Access tables not found)"})
+
+        def run():
+            with closing(conn()) as c:
+                n = import_access(c, fac, data)
+                n["pallet slips"] = access_to_slips(c, fac, _who(u))
+                _log(c, fac, "import", 0, "access_upload", f"{name}: " + ", ".join(f"{k} +{v}" for k, v in n.items()), _who(u))
+                c.commit()
+                return n
+        n = await asyncio.to_thread(run)
+        return {"ok": True, "added": n, "read": {k: len(v) for k, v in data.items()}}
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 # ================================================================ Access import
 ACCESS_TABLES = ("tbl_ProductType", "tbl_Product", "tbl_Customer", "tbl_Checker", "tbl_EMPshift",
                  "tbl_Receive_Product", "tbl_Release_Product")
 
 
-def read_csv_folder(folder):
-    out = {}
+def _open_csv(p):
     import gzip
-    for t in ACCESS_TABLES:
-        p = os.path.join(folder, t + ".csv")
-        if os.path.exists(p):
-            with open(p, encoding="utf-8-sig", newline="") as f:
-                out[t] = list(csv.DictReader(f))
-        elif os.path.exists(p + ".gz"):
-            with gzip.open(p + ".gz", "rt", encoding="utf-8-sig", newline="") as f:
-                out[t] = list(csv.DictReader(f))
+    op = gzip.open if p.lower().endswith(".gz") else open
+    for enc in ("utf-8-sig", "cp874"):            # Access 'Export Text' on a Thai PC writes cp874 (TIS-620)
+        try:
+            with op(p, "rt", encoding=enc, newline="") as f:
+                return list(csv.DictReader(f))
+        except UnicodeDecodeError:
+            continue
+    with op(p, "rt", encoding="utf-8", errors="replace", newline="") as f:
+        return list(csv.DictReader(f))
+
+
+def read_csv_folder(folder):
+    """b502: every *.csv / *.csv.gz / *.txt in the folder = one Access table (file name = table name)."""
+    out = {}
+    if not os.path.isdir(folder):
+        return out
+    for fn in sorted(os.listdir(folder)):
+        low = fn.lower()
+        for ext in (".csv.gz", ".csv", ".txt"):
+            if low.endswith(ext):
+                t = fn[: -len(ext)]
+                if t and t not in out:
+                    out[t] = _open_csv(os.path.join(folder, fn))
+                break
     return out
 
 
@@ -1922,7 +2017,8 @@ def read_accdb(path):
     cn = pyodbc.connect(r"DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=" + path + ";")
     out = {}
     cur = cn.cursor()
-    for t in ACCESS_TABLES:
+    names = [r.table_name for r in cur.tables(tableType="TABLE") if not r.table_name.startswith(("MSys", "~"))]  # b502: all tables
+    for t in names:
         cur.execute(f"SELECT * FROM [{t}]")
         cols = [d[0] for d in cur.description]
         rows = []
@@ -1940,11 +2036,12 @@ def _d(s):
         return ""
     m = re.match(r"^(\d{4})-(\d{2})-(\d{2})", s)
     if m:
-        return s[:10]
+        y = int(m.group(1))
+        return (f"{y - 543:04d}" + s[4:10]) if y > 2400 else s[:10]     # b502: Thai Buddhist year (2569 -> 2026)
     m = re.match(r"^(\d{1,2})/(\d{1,2})/(\d{2,4})", s)          # mdb-export default m/d/yy
     if m:
         y = int(m.group(3))
-        y = y + 2000 if y < 100 else y
+        y = y + 2000 if y < 100 else (y - 543 if y > 2400 else y)
         return f"{y:04d}-{int(m.group(1)):02d}-{int(m.group(2)):02d}"
     return s[:10]
 
@@ -2023,9 +2120,72 @@ def import_access(c, fac, data, log=print):
                    r.get("Log", ""), r.get("Log", ""), r.get("Log", "")))
         k += 1
     n["release"] = k
+    n["archive (all tables)"] = archive_access(c, fac, data)
     c.commit()
     log(f"[fg] Access import into plant {fac}: " + ", ".join(f"{a} +{b}" for a, b in n.items()))
     return n
+
+
+_DATE_COLS = ("ReceiveDate", "ReleaseDate", "Date", "LogDate", "Log", "CreateDate", "UpdateDate", "DocDate")
+
+
+def _sort_key(r):
+    """Newest-first ordering for the archive viewer: a date column if the table has one, else the ID."""
+    for k in _DATE_COLS:
+        v = _d(r.get(k) or "")
+        if v:
+            return v + " " + _t(r.get("ReceiveTime") or r.get("ReleaseTime") or r.get("Time") or "") + f" {int(_num(r.get('ID'))):012d}"
+    i = r.get("ID") or r.get("Id") or r.get("id")
+    return f"{int(_num(i)):012d}" if i not in (None, "") and str(i).strip().lstrip("-").isdigit() else ""
+
+
+def archive_access(c, fac, data):
+    """b502: keep EVERY row of EVERY Access table, all columns, so no old data is lost — even the
+    tables and columns the FG app does not use. Keyed on the Access ID (or the row itself when a
+    table has no ID), so importing again only adds new rows."""
+    import hashlib
+    t0, added = now(), 0
+    for t, rows in data.items():
+        for i, r in enumerate(rows):
+            js = json.dumps(r, ensure_ascii=False, sort_keys=True)
+            idv = r.get("ID") if "ID" in r else (r.get("Id") if "Id" in r else r.get("id"))
+            key = ("id:" + str(idv).strip()) if idv not in (None, "") else ("h:" + hashlib.sha1(js.encode("utf-8")).hexdigest())
+            cur = c.execute("INSERT OR IGNORE INTO fg_access_raw(factory_id,tbl,row_key,sort_key,data,imported_at) VALUES(?,?,?,?,?,?)",
+                            (fac, t, key, _sort_key(r), js, t0))
+            added += cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0
+    return added
+
+
+@router.get("/access-archive")
+async def access_archive_tables(req: Request):
+    u, fac, _ = ctx(req, "admin")
+    with closing(conn()) as c:
+        rows = [dict(r) for r in c.execute(
+            "SELECT tbl, COUNT(*) n, MAX(imported_at) last FROM fg_access_raw WHERE factory_id=? GROUP BY tbl ORDER BY tbl", (fac,))]
+    return {"tables": rows}
+
+
+@router.get("/access-archive/rows")
+async def access_archive_rows(req: Request, tbl: str, q: str = "", page: int = 1, size: int = 200, all: int = 0):
+    """Rows of one archived Access table, newest first."""
+    u, fac, _ = ctx(req, "admin")
+    conds, args = ["factory_id=?", "tbl=?"], [fac, tbl]
+    if q:
+        conds.append("data LIKE ?")
+        args.append("%" + q + "%")
+    w = " AND ".join(conds)
+    size = 100000 if all else max(20, min(int(size or 200), 1000))
+    page = max(1, int(page or 1))
+    with closing(conn()) as c:
+        total = c.execute(f"SELECT COUNT(*) FROM fg_access_raw WHERE {w}", tuple(args)).fetchone()[0]
+        rows = [json.loads(r["data"]) for r in c.execute(
+            f"SELECT data FROM fg_access_raw WHERE {w} ORDER BY sort_key DESC, id DESC LIMIT {size} OFFSET {(page - 1) * size}", tuple(args))]
+    cols = []
+    for r in rows[:500]:
+        for k in r:
+            if k not in cols:
+                cols.append(k)
+    return {"rows": rows, "cols": cols, "total": total, "page": page, "size": size}
 
 
 # ================================================================ dashboard (Warehouse home)

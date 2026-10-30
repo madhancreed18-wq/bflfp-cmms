@@ -1,4 +1,4 @@
-const CACHE = "bflfp-v494";
+const CACHE = "bflfp-v503";
 const SHELL = ["/", "/manifest.json", "/logo.png",
   "/Logo192.png", "/Logo512.png", "/Logo180.png", "/helpbot.png", "/helpbot-icon.png", "/vendor/jsqr.js", "/vendor/qrcode.js", "/vendor/pdf.min.js", "/vendor/pdf.worker.min.js"];
 self.addEventListener("install", e => {
@@ -15,7 +15,7 @@ self.addEventListener("fetch", e => {
   e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));  // network-first, cache fallback offline
 });
 self.addEventListener("push", e => {
-  let d = { title: "BFL Group CMMS", body: "" };
+  let d = { title: "BFL Smart Factory", body: "" };
   try { d = e.data.json(); } catch (err) {}
   e.waitUntil(self.registration.showNotification(d.title, {
     body: d.body, icon: "/Logo192.png", badge: "/Logo192.png",

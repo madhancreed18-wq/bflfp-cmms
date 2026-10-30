@@ -26,7 +26,89 @@ the footer.) The service worker carries the matching `bflfp-vNNN` at `/sw.js`.
 > Tested: starts on an Aug-2026 database and the Oct-27 dev database, adds fg_*/wms_* tables, sign-in + main CMMS pages + FG + WMS open with no errors.
 > FG / Warehouse DATA on raja is NOT in the package — live starts with them empty.
 
+> **READY 30 Oct (evening): `_to_server\bflfp-cmms-b494.zip`** = b490–b494 on top of live b489.
+
+> **READY 30 Oct (night): `_to_server\bflfp-cmms-b495.zip`** = everything b490–b495 (use this instead of b494).
+
+> **READY 30 Oct (late): `_to_server\bflfp-cmms-b496.zip`** = b490–b496 incl. Audit trail + System health restored. Use this instead of b495.
+
+> **READY 30 Oct (latest): `_to_server\bflfp-cmms-b497.zip`** = b490–b497: b496 + "BFL Smart Factory" name + FG packing-checker scan / reprint audit. Use this instead of b496.
+> Note: the b496 zip was packed at the same minute the b497 edits were saved, so it already holds the b497 files (footer reads b497). Either zip gives the same result; b497 is the correctly named one.
+
+> **READY 30 Oct: `_to_server\bflfp-cmms-b498.zip`** = b498 on top of live b497 (web files only — no stop needed).
+
+> **READY 30 Oct: `_to_server\bflfp-cmms-b499.zip`** = b498 stock card + b499 Access upload (server file — stop the app).
+
+> **READY 30 Oct: `_to_server\bflfp-cmms-b500.zip`** = b500 menu (web files only — app can keep running). Put b499 on first if not done.
+
+> **READY 30 Oct: `_to_server\bflfp-cmms-b501.zip`** = complete b498–b501 (stock card form, Access upload, menu, header). Contains server/fg.py — stop the app.
+
+> **READY 30 Oct: `_to_server\bflfp-cmms-b502.zip`** = b502 FG all-Access-tables archive + newest-first, on top of live b501. Carries the b498/b499 FG files too. Server file — stop the app.
+
+> **READY 30 Oct: `_to_server\bflfp-cmms-b503.zip`** = b502 + fixed pallet-slip document no. Use this instead of b502 (if b502 is not on yet). Server files — stop the app.
+
 ## WAITING — not yet on live
+
+### b503 — Pallet slip: fixed document number F-SP-WHD01-03 Rev.01 (30 Oct 2026)
+`server/config.py` (SLIP_FORM_CODE), `server/fg.py`, `static/fg.html`, `static/index.html` (b503), `static/sw.js` (v503). **Restart.** Includes b502.
+- Document no. comes from Document Control, not typed: the field on the packing form is read-only and shows the number; every new / edited slip stores it.
+- Printed bottom-right of the A6 slip like the paper form; removed from the slip header.
+- Change it with env var SLIP_FORM_CODE (no build), same as FORM_CODE / PM_FORM_CODE.
+
+### b502 — FG: keep ALL old Access data (every table + column), newest-first lists (30 Oct 2026)
+`server/fg.py`, `static/fg.html`, new `fg_import\ExportAllTables.bas`. **Restart.** New table fg_access_raw (created at start). Needs b499 on live first.
+- Import now reads EVERY table in the Access file / zip / fg_import folder (not just the 7 the app uses) and keeps every row and every column in fg_access_raw. Re-import only adds new rows.
+- New admin page FG › Old Access data (all tables): pick a table, search any column, newest first, CSV of the whole table.
+- `ExportAllTables.bas`: Access module that writes every table to `FG_CSV_Export\*.csv` (UTF-8, ISO dates). Zip the folder → FG › Import Access.
+- Dates in Thai Buddhist years (2569) are read as 2026; cp874 CSV files are read too.
+- Newest on top: checker queue, stock balance (newest lot first), audit-trail timelines.
+- Tested on a scratch DB with the 27-Oct export: 181,883 rows archived in ~72 s; second run adds 0.
+- `static/index.html` (b502) + `static/sw.js` (v502): build number only. Zipped after b501 went live (30 Oct).
+
+### b501 — Header shows the plant (its logo + badge), no app name (30 Oct 2026)
+`static/index.html` (b501), `static/sw.js` (v501). No restart.
+- Header logo follows the plant you are in: BFL = Bluefalo logo, BFLFP = fac_fp.png, BFLPC = fac_pc.png (was always the Bluefalo logo). Changes with the plant switch too.
+- "BFL Smart Factory - CMMS" text removed from the header; only the plant badge stays. The name still shows on the login page, the loading screen and the app-choice screen.
+
+### b500 — Menu reorganised: top menu default, Jobs group, System settings, Manage → Users (30 Oct 2026)
+`static/index.html` (b500), `static/sw.js` (v500). No restart.
+- PC: menu across the top is now the default (side menu still available: ☰ Menu › Use the side menu; ⬒ in the side menu goes back). A browser that had chosen a style keeps it.
+- Jobs ▾ = Jobs · Assigned jobs · Reports · Dashboard (Jobs no longer under Planning).
+- New System settings ▾ = Problem types · Working hours · LOGS: Audit trails, Error logs · System health (admin; planners get Problem types + Working hours).
+- Manage renamed Users — the Users page only (tabs Machines / Problem types / Logs removed: Machines are in Assets, the rest in System settings).
+- Top bar no longer shows Chat / More (Chat has its header button). On 14–15" screens the last groups fold into ☰ Menu.
+
+### b499 — FG: admin "Import Access database" upload page (30 Oct 2026)
+`server/fg.py` (new POST /api/fg/import-accdb), `static/fg.html`, `static/index.html` (b499), `static/sw.js` (v499). **Restart.** Includes b498.
+- FG › MASTERS › Import Access (admin only): upload Stock_FinishedGoods New.accdb / .mdb, or a .zip of the Access tables as CSV. Keyed on Access ID → only new rows added; re-upload is safe. Also makes QR slips for new received pallets.
+- .accdb needs pyodbc + Microsoft Access Database Engine on the server (not in the venv today); without it the page says so and the .zip route works. Test (.zip of fg_import): 1,452 products, 28,456 receive, 151,858 release, 28,456 slips in 42 s; second upload added 0.
+
+### b498 — FG Stock card printed on the FG team's own form (rpt_StockCard) (30 Oct 2026)
+`static/fg.html`, `static/index.html` (b498), `static/sw.js` (v498). No restart.
+- FG › Stock card (checker): new button "พิมพ์สต็อกการ์ด / Print stock card" — A4 portrait like the old Access report: Bluefalo logo, STOCK CARD สินค้าสำเร็จรูป, FG code, product name, Lot No., รายละเอียด; columns วันที่ / ยกมา / รับเข้า / จ่ายออก / คงเหลือ / หมายเหตุ; Thai year dates (21/12/2568); signature lines พนักงานหน่วยสินค้าสำเร็จรูป and หัวหน้าหน่วยสินค้าสำเร็จรูป.
+- One page per lot (balance per lot). No lot typed = every lot of the product, one page each. Old table print kept as "Print table A4".
+
+### b497 — Portal renamed "BFL Smart Factory"; FG packing checker = scan only; pallet slip print check + reprint audit (30 Oct 2026)
+`static/index.html` (b497), `static/sw.js` (v497), `static/manifest.json`, `static/fg.html`, `server/fg.py`, `server/app.py`, `server/push.py`, `server/xlstamp.py`, `server/pmreport.py`. **Restart.** New table fg_print_log (created at start). Includes b490–b496.
+- Name: "BFL Group CMMS" → **BFL Smart Factory** on the tab, phone app (short "Smart Factory"), loader, login ("Smart Factory Login"), app chooser / launcher, CMMS header ("BFL Smart Factory - CMMS"), version line, push test, KPI / PM report footers and Excel / CSV stamps ("BFL Smart Factory · CMMS"). URL and code unchanged.
+- FG packing checker (Checker แพคกิ้ง): menu = Scan & verify slip + Checked list only; no slip making. Scan by USB scanner (PC, Thai keyboard layout handled) or camera (phone) → verify card → Approve / Reject.
+- Print: confirm window on every print; a slip printed before → red REPRINT warning (count, last by, when), reason + "old slip destroyed" tick required, slip shows "REPRINT · COPY n". Every print logged per user + IP (fg_print_log).
+- New admin page: Slip print & check audit (per-user summary, list, CSV).
+- Note: the FG part was written before b489 and was already inside the b489 / b494 / b495 / b496 zips without a log entry; it is logged here.
+- Tested on a scratch DB: print / reprint / scan (incl. Thai-layout scan) / approve / audit API. tests/smoke.py stops at "BD created Reported" (jobs module, not touched here) — check before pushing.
+
+### b496 — Restored Audit trail, System health and the b467–b475 CMMS screens (30 Oct 2026)
+`server/app.py`, `static/index.html` (b496), `static/sw.js` (v496). **Restart.** Includes b490–b495.
+- Two lines of builds had grown apart: live's b475 (CMMS-only: signatures, by-who, Excel stamp, checklist group, asset delete/retire, Back button, Audit trail, System health, machine class A/B/C) and raja's FG line (b467–b489). b489/b494/b495 shipped raja's index.html + app.py, which did not carry the b475 screens or the audit/monitor wiring — so Audit trail and System health vanished from live.
+- index.html: 3-way merge (base b464 → b475 + raja b495); 2 small conflicts resolved by hand. app.py: audit.install + monitor.install + per-request audit tagging put back. Server .py files were already a superset of b475.
+- Tested: admin / PRD manager / ENG manager click through every page — no errors; Audit trail + System health open for admin.
+
+### b495 — Production › Master Data (product master list F-SP-RDP01-06) (30 Oct 2026)
+`server/master.py` (new), `server/app.py`, `server/auth.py`, `static/index.html` (b495), `static/sw.js` (v495). **Restart.** New tables product_master + product_master_log (created at start).
+- Side menu: Production › Master Data — shown to department PRD users (not operator/technician phones) and admin.
+- Edit (add / change / Active↔Disable): PRD managers + admin. Other PRD users read only. Nothing is deleted. Every change logged (History in the product window).
+- Table like the Excel (19 columns, sticky header + No. column), sort by clicking a heading, Active / Disable / All, search box + Filter menu (14 columns, multi-select values with counts) as tokens like Jobs.
+- Import Excel (R&D sheet): matched on FG CODE + Product Name + Cust Code → update, else add. Tested with "Odoo-Product Master List BFLPC 29-09-2026": 1,234 added; re-import = 1,234 updated, 0 duplicates. Export = CSV for Excel.
 
 ### b494 — Daily report F-SP-ENG02-06: job no. column, no cause column, sharp zoomable preview (30 Oct 2026)
 `server/reports.py`, `static/index.html` (b494), `static/sw.js` (v494). **Server file — restart.** Includes b490–b493.
