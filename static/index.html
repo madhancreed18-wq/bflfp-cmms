@@ -414,6 +414,8 @@ dialog>h3.dlgbar{display:flex;align-items:center;gap:10px;margin:-18px -18px 14p
 .hfac{font-size:11px;font-weight:600;color:#7FA0C2;border:1px solid #33507333;border-radius:5px;padding:1px 7px;vertical-align:3px;letter-spacing:.02em}
 header .logo:has(img[src*="fac_"]){padding:1px 4px}header .logo img[src*="fac_"]{height:36px}  /* b501: the plant's own logo, big enough to read */
 header h1 .hfac{font-size:13px;font-weight:700;color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);padding:3px 10px;vertical-align:middle;letter-spacing:.04em}
+/* b507: the plant badge was clipped at the bottom — the title holds only the badge now, so let it breathe */
+#htitle{overflow:visible;padding:4px 0;line-height:1}#htitle .hfac{display:inline-block;line-height:18px}
 .ldbrand span{color:var(--orange)}
 @keyframes ldspin{to{transform:rotate(360deg)}}
 @media(min-width:900px){
@@ -1290,6 +1292,12 @@ body.optech .chead .ctitle,body.optech .chead .cright{display:none}
 .mxc .dot{position:absolute;top:5px;right:6px;min-width:15px;height:15px;padding:0 4px;border-radius:8px;background:#fff;color:#DC2626;font-size:10px;line-height:15px;font-weight:700;box-shadow:0 0 0 1px rgba(220,38,38,.25)}
 .mxtbl td.tot{text-align:center;color:#94A3B8;font-weight:600;font-size:12px}
 .mxlg{display:flex;align-items:center;gap:8px;font-size:11.5px;color:#64748B;padding:0 16px 12px}
+/* b505: compact matrix — 16 departments fit on a 14" / 15.6" screen without scrolling */
+.mxtbl table{border-spacing:3px}.mxtbl th{padding:2px 2px;font-size:10.5px}
+.mxtbl td.rn{font-size:12px;line-height:1.2}.mxtbl td.rn small{font-size:10.5px}
+.mxc{height:26px;border-radius:6px;font-size:13px;line-height:26px}
+.mxc .dot{top:50%;transform:translateY(-50%);right:4px;min-width:13px;height:13px;line-height:13px;font-size:9px;padding:0 3px}
+.mxtbl td.tot{font-size:11.5px}.mxph{padding:8px 14px 4px}.mxlg{padding:0 14px 8px}
 .mxlg .sc{width:110px;height:8px;border-radius:4px;background:linear-gradient(90deg,#E8F0FE,#2563EB)}
 .mxcrumb{font-weight:700;font-size:14px;display:flex;align-items:center;gap:6px;color:#1F2937;min-width:0}
 .mxcrumb span{color:#94A3B8;font-weight:500}.mxcrumb a{font-size:11.5px;font-weight:500;color:#64748B;background:#F1F5F9;border-radius:6px;padding:2px 8px;cursor:pointer;text-decoration:none}
@@ -1932,7 +1940,7 @@ const patch=(u,b,o)=>api(u,{method:'PATCH',body:JSON.stringify(b),...(o||{})});
 const isNetErr=e=>{const m=(e&&e.message)||'';return m==='offline'||m==='timeout';};
 const esc=s=>(s||'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 const P=['','ปกติ','เร่ง','ด่วน!'];
-const UIBUILD='b504';
+const UIBUILD='b547';
 /* b391 — the sliding shape under the selected tab. Every screen redraws its tabs from
    scratch, so the shape is added after each draw: it starts where the previous tab was
    (remembered per tab set) and slides to the new one; the content after the tabs slides
@@ -2063,11 +2071,13 @@ async function renderApps(){
   clearInterval(TIMER);
   ['#logoutBtn','#helpBtn','#chatBtn','#navBurger','#appsBtn'].forEach(k=>{const e=$(k);if(e)e.classList.add('hidden');});
   drawerToggle(false);hdrBack(null);document.body.classList.remove('optech');
+  // b512: fetch the plant list first, with the loading screen up — the login form used to
+  // stay on screen, half-styled, while this request ran
+  const TH=LANG==='TH',admin=ME.role==='admin';
+  let plants=[];loadOn();try{plants=(await api('/api/fg/plants')).plants;}catch(e){plants=[{id:ME.factory_id,code:ME.factory_code,name:ME.factory_name,fg:true}];}finally{loadOff();}
   $('#foot').classList.add('hidden');$('#bnav').classList.add('hidden');
   document.querySelector('header').classList.add('hidden');
   document.body.classList.remove('lgbg');
-  const TH=LANG==='TH',admin=ME.role==='admin';
-  let plants=[];try{plants=(await api('/api/fg/plants')).plants;}catch(e){plants=[{id:ME.factory_id,code:ME.factory_code,name:ME.factory_name,fg:true}];}
   const mine=CROSSFAC()?plants:plants.filter(p=>p.id===ME.factory_id);
   const fns=FnBar.list(ME),fg=fns.filter(f=>f!=='cmms');
   const logo={1:'/logo.png?v=2',2:'/fac_fp.png?v=2',3:'/fac_pc.png?v=2'};
@@ -2243,6 +2253,7 @@ async function afterLogin(){
   loadOn();
   try{
     applyActMode();
+    if(document.body.classList.contains('lgbg'))$('#app').innerHTML='';   // b512: no leftover login form while CMMS loads
     document.body.classList.remove('lgbg');
     document.querySelector('header').classList.remove('hidden');
     $('#logoutBtn').classList.remove('hidden');
@@ -4324,7 +4335,9 @@ function buildNav(){
       [IC.pm,(LANG==='TH'?'แผน PM':'PM plan'),renderElecPlan,'elec'],
       [IC.cm,(LANG==='TH'?'แผน CM':'CM Plan'),renderElecCM,'elcm'],
       [IC.prj,(LANG==='TH'?'โปรเจกต์':'Project'),renderProject,'elprj']].concat(rest);}
-    else if(ME.role==='technician')NAV=[[IC.pm,'⚡ '+(LANG==='TH'?'งาน PM ไฟฟ้า':'Electrical PM'),renderElecTech,'elecjobs']].concat(NAV);
+    // b5xx: a CE technician opens on the same 3-tab job list as every technician (his
+    // electrical PM work is merged into it); the Electrical PM page stays one tap away
+    else if(ME.role==='technician')NAV.splice(1,0,[IC.pm,'⚡ '+(LANG==='TH'?'งาน PM ไฟฟ้า':'Electrical PM'),renderElecTech,'elecjobs']);
   }
   // b418: every admin gets Electrical Planning (PM plan + CM Plan) beside the plant's
   // Planning, so the general plan and the electrical one are both a click away
@@ -5796,12 +5809,12 @@ function ptabDrop(e,k){e.preventDefault();const from=PDRAGTAB;PDRAGTAB=null;if(!
    Thai name are matched together because half the plant knows a machine by one and
    half by the other, and each suggestion carries its job count so you can see there is
    something to read before you open it. */
-let HFROM='',HTO='',HMID=0,HMLBL='',HREC=null,HTYPE='all',HSTMR=null,HSREQ=0;
+let HFROM='',HTO='',HMID=0,HMLBL='',HREC=null,HTYPE='all',HSTMR=null,HSREQ=0,HSIDX=-1,HVIEW='tl';
 // what the PM calendar / dashboard last reported for THIS plant, so Start can warn that
 // pressing it again restarts the day count rather than resuming where the plant left off
 let PMCFG=null;
 function histInitDates(){
-  if(HTO)return;
+  if(HTO||HMID)return;                // one machine opens on its whole life (b516)
   const to=(BOOT&&BOOT.today)||todayLocal();
   HTO=to; HFROM=new Date(Date.parse(to)-29*864e5).toISOString().slice(0,10);
 }
@@ -5888,7 +5901,7 @@ function rcSearchHtml(){
     <input placeholder="${esc(t('search'))}" value="${esc(PQ)}"
       style="flex:1;min-width:56px;border:none;outline:none;font-size:13px;padding:3px 8px;
              background:transparent;font-family:inherit"
-      onchange="PQ=this.value;renderPlanner()">
+      onchange="rcSearchGo(this.value)">
     ${PQ?`<button title="${TH?'ล้างคำค้น':'Clear search'}" onclick="PQ='';renderPlanner()"
       style="border:none;background:none;color:#94A3B8;cursor:pointer;font-size:14px;padding:0 6px;
              font-family:inherit;align-self:center">×</button>`:''}
@@ -5987,6 +6000,10 @@ function rcRangeHtml(n){
   </div>`;
 }
 function histSetType(v){HTYPE=v;renderPlanner();}
+/* b518 — machine class A / B / C on the history list, and a filter for it */
+let HCRIT='all';
+const hCrit=j=>{const c=String(j.mcrit||'').trim().toUpperCase();return ['A','B','C'].includes(c)?c:'-';};
+function histSetCrit(v){HCRIT=v;renderPlanner();}
 function histSpan(days){
   const to=(BOOT&&BOOT.today)||todayLocal();
   if(!days){HFROM='';HTO='';}                       // all time — only with a machine
@@ -6010,13 +6027,43 @@ function histSearch(v){
     if(!ms.length){b.innerHTML=`<div style="padding:8px 10px;font-size:12.5px;color:#94A3B8">${
       TH?'ไม่พบเครื่องที่ตรงกับคำค้น':'no machine matches that'}</div>`;b.style.display='block';return;}
     window._hsList=ms;               // the row carries an index, never a quoted name
-    b.innerHTML=ms.map((m,i)=>`<div onmousedown="histPickIdx(${i})"
-        style="padding:6px 10px;font-size:12.5px;border-bottom:1px solid #f1f5f9;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
-        onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#fff'">
-        <b style="color:var(--navy)">${esc(m.code||'')}</b> ${esc((m.name||'').slice(0,40))}
-        <span style="color:#94A3B8">· ${m.njobs||0} ${LANG==='TH'?'งาน':'jobs'}${m.active?'':' · '+(TH?'ปิดใช้งาน':'inactive')}</span></div>`).join('');
+    HSIDX=0;
+    // b516: class, place, how much history and when it last had a job — enough to tell
+    // EXTRUDER LINE 3 from the extruder's coater before opening either
+    b.innerHTML=ms.map((m,i)=>`<div class="hsrow" data-i="${i}" onmousedown="histPickIdx(${i})"
+        style="display:flex;gap:9px;align-items:center;padding:6px 10px;font-size:12.5px;border-bottom:1px solid #f1f5f9;cursor:pointer;background:${i?'#fff':'#EFF6FF'}"
+        onmouseover="hsHi(${i})">
+        <span style="width:20px;flex:none;text-align:center">${(()=>{const c=String(m.crit||'').trim().toUpperCase();const C={A:['#DC2626','#fff'],B:['#F59E0B','#fff'],C:['#E2E8F0','#475569']}[c];
+          return C?`<span title="${TH?'ระดับเครื่อง ':'class '}${c}" style="display:inline-block;width:18px;border-radius:4px;font-size:11px;font-weight:800;background:${C[0]};color:${C[1]}">${c}</span>`:'';})()}</span>
+        <b style="color:var(--navy);width:92px;flex:none;white-space:nowrap">${esc(m.code||'')}</b>
+        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.name||'')}
+          ${(m.line||m.floor)?`<div style="color:#94A3B8;font-size:11px">📍 ${esc(m.line||'')}${m.floor?' · '+(TH?'ชั้น ':'floor ')+esc(m.floor):''}</div>`:''}</span>
+        <span style="color:#94A3B8;font-size:11px;text-align:right;flex:none">${m.njobs||0} ${TH?'งาน':'jobs'}${m.last_job?'<br>'+(TH?'ล่าสุด ':'last ')+esc(String(m.last_job).slice(5,10).split('-').reverse().join('-')):''}${m.active?'':' · '+(TH?'ปิดใช้งาน':'inactive')}</span></div>`).join('')
+      +`<div style="padding:5px 10px;font-size:11px;color:#94A3B8">↑ ↓ ${TH?'เลือก':'move'} · Enter ${TH?'เปิด':'open'}</div>`;
     b.style.display='block';
   },220);
+}
+function hsHi(i){HSIDX=i;document.querySelectorAll('#hsPop .hsrow').forEach(r=>r.style.background=(+r.dataset.i===i)?'#EFF6FF':'#fff');}
+async function hsKey(e){
+  const ms=window._hsList||[],pop=document.getElementById('hsPop'),open=pop&&pop.style.display!=='none';
+  if(e.key==='ArrowDown'&&open&&ms.length){e.preventDefault();hsHi(Math.min(ms.length-1,HSIDX+1));}
+  else if(e.key==='ArrowUp'&&open&&ms.length){e.preventDefault();hsHi(Math.max(0,HSIDX-1));}
+  else if(e.key==='Enter'){e.preventDefault();
+    const v=(e.target.value||'').trim();if(!v)return;
+    // an exact Asset ID wins, typed in full and Enter — no need to wait for the list
+    try{const r=await api('/api/machines/by-code?code='+encodeURIComponent(v));
+      if(r.machine)return histPick(r.machine.id,r.machine.code,r.machine.name||'');}catch(x){}
+    if(open&&ms[HSIDX])histPickIdx(HSIDX);}
+  else if(e.key==='Escape'&&pop)pop.style.display='none';
+}
+/* the search box at the top: on History, an exact Asset ID opens that machine */
+async function rcSearchGo(v){
+  v=(v||'').trim();
+  if(PTAB==='History'&&v&&!/\s/.test(v)){
+    try{const r=await api('/api/machines/by-code?code='+encodeURIComponent(v));
+      if(r.machine){PQ='';return histPick(r.machine.id,r.machine.code,r.machine.name||'');}}catch(e){}
+  }
+  PQ=v;renderPlanner();
 }
 function histHidePop(){setTimeout(()=>{const b=document.getElementById('hsPop');if(b)b.style.display='none';},160);}
 function histPickIdx(i){
@@ -6024,7 +6071,7 @@ function histPickIdx(i){
   histPick(m.id,m.code||'',m.name||'');
 }
 function histPick(id,code,name){
-  HMID=id;HMLBL=code+(name?' — '+name:'');
+  HMID=id;HVIEW='tl';HMLBL=code+(name?' — '+name:'');
   HFROM='';HTO='';                                  // one asset means its whole life
   const b=document.getElementById('hsPop');if(b)b.style.display='none';
   renderPlanner();
@@ -6040,7 +6087,7 @@ function histFilterHtml(jobs){
        <button class="btn sm" onclick="histClear()">✕ ${TH?'ล้าง':'clear'}</button>`
     :`<div style="position:relative">
         <input id="hsIn" placeholder="${TH?'พิมพ์รหัสหรือชื่อเครื่อง — W01PK…':'type code or name — W01PK…'}"
-          autocomplete="off" oninput="histSearch(this.value)" onblur="histHidePop()" onfocus="histSearch(this.value)"
+          autocomplete="off" oninput="histSearch(this.value)" onkeydown="hsKey(event)" onblur="histHidePop()" onfocus="histSearch(this.value)"
           style="width:min(340px,60vw);font-size:13px;padding:6px 10px;height:32px;box-sizing:border-box">
         <div id="hsPop" style="display:none;position:absolute;top:34px;left:0;width:min(400px,86vw);background:#fff;border:1px solid var(--bd);border-radius:10px;box-shadow:0 8px 24px rgba(16,40,80,.16);z-index:30;max-height:280px;overflow:auto"></div>
       </div>`;
@@ -6061,6 +6108,13 @@ function histFilterHtml(jobs){
     <span class="muted" style="font-size:11px">${TH?'ประเภท':'Type'}:</span>
     ${chip(HTYPE==='all',"histSetType('all')",(TH?'ทั้งหมด':'All')+' '+nOf('all'))}
     ${types.map(t=>chip(HTYPE===t,`histSetType('${t}')`,t+' '+nOf(t))).join('')}
+    ${HMID?'':(()=>{const byT=(jobs||[]).filter(j=>HTYPE==='all'||(j.jobtype||'').toUpperCase()===HTYPE);
+      const n=c=>c==='all'?byT.length:byT.filter(j=>hCrit(j)===c).length;
+      return `<span style="width:1px;height:18px;background:#e2e8f0;margin:0 4px"></span>
+      <span class="muted" style="font-size:11px">${TH?'ระดับเครื่อง':'Class'}:</span>
+      ${chip(HCRIT==='all',"histSetCrit('all')",(TH?'ทั้งหมด':'All')+' '+n('all'))}
+      ${['A','B','C'].map(c=>chip(HCRIT===c,`histSetCrit('${c}')`,c+' '+n(c))).join('')}
+      ${n('-')?chip(HCRIT==='-',"histSetCrit('-')",(TH?'ไม่ระบุ':'None')+' '+n('-')):''}`;})()}
   </div>`;
 }
 function histExport(){
@@ -6137,21 +6191,130 @@ function histRecordHtml(r){
     </div></div>`;
 }
 
+/* ══════ b516 ONE MACHINE'S HISTORY ══════
+   Picked from the box (or its Asset ID typed in full + Enter): who it is, how it is
+   doing, and every job on it as a timeline — what the operator reported, what the
+   technician did, how long it was down, which checklist points were NG. The table is
+   one tab away; open jobs and NG points have tabs of their own. */
+function histMachineHtml(r,jobs){
+  const TH=LANG==='TH',m=r.machine||{},k=r.stats||{},x=r.extra||{};
+  const dash='<span style="color:#94A3B8">—</span>';
+  const crit=String(m.criticality||'').trim().toUpperCase();
+  const open=(jobs||[]).filter(j=>!['Done','Rejected','Cancelled'].includes(j.status));
+  const pmNG=(jobs||[]).filter(j=>(j.ng_items||[]).length);
+  const cell=(v,l,col,sz)=>`<div style="flex:1;min-width:104px;padding:8px 12px;border-right:1px solid #eef2f7">
+    <div style="font-size:${sz||19}px;font-weight:700;line-height:1.25;color:${col||'var(--navy)'};white-space:nowrap">${v}</div>
+    <div style="font-size:10px;color:#94A3B8;text-transform:uppercase;letter-spacing:.3px">${l}</div></div>`;
+  const info=[m.line?'📍 '+esc(m.line)+(m.floor?' · '+(TH?'ชั้น ':'floor ')+esc(m.floor):''):'',
+    x.group?(TH?'กลุ่มเช็คลิสต์: ':'Checklist group: ')+'<b>'+esc(x.group)+'</b>':'',
+    m.asset_group?(TH?'กลุ่ม: ':'Group: ')+esc(m.asset_group):'',
+    [m.manufacturer,m.brand_model].filter(Boolean).map(esc).join(' / '),
+    m.serial_no?'S/N '+esc(m.serial_no):'',m.year_install?(TH?'ติดตั้ง ':'installed ')+esc(m.year_install):''].filter(Boolean).join(' &nbsp;·&nbsp; ');
+  const nextPM=k.next_pm||x.next_pm_job||'';
+  const head=`<div class="card" style="padding:0;overflow:hidden">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:12px 14px 4px">
+      <span style="font-size:22px;font-weight:700;color:var(--navy)">${esc(m.code||'')}</span>
+      <span style="font-size:17px;color:#475569">${esc(m.name||'')}</span>${critTag(crit,true)}
+      ${open.length?`<span onclick="HVIEW='open';renderPlanner()" style="cursor:pointer;background:#FEF3C7;color:#92400E;border-radius:6px;padding:1px 9px;font-size:12px;font-weight:600">⚠ ${open.length} ${TH?'งานค้าง':'open jobs'}</span>`:''}
+      ${m.active===0?`<span style="background:#F1F5F9;color:#64748B;border-radius:6px;padding:1px 9px;font-size:12px">${TH?'เลิกใช้แล้ว':'retired'}</span>`:''}
+      <span style="flex:1"></span>
+      ${CANNEW()?`<button class="btn sm" onclick="histNewJob(${m.id})">+ ${TH?'สร้างงานเครื่องนี้':'Create job for this machine'}</button>`:''}
+      <button class="btn sm" onclick="window.print()">🖨 ${TH?'พิมพ์':'Print'}</button>
+      <button class="btn sm" onclick="histExport()">⤓ Excel</button></div>
+    <div class="muted" style="font-size:12px;padding:0 14px 8px">${info||dash}${k.first_seen?` &nbsp;·&nbsp; ${TH?'มีประวัติตั้งแต่':'on record since'} ${esc(k.first_seen)}`:''}</div>
+    <div style="display:flex;flex-wrap:wrap;border-top:1px solid #eef2f7">
+      ${cell(k.n_jobs||0,TH?'งานทั้งหมด':'Jobs')}
+      ${cell(k.bd||0,TH?'เครื่องเสีย (BD)':'Breakdowns',k.bd?'#DC2626':'')}
+      ${cell(k.cm||0,'CM')}
+      ${cell(k.down_min?dtHM(k.down_min):dash,TH?'เวลาเสีย':'Downtime')}
+      ${cell(k.mttr_min!=null?dtHM(k.mttr_min):dash,'MTTR')}
+      ${cell(k.mtbf_min!=null?dtHM(k.mtbf_min):dash,'MTBF')}
+      ${cell(`${k.pm_done||0}/${k.pm||0}`,TH?'PM เสร็จ':'PM done',(k.pm&&k.pm_done>=k.pm)?'#16A34A':'')}
+      ${cell(k.last_bd?esc(k.last_bd):dash,TH?'เสียล่าสุด':'Last breakdown','',15)}
+      ${cell(k.last_pm?esc(k.last_pm):dash,TH?'PM ล่าสุด':'Last PM','',15)}
+      ${cell(nextPM?esc(nextPM):(TH?'ยังไม่ตั้งรอบ':'not set'),TH?'PM ครั้งต่อไป':'Next PM','var(--orange)',15)}
+    </div></div>`;
+  const tab=(v,l)=>`<span onclick="HVIEW='${v}';renderPlanner()" style="padding:7px 14px;cursor:pointer;${HVIEW===v?'color:var(--navy);font-weight:600;border-bottom:2px solid var(--orange)':'color:#64748B'}">${l}</span>`;
+  const body=HVIEW==='table'?histTableHtml(jobs,true)
+    :HVIEW==='open'?histTimeline(open,TH?'ไม่มีงานค้าง':'No open jobs')
+    :HVIEW==='ng'?histTimeline(pmNG,TH?'ไม่มีข้อ NG':'No NG checklist points')
+    :histTimeline(jobs,TH?'ไม่มีงานในช่วงนี้':'No jobs in this period');
+  // side panel
+  const bars=(arr,col)=>{if(!arr||!arr.length)return `<div class="muted" style="font-size:12px">—</div>`;const t=Math.max(...arr.map(a=>a[1]));
+    return arr.map(([n,v])=>`<div style="margin:5px 0;font-size:12px"><div style="display:flex;justify-content:space-between;gap:6px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(n)}</span><b>${v}</b></div>
+      <div style="height:6px;border-radius:3px;background:#E2E8F0;overflow:hidden"><i style="display:block;height:100%;width:${v/t*100}%;background:${col}"></i></div></div>`).join('');};
+  const mo=r.months||[],top=Math.max(1,...mo.map(q=>q.PM+q.CM+q.BD+q.IMP));
+  const mbars=mo.map(q=>{const tot=q.PM+q.CM+q.BD+q.IMP;const seg=(v,c)=>v?`<i style="display:block;height:${v/top*100}%;background:${c}"></i>`:'';
+    return `<div title="${q.m} · ${tot}" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:56px;min-width:6px">${seg(q.BD,'#DC2626')}${seg(q.CM,'#334155')}${seg(q.PM,'#2563EB')}${seg(q.IMP,'#7C3AED')}${tot?'':'<i style="display:block;height:3px;background:#e2e8f0"></i>'}</div>`;}).join('');
+  const warn=(r.repeats||[]).map(g=>{const dup=g.kind==='duplicate';
+    return `<div class="card" style="padding:9px 12px;margin:0 0 10px;background:${dup?'#FFFBEB':'#FEF2F2'};border-color:${dup?'#FDE68A':'#FECACA'};color:${dup?'#92400E':'#991B1B'};font-size:12.5px">
+      <b>${dup?'⧉ '+(TH?'แจ้งซ้ำ':'Duplicate report'):'⚠ '+(TH?'อาการเดิมกลับมา':'Repeat fault')}</b> — “${esc((g.jobs[g.jobs.length-1]||{}).text||'')}” ${g.n}×${dup?'':(TH?` ห่างกัน ${g.days_apart} วัน`:` · ${g.days_apart} days apart`)}
+      <div style="opacity:.85">${g.jobs.map(j=>`<span onclick="pmOpenJob(${j.id})" style="cursor:pointer;text-decoration:underline">${esc(j.jobid||'')}</span>`).join(' · ')}</div></div>`;}).join('');
+  const side=`<div>
+    <div class="card" style="padding:10px 12px;margin:0 0 10px"><b style="font-size:13px">${TH?'งานต่อเดือน (12 เดือน)':'Jobs per month (12 months)'}</b>
+      <div style="display:flex;gap:2px;align-items:flex-end;margin-top:6px">${mbars}</div>
+      <div class="muted" style="display:flex;justify-content:space-between;font-size:10.5px;margin-top:2px"><span>${esc((mo[0]||{}).m||'')}</span><span><span style="color:#DC2626">■</span>BD <span style="color:#334155">■</span>CM <span style="color:#2563EB">■</span>PM</span><span>${esc((mo[mo.length-1]||{}).m||'')}</span></div></div>
+    ${warn}
+    <div class="card" style="padding:10px 12px;margin:0 0 10px"><b style="font-size:13px">${TH?'ปัญหาที่แจ้งบ่อย':'Most reported problems'}</b>${bars(x.problems,'#334155')}</div>
+    <div class="card" style="padding:10px 12px;margin:0 0 10px"><b style="font-size:13px">${TH?'ข้อเช็คลิสต์ที่พบ NG':'Checklist points found NG'}</b>${bars(x.ng_items,'#DC2626')}</div>
+    <div class="card" style="padding:10px 12px;margin:0"><b style="font-size:13px">${TH?'ช่างที่ทำงานเครื่องนี้':'Technicians on this machine'}</b>${bars(x.techs,'#2563EB')}</div></div>`;
+  return head+`<div style="display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:12px;align-items:start">
+    <div class="card" style="padding:8px 12px 12px;margin:0;min-width:0">
+      <div style="display:flex;gap:2px;border-bottom:1px solid var(--bd);margin-bottom:10px;flex-wrap:wrap;align-items:center">
+        ${tab('tl',TH?'ไทม์ไลน์':'Timeline')}${tab('table',TH?'ตาราง':'Table')}${tab('open',(TH?'งานค้าง':'Open jobs')+' ('+open.length+')')}${tab('ng',(TH?'PM ที่พบ NG':'PM with NG')+' ('+pmNG.length+')')}</div>
+      ${body}</div>${side}</div>`;
+}
+function histTimeline(list,empty){
+  const TH=LANG==='TH';
+  list=(list||[]).filter(j=>HTYPE==='all'||(j.jobtype||'').toUpperCase()===HTYPE)
+    .slice().sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
+  if(!list.length)return `<p class="muted" style="text-align:center;padding:20px">${empty}</p>`;
+  let mo='',h='';
+  const lbl=t=>`<div style="font-size:10.5px;color:#94A3B8;text-transform:uppercase">${t}</div>`;
+  list.forEach(j=>{
+    const mm=String(j.created_at||'').slice(0,7);
+    if(mm!==mo){mo=mm;h+=`<div style="font-weight:600;color:#475569;margin:12px 0 6px -30px;background:#fff;display:inline-block;padding:0 8px;position:relative">${esc(new Date(mm+'-01T00:00:00').toLocaleDateString(TH?'th-TH':'en-GB',{month:'long',year:'numeric'}))}</div>`;}
+    const col=rcTypeColor(j),isPM=(j.jobtype||'')==='PM',void_=['Cancelled','Rejected'].includes(j.status);
+    const done=String(j.done_at||'').slice(0,16).replace('T',' ');
+    const crew=[j.lead_name,...(j.helper_names||[])].filter(Boolean);
+    const ng=j.ng_items||[];
+    h+=`<div onclick="pmOpenJob(${j.id})" style="position:relative;cursor:pointer;background:#fff;border:1px solid var(--bd);border-radius:10px;padding:9px 12px;margin-bottom:9px;${void_?'opacity:.6':''}">
+      <span style="position:absolute;left:-27px;top:13px;width:12px;height:12px;border-radius:50%;background:${col};border:2px solid #fff;box-shadow:0 0 0 2px ${col}"></span>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span style="background:${col};color:#fff;border-radius:6px;padding:0 8px;font-size:11px;font-weight:700">${esc(j.jobtype||'')}${isPM&&j.pm_freq?' · '+esc(j.pm_freq):''}</span>
+        <b>${esc(j.jobid||'')}</b>${kpiExTag(j)}
+        <span class="muted" style="font-size:12px">${esc(String(j.created_at||'').slice(0,16))}${done?' → '+esc(done):''}</span>
+        <span style="flex:1"></span>
+        ${(!isPM&&j.down_min)?`<span style="background:#FEE2E2;color:#991B1B;border-radius:6px;padding:0 8px;font-size:11px">⏱ ${TH?'เสีย':'down'} ${esc(dtHM(j.down_min))}</span>`:''}
+        ${(j.img_before||j.img_after)?`<span style="background:#E0F2FE;color:#075985;border-radius:6px;padding:0 8px;font-size:11px">📷</span>`:''}
+        <span style="font-weight:600;font-size:12px;color:${pmStatColor(j.status)}">${esc(rcStatLabel(j.status))}</span></div>
+      ${isPM?`<div style="margin-top:6px;font-size:12.5px">✅ OK ${j.ok_n||0} &nbsp; ${ng.length?`<b style="color:#DC2626">❌ NG ${ng.length}</b>: `+ng.map(n=>esc(n.item)+(n.remark?` <i class="muted">(${esc(n.remark)})</i>`:'')).join(' · '):'<span class="muted">NG 0</span>'}</div>
+          ${(j.solution||'').split('\n').slice(1).join(' ').trim()?`<div class="muted" style="font-size:12px;margin-top:2px">${esc((j.solution||'').split('\n').slice(1).join(' ').trim())}</div>`:''}`
+       :`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px;font-size:12.5px">
+          <div>${lbl(TH?'อาการที่แจ้ง (ผู้แจ้ง)':'Issue reported (operator)')}${esc(j.descr||'')||'—'}${j.problem_type?`<div class="muted" style="font-size:11px">${esc(String(j.problem_type).split(' / ')[0])}</div>`:''}</div>
+          <div>${lbl(TH?'งานที่ทำ (ช่าง)':'Work done (technician)')}${esc(j.solution||j.maint_action||'')||'—'}${j.root_cause?`<div class="muted" style="font-size:11px">${TH?'สาเหตุ: ':'Root cause: '}${esc(j.root_cause)}</div>`:''}</div></div>`}
+      ${crew.length?`<div class="muted" style="font-size:12px;margin-top:5px">👷 ${esc(crew.join(', '))}</div>`:''}
+    </div>`;});
+  return `<div style="position:relative;margin-left:16px;border-left:2px solid #CBD5E1;padding-left:20px">${h}</div>
+    <div class="muted" style="text-align:center;font-size:12px">${list.length} ${TH?'งาน':'jobs'} · ${TH?'คลิกการ์ดเพื่อเปิดงาน':'click a card to open the job'}</div>`;
+}
+function histNewJob(mid){plannerNew();setTimeout(()=>{try{njChoose(mid);}catch(e){}},250);}
 /* The archive table. Same idiom as All jobs and PM Reports — sticky dark head, striped
    rows, click a row to open the job — with the columns an archive actually wants: when
    it was reported, when it closed, how long the machine was down, who fixed it and
    what they wrote. */
 function histTableHtml(jobs,forMachine){
   const TH=LANG==='TH';
-  const list=(jobs||[]).filter(j=>HTYPE==='all'||(j.jobtype||'').toUpperCase()===HTYPE)
+  const list=(jobs||[]).filter(j=>(HTYPE==='all'||(j.jobtype||'').toUpperCase()===HTYPE)&&(forMachine||HCRIT==='all'||hCrit(j)===HCRIT))
     .slice().sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
   if(!list.length)return `<div class="card"><p class="muted" style="text-align:center;padding:20px">${
     TH?'ไม่มีงานในช่วงนี้':'No jobs in this period'}</p></div>`;
   const cols=[[TH?'ลำดับ':'#',''],[TH?'รหัสงาน':'Job ID',''],[TH?'ประเภท':'Type','c'],
-    ...(forMachine?[]:[[TH?'เครื่อง':'Machine','']]),
-    [TH?'อาการที่แจ้ง (ผู้แจ้ง)':'Issue reported (operator)',''],[TH?'แจ้งเมื่อ':'Reported','c'],
+    ...(forMachine?[]:[[TH?'เครื่อง':'Machine',''],[TH?'ระดับ':'Class','c']]),
+    [TH?'แจ้งเมื่อ':'Reported','c'],[TH?'อาการที่แจ้ง (ผู้แจ้ง)':'Issue reported (operator)',''],
+    [TH?'งานที่ทำ (ช่าง)':'Work done (technician)',''],
     [TH?'ปิดงานเมื่อ':'Completed','c'],...(forMachine?[[TH?'เวลาเสีย':'Down','c']]:[]),[TH?'ช่างหลัก':'Lead tech',''],
-    [TH?'งานที่ทำ (ช่าง)':'Work done (technician)',''],[TH?'สถานะ':'Status','c']];
+    [TH?'สถานะ':'Status','c']];
   const th=cols.map(([h],i)=>`<th style="position:sticky;top:0;z-index:2;background:#1E293B;color:#fff;font-weight:600;font-size:11px;padding:6px 8px;border:1px solid #33415580;white-space:nowrap;text-align:left;${i===0?'left:0;z-index:3':''}">${h}</th>`).join('');
   const rows=list.map((j,i)=>{
     const bg=(i%2)?'#F5F7FA':'#fff';
@@ -6165,12 +6328,13 @@ function histTableHtml(jobs,forMachine){
       ${td('<b>'+esc(j.jobid||'')+'</b>'+kpiExTag(j),'white-space:nowrap')}
       ${td('<span style="color:'+rcTypeColor(j)+';font-weight:600">'+esc(j.jobtype||'')+'</span>','text-align:center')}
       ${forMachine?'':clip(jobWhere(j),200)}
-      ${clip(j.descr||j.problem_type||'',250)}
+      ${forMachine?'':td(critBadge(j.mcrit),'text-align:center')}
       ${td(esc(String(j.created_at||'').slice(0,16)),'text-align:center;white-space:nowrap;color:#64748B')}
+      ${clip(j.descr||j.problem_type||'',250)}
+      ${clip(j.solution||j.maint_action||'',260)}
       ${td(done?esc(done)+(okd?' <span style="color:#16A34A">✓</span>':''):'','text-align:center;white-space:nowrap;color:'+(done?'#334155':'#94A3B8'))}
       ${forMachine?td(j.down_min?esc(dtHM(j.down_min)):'','text-align:center;white-space:nowrap'):''}
       ${td(esc(j.lead_name||''),'white-space:nowrap')}
-      ${clip(j.solution||j.maint_action||'',260)}
       ${td('<span style="font-weight:600;color:'+pmStatColor(j.status)+'">'+esc(rcStatLabel(j.status))+'</span>','text-align:center;white-space:nowrap')}
     </tr>`;}).join('');
   const per=HMID&&!HFROM?(TH?'ทั้งหมด':'all time'):`${HFROM} → ${HTO}`;
@@ -6245,7 +6409,7 @@ async function renderPlanner(){
     ${PTAB==='History'?histFilterHtml(jobs):''}
   </div>
   ${PTAB==='Recent'?`<div id="rcTree">${rcTreeHtml(jobs)}</div>`
-   :PTAB==='History'?((HREC?histRecordHtml(HREC):'')+histTableHtml(jobs,!!HMID))
+   :PTAB==='History'?((HMID&&HREC)?histMachineHtml(HREC,jobs):((HREC?histRecordHtml(HREC):'')+histTableHtml(jobs,!!HMID)))
    :PTAB==='Assigned'?plannedSections(jobs)
    :(jobs.length?jobGroups(jobs,null,pcard,'planned_date'):`<p class="muted" style="text-align:center;padding:20px">${t('no_items')}</p>`)}`;
   window._pool=jobs;
@@ -7453,6 +7617,8 @@ function asgCarryTag(j){
   if(!j||!j.carry_from)return '';
   const TH=LANG==='TH',d=new Date(j.carry_from+'T00:00');
   const s=d.toLocaleDateString(TH?'th-TH':'en-GB',{day:'numeric',month:'short'});
+  // an unassigned job planned for a LATER day than this board: blue → tag, not a late one
+  if(ASG&&j.carry_from>ASG.day)return `<span class="asgtag" style="background:#DBEAFE;color:#1E40AF" title="${TH?'วางแผนไว้วันที่ '+s+' ยังไม่มอบหมาย — ลากมาที่ทีมเพื่อย้ายมาทำวันนี้':'planned for '+s+', not assigned — drag onto a crew to move it to this day'}">→ ${esc(s)}</span>`;
   return `<span class="asgtag" style="background:#FFEDD5;color:#9A3412" title="${TH?'วางแผนไว้วันที่ '+s+' ยังไม่เสร็จ':'planned for '+s+', still open'}">↤ ${esc(s)}</span>`;
 }
 function asgJobCard(j,mine){
@@ -7817,7 +7983,7 @@ function asgDraw(){
           ${!LD&&shown.some(j=>j.pmdue)?hint(TH?'รายการที่ติด <b>ถึงรอบ</b> คือ PM ตามแผน — ใบสั่งงานจะถูกสร้างเมื่อคุณมอบหมายให้ทีม':'Items marked <b>DUE</b> are scheduled PM — the work order is created when you assign one to a crew.'):''}
           ${/* both hints follow what is on screen, not what exists somewhere behind a
                 chip — a note about carried work over a list with none in it is noise */''}
-          ${!LD&&shown.some(j=>j.carry_from)?hint(TH?'รายการที่ติด <b>↤ วันที่</b> คืองานค้างจากวันก่อน — ลากมาวางที่ทีมเพื่อย้ายมาทำวันนี้':'Items tagged <b>↤ date</b> are unfinished work from an earlier day. Drag one onto a crew to move it to today.'):''}
+          ${!LD&&shown.some(j=>j.carry_from)?hint(TH?'รายการที่ติด <b>↤ วันที่</b> คืองานค้างจากวันก่อน, <b>→ วันที่</b> คืองานวันอื่นที่ยังไม่มอบหมาย — ลากมาวางที่ทีมเพื่อย้ายมาทำวันนี้':'Items tagged <b>↤ date</b> are unfinished work from an earlier day; <b>→ date</b> is unassigned work planned for another day. Drag one onto a crew to move it to this day.'):''}
           ${LD?'':shown.length?asgPoolHtml(shown)
             :`<div class="asgmt">${!ASG.jobs.length
                 ?(TH?'ยังไม่มีใบสั่งงานในวันนี้<br><span style="font-size:11.5px">รายการ PM ที่เห็นบนปฏิทินเป็น <b>กำหนดครบรอบ</b> ยังไม่ใช่ใบสั่งงาน</span>'
@@ -11053,7 +11219,7 @@ function jobRow(j,openFn){
     <span class="jdotc">${jobUnread(j)?'<span class="jdot"></span>':''}</span>
     ${jobPhoto(j)}
     <div class="jmeta">
-      <div class="jttl">${critTag(j.mcrit)?critTag(j.mcrit)+' ':''}${title}</div>
+      <div class="jttl">${(()=>{const k=j.mcrit||((machOf(j)||{}).criticality)||'';return critTag(k)?critTag(k)+' ':'';})()}${title}</div>
       <div class="jepi"><b>${esc(j.jobid||'')}</b>${j.descr?' · '+esc(j.descr):''}</div>
       <div class="jsub">${dt}${who?' · '+who:''}${(()=>{
         if(dst==='jlate')return ` · <b>${(LANG==='TH')?'เลยกำหนด':'overdue'} ${pjDD(j.due_date,todayLocal())} ${(LANG==='TH')?'วัน':'d'}</b>`;
@@ -11083,6 +11249,9 @@ function jobGroups(jobs,openFn,rowFn,dateField){
   // why the location grouping did nothing on a plant that had asked for it.
   const JF=(typeof JOBFILTER!=='undefined')?JOBFILTER:null;
   const byPlace=!!(JF&&JF.groupBy==='place');
+  // b5xx: by day, and inside each day one sub-heading per location / floor — the
+  // day's round, a floor at a time
+  const dayFloor=!!(JF&&JF.groupBy==='datefloor');
   const df=dateField||(JF&&JF.dateField)||'planned_date';
   const row=rowFn||(j=>jobRow(j,openFn));
   const keyOf=j=>byPlace?jobPlaceKey(j):String(j[df]||j.planned_date||j.created_at||BOOT.today).slice(0,10);
@@ -11103,18 +11272,26 @@ function jobGroups(jobs,openFn,rowFn,dateField){
     const prog=arr.filter(j=>statusBucket(j.status)==='prog').length;
     const pend=arr.length-done-prog;
     const label=byPlace?esc(placeLabel(arr[0])):fdate(k);
+    if(dayFloor){
+      const sub={};arr.forEach(j=>{const pk=jobPlaceKey(j);(sub[pk]=sub[pk]||[]).push(j);});
+      const inner=Object.keys(sub).sort().map(pk=>{const L=sub[pk];
+        L.sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||''))||(b.id||0)-(a.id||0));
+        return `<div style="font-size:12px;font-weight:700;color:#0F766E;background:#F0FDFA;border-left:3px solid #14B8A6;padding:4px 9px;margin:6px 0 4px;border-radius:4px">📍 ${esc(placeLabel(L[0]))} <span class="muted" style="font-weight:600">(${L.length})</span></div>`+L.map(row).join('');}).join('');
+      return `<div class="tgrp"><div class="tdate" onclick="toggleGrp(this)"><span class="tchev">▾</span><span class="tdlabel">${label}</span><span class="tcnts"><span>${LANG==='TH'?'ทั้งหมด':'Total'} ${arr.length}</span>${cnt('#22C55E',done)}${cnt('#F59E0B',prog)}${cnt('#EF4444',pend)}</span></div><div class="tjobs" style="margin:0">${inner}</div></div>`;
+    }
     return `<div class="tgrp"><div class="tdate" onclick="toggleGrp(this)"><span class="tchev">▾</span><span class="tdlabel">${byPlace?'📍 ':''}${label}</span><span class="tcnts"><span>${LANG==='TH'?'ทั้งหมด':'Total'} ${arr.length}</span>${cnt('#22C55E',done)}${cnt('#F59E0B',prog)}${cnt('#EF4444',pend)}</span></div><div class="tjobs${rowFn?' tjobs-grid':''}" style="margin:0;padding:2px 12px 8px;border-left:none">${arr.map(row).join('')}</div></div>`;
   }).join('');
 }
 /* The technician's own choice, kept on his phone. The plant sets the sensible default —
    a tower groups by location, a flat plant by date — and he can flip it either way. */
 function jobGroupPref(){
-  try{const v=localStorage.getItem('bflfp_grp');if(v==='place'||v==='date')return v;}catch(e){}
-  return locPlant()?'place':'date';
+  // a new key, so a choice saved before day + floor existed does not hide it
+  try{const v=localStorage.getItem('bflfp_grp2');if(v==='place'||v==='date'||v==='datefloor')return v;}catch(e){}
+  return locPlant()?'datefloor':'date';
 }
 function setJobGroup(v){
   JOBFILTER.groupBy=v;
-  try{localStorage.setItem('bflfp_grp',v);}catch(e){}
+  try{localStorage.setItem('bflfp_grp2',v);}catch(e){}
   const b=document.getElementById('grpTog');
   if(b)b.innerHTML=jobGroupBtns();
   renderJobList();
@@ -11122,7 +11299,8 @@ function setJobGroup(v){
 function jobGroupBtns(){
   const TH=LANG==='TH',v=(JOBFILTER&&JOBFILTER.groupBy)||'date';
   const on='background:#0F766E;color:#fff;border-color:#0F766E';
-  return `<button class="btn sm" style="${v==='place'?on:''}" onclick="setJobGroup('place')">📍 ${TH?'ตามสถานที่':'By location'}</button>
+  return `<button class="btn sm" style="${v==='datefloor'?on:''}" onclick="setJobGroup('datefloor')">📅📍 ${TH?'วัน+ชั้น':'Day+floor'}</button>
+    <button class="btn sm" style="${v==='place'?on:''}" onclick="setJobGroup('place')">📍 ${TH?'ตามสถานที่':'By location'}</button>
     <button class="btn sm" style="${v==='date'?on:''}" onclick="setJobGroup('date')">📅 ${TH?'ตามวันที่':'By date'}</button>`;
 }
 let JOBFILTER={q:'',status:'all',jobs:[],openFn:'',empty:''};
@@ -11246,12 +11424,27 @@ async function renderTech(){
   LIVEVIEW=null;                          // back on the list; the list is what refreshes
   const map={new:'technew',assigned:'techassigned',waiting:'techwaiting'};
   const view=map[TECHVIEW]||'technew';
-  const {jobs}=await api('/api/jobs?view='+view);
+  const {jobs:cur}=await api('/api/jobs?view='+view);
   // each tab's rows are fetched anyway for its count — keep them, so the lamp can say
   // which tab has something you have not looked at
-  const grab=async(tab,v)=>TECHVIEW===tab?jobs:(((await api('/api/jobs?view='+v)).jobs)||[]);
-  const [lNew,lAsn,lWait]=await Promise.all([grab('new','technew'),grab('assigned','techassigned'),
+  const grab=async(tab,v)=>TECHVIEW===tab?cur:(((await api('/api/jobs?view='+v)).jobs)||[]);
+  let [lNew,lAsn,lWait]=await Promise.all([grab('new','technew'),grab('assigned','techassigned'),
                                              grab('waiting','techwaiting')]);
+  // b5xx: Central Electrical — the electrical parts of PM jobs sit in the same three tabs
+  // as his CM / BD / PM work: nobody's yet → New Jobs, given to him → My jobs, stopped and
+  // waiting for the planner → Approve pending. A job already in a list is not added twice.
+  if(ISCE()){
+    let E=null;try{E=await api('/api/elec/mine');}catch(e){}
+    if(E){
+      const conv=r=>({id:r.id,jobid:r.jobid,jobtype:'PM',status:r.status,planned_date:r.date,
+        created_at:r.created_at||'',machine_id:r.machine_id,mcode:r.mcode,mname:r.mname,mcrit:r.mcrit||'',
+        priority:r.priority||2,pm_freq:r.pm_freq||r.freq||'',el:true,
+        descr:'⚡ '+(LANG==='TH'?'PM ไฟฟ้า':'Electrical PM')+(r.el_total?` ${r.el_total-(r.el_left||0)}/${r.el_total}`:'')});
+      const add=(L,R)=>{const have=new Set(L.map(j=>j.id));return L.concat((R||[]).filter(r=>!have.has(r.id)).map(conv));};
+      lNew=add(lNew,E.open);lAsn=add(lAsn,E.mine);lWait=add(lWait,(E.completed||[]).filter(r=>!r.accepted));
+    }
+  }
+  const jobs=TECHVIEW==='new'?lNew:TECHVIEW==='waiting'?lWait:lAsn;
   const nNew=lNew.length,nAsn=lAsn.length,nWait=lWait.length;
   jseenBaseline(lNew.concat(lAsn,lWait));
   const lamp={new:unreadIn(lNew),assigned:unreadIn(lAsn),waiting:unreadIn(lWait)};
@@ -11831,7 +12024,7 @@ async function renderElecJob(id){
     <div style="font-size:11.5px;color:#94A3B8;margin-top:2px">${esc(j.jobid)} · ${fdate(j.planned_date)}</div></div>`;
   const mOk=['ServiceCompleted','Done'].includes(j.status);
   const plant=genN?`<div class="muted" style="font-size:12px;margin:0 2px 8px">🔧 ${TH?`ช่างโรงงาน (mechanical): ${genDone}/${genN}`:`Plant (mechanical): ${genDone}/${genN}`} · ${mOk?`<b style="color:#166534">✓ ${TH?'เสร็จแล้ว (completed)':'completed'}</b>`:`<b style="color:#B45309">⏳ ${TH?'ยังไม่เสร็จ (not finished)':'not finished'}</b>`}</div>`:'';
-  $('#app').innerHTML=techWrap(head+plant+`<div class="card" id="elCard">${elCardInner()}</div><div id="elBtns">${elBtns()}</div>`,'renderElecTech()');
+  $('#app').innerHTML=techWrap(head+plant+`<div class="card" id="elCard">${elCardInner()}</div><div id="elBtns">${elBtns()}</div>`,'renderTech()');   // b5xx: back to the 3-tab job list
 }
 function elItems(){return (ELJ&&ELJ.cl.items||[]).filter(i=>i.elec);}
 function elBlocked(){
@@ -13722,6 +13915,7 @@ function admUsersHtml(users,q){
       <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
         <button class="btn primary" onclick="${sel.can_login===0?`techDlg(${sel.id})`:`userDlg(${sel.id})`}">✎ ${t('edit')}</button>
         ${admIsPerson(sel)?`<button class="btn" onclick="admPhotoPick(${sel.id})">📷 ${TH?'รูปถ่าย':'Photo'}</button>`:''}
+        ${ME.role==='admin'&&sel.id!==ME.id&&sel.can_login!==0?`<button class="btn" onclick="admSignOut(${sel.id})" title="${TH?'ออกจากระบบทุกเครื่องของบัญชีนี้':'End every sign-in of this account'}">⏏ ${TH?'ออกจากระบบ':'Sign out'}</button>`:''}
         ${ME.role==='admin'&&sel.id!==ME.id?`<button class="btn danger" onclick="admDelete(${sel.id})">🗑 ${TH?'ลบ':'Delete'}</button>`:''}
       </div>
       <input type="file" id="admPhotoFile" accept="image/*" style="display:none" onchange="admPhotoUp(this)">
@@ -13923,7 +14117,7 @@ function admUsersHtml(users,q){
                 TH?'ยังไม่มีคน':'without a person'}</b>`:'');
         })()}</span>
         <span style="flex:1;min-width:8px"></span>
-        <button class="btn sm" onclick="admView('mx')">▦ ${TH?'มุมมองตาราง (Matrix)':'Matrix view'}</button><button class="btn sm primary" onclick="userDlg(0)">+ ${TH?'บัญชี':'Account'}</button>
+        ${ME.role==='admin'?`<button class="btn sm" style="color:#B91C1C;border-color:#FECACA" onclick="admSignOutAll()">⏏ ${TH?'ออกจากระบบทุกคน':'Sign everyone out'}</button>`:''}<button class="btn sm" onclick="admView('mx')">▦ ${TH?'มุมมองตาราง (Matrix)':'Matrix view'}</button><button class="btn sm primary" onclick="userDlg(0)">+ ${TH?'บัญชี':'Account'}</button>
         <button class="btn sm primary" onclick="techDlg(0,'technician')">+ ${TH?'ช่าง':'Technician'}</button>
         <button class="btn sm primary" style="background:var(--green,#16A34A)" onclick="techDlg(0,'operator')">+ ${TH?'ผู้แจ้ง':'Operator'}</button>
       </div>
@@ -14018,7 +14212,7 @@ function admUsersHtml(users,q){
             noPerson.length?` · <b style="color:#B45309">${noPerson.length} ${
               TH?'ยังไม่มีคน':'without a person'}</b>`:''}</span>
           <span style="flex:1;min-width:8px"></span>
-          <button class="btn sm" onclick="admView('mx')">▦ ${TH?'มุมมองตาราง (Matrix)':'Matrix view'}</button><button class="btn sm primary" onclick="userDlg(0)">+ ${TH?'บัญชี':'Account'}</button>
+          ${ME.role==='admin'?`<button class="btn sm" style="color:#B91C1C;border-color:#FECACA" onclick="admSignOutAll()">⏏ ${TH?'ออกจากระบบทุกคน':'Sign everyone out'}</button>`:''}<button class="btn sm" onclick="admView('mx')">▦ ${TH?'มุมมองตาราง (Matrix)':'Matrix view'}</button><button class="btn sm primary" onclick="userDlg(0)">+ ${TH?'บัญชี':'Account'}</button>
           <button class="btn sm primary" onclick="techDlg(0,'technician')">+ ${TH?'ช่าง':'Technician'}</button>
           <button class="btn sm primary" style="background:var(--green,#16A34A)" onclick="techDlg(0,'operator')">+ ${TH?'ผู้แจ้ง':'Operator'}</button>
         </div>${gapBanner}</div>
@@ -14424,6 +14618,22 @@ async function mdImport(inp){
 }
 // Deleting a name never throws its work away: everything they reported, led,
 // approved, logged or signed moves to somebody else first — the admin by default.
+/* b547 — sign-ins now survive a restart, so ending them is a button, not a restart */
+async function admSignOut(id){
+  const TH=LANG==='TH';const u=admUser(id)||{};
+  if(!confirm(TH?`ออกจากระบบบัญชี ${u.name||u.username||''} ทุกเครื่อง?\n(เช่น โทรศัพท์หาย / ใช้เครื่องร่วม) — ต้องเข้าสู่ระบบใหม่`
+                :`Sign ${u.name||u.username||''} out on every device?\n(e.g. lost or shared phone) — they must sign in again`))return;
+  let r;try{r=await post('/api/admin/users/'+id+'/signout',{});}catch(e){return;}
+  alert(TH?`ออกจากระบบแล้ว ${r.ended||0} เครื่อง`:`Signed out on ${r.ended||0} device(s)`);
+}
+async function admSignOutAll(){
+  const TH=LANG==='TH';
+  if(!confirm(TH?'ออกจากระบบ "ทุกคน" ทุกเครื่อง ยกเว้นคุณ?\nทุกคนต้องเข้าสู่ระบบใหม่ — งานที่บันทึกแล้วไม่หาย'
+                :'Sign EVERYONE out on every device, except you?\nEveryone must sign in again — nothing saved is lost'))return;
+  if(!confirm(TH?'ยืนยันอีกครั้ง: ออกจากระบบทุกคน':'Confirm again: sign everyone out'))return;
+  let r;try{r=await post('/api/admin/sessions/signout-all',{});}catch(e){return;}
+  alert(TH?`ออกจากระบบแล้ว ${r.ended||0} รายการ`:`Ended ${r.ended||0} sign-in(s)`);
+}
 function admDelete(id){
   const TH=LANG==='TH';
   const u=admUser(id)||{};
@@ -14840,6 +15050,92 @@ async function loadWorktime(){
 }
 let MTUNIT=localStorage.getItem('bflfp_mtunit')||'hm';
 function fdur(m){if(m==null)return '—';if(MTUNIT==='days')return (m/1440).toFixed(1)+' d';const h=Math.floor(m/60),mm=Math.round(m%60);return h+'h '+String(mm).padStart(2,'0')+'m';}
+/* ════ b505: PM % and CM % per week (Mon–Sun), from the first week of data ════ */
+async function wkTrendLoad(){
+  const box=document.getElementById('wkTrend');if(!box)return;
+  const TH=LANG==='TH';
+  let r;try{r=await api('/api/kpi/weekly?bucket='+WKB);}catch(e){box.innerHTML='';return;}
+  WKT=r.weeks||[];wkTrendDraw();
+}
+let WKT=[];let WKB=(()=>{try{const v=localStorage.getItem('bflfp_wkb');return v==='month'?'month':'week'}catch(e){return 'week'}})();   // b513: Daily removed
+function wkSet(b){WKB=b;try{localStorage.setItem('bflfp_wkb',b)}catch(e){}wkTrendLoad();}
+const WKM=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function wkLbl(w){return WKB==='month'?[WKM[+w.week.slice(5,7)-1],w.week.slice(0,4)]:WKB==='day'?[w.week.slice(8,10)+'/'+w.week.slice(5,7),['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][(new Date(w.week+'T00:00:00').getDay()+6)%7]]:[w.week.slice(8,10)+'/'+w.week.slice(5,7),'W'+w.iso];}
+function wkTrendDraw(){
+  const box=document.getElementById('wkTrend');if(!box)return;
+  const TH=LANG==='TH',W=WKT;
+  if(!W.length){box.innerHTML='';return;}
+  const n=W.length,cw=Math.max(box.clientWidth-40,600),h=240,pl=38,pr=14,pt=14,pb=46;
+  const iw=cw-pl-pr,ih=h-pt-pb,X=i=>pl+(n===1?iw/2:i*iw/(n-1)),Y=v=>pt+ih-(v/100)*ih;
+  const line=(k,col)=>{let d='',pen=false;W.forEach((w,i)=>{const v=w[k];if(v==null){pen=false;return;}d+=(pen?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1);pen=true;});
+    return `<path d="${d}" fill="none" stroke="${col}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`
+      +W.map((w,i)=>w[k]==null?'':`<circle cx="${X(i).toFixed(1)}" cy="${Y(w[k]).toFixed(1)}" r="${n>40?2:3.4}" fill="${w.partial?'#fff':col}" stroke="${col}" stroke-width="1.6"/>`).join('')
+      /* b513: the % of each week written at its dot — PM above the line, CM below, thinned out when there are many points */
+      +W.map((w,i)=>{if(w[k]==null||(i%lstep&&i!==n-1))return '';const up=k==='pm_pct',y=Y(w[k])+(up?-8:15);
+        return `<text x="${X(i).toFixed(1)}" y="${Math.max(pt+9,Math.min(pt+ih+12,y)).toFixed(1)}" font-size="10.5" font-weight="700" fill="${col}" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">${Math.round(w[k])}%</text>`;}).join('');};
+  const lstep=Math.max(1,Math.ceil(n/Math.max(1,Math.floor(iw/44))));
+  const grid=[0,25,50,75,100].map(v=>`<line x1="${pl}" x2="${cw-pr}" y1="${Y(v)}" y2="${Y(v)}" stroke="#EEF2F7"/><text x="${pl-6}" y="${Y(v)+4}" font-size="10" fill="#94A3B8" text-anchor="end">${v}%</text>`).join('');
+  const tgt=`<line x1="${pl}" x2="${cw-pr}" y1="${Y(90)}" y2="${Y(90)}" stroke="#16A34A" stroke-dasharray="4 4" opacity=".6"/><text x="${cw-pr}" y="${Y(90)-4}" font-size="10" fill="#16A34A" text-anchor="end">${TH?'เป้า PM 90%':'PM target 90%'}</text>`;
+  const step=Math.max(1,Math.ceil(n/Math.floor(iw/58)));
+  const xl=W.map((w,i)=>i%step&&i!==n-1?'':`<text x="${X(i)}" y="${h-pb+16}" font-size="10" fill="#64748B" text-anchor="middle">${wkLbl(w)[0]}</text><text x="${X(i)}" y="${h-pb+28}" font-size="9" fill="#94A3B8" text-anchor="middle">${wkLbl(w)[1]}</text>`).join('');
+  const hits=W.map((w,i)=>`<rect x="${X(i)-Math.max(3,iw/n/2)}" y="${pt}" width="${Math.max(6,iw/n)}" height="${ih}" fill="transparent" onmousemove="wkTip(event,${i})" onmouseleave="wkTip(null)"/>`).join('');
+  const last=W[n-1],avg=k=>{const v=W.filter(w=>w[k]!=null&&!w.partial).map(w=>w[k]);return v.length?Math.round(v.reduce((a,b)=>a+b,0)/v.length):null;};
+  box.innerHTML=`<div class="card" style="padding:12px 14px;margin-bottom:10px">
+   <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:4px">
+    <b style="font-size:14px">${TH?'PM / CM เสร็จ % (Completion %)':'Completion % — PM and CM'}</b>
+    <span class="astog"><button class="${WKB==='week'?'on':''}" onclick="wkSet('week')">${TH?'รายสัปดาห์ (Weekly)':'Weekly'}</button><button class="${WKB==='month'?'on':''}" onclick="wkSet('month')">${TH?'รายเดือน (Monthly)':'Monthly'}</button></span>
+    <span class="muted" style="font-size:12px">${WKB==='week'?(TH?'จันทร์–อาทิตย์ · ':'Mon–Sun · '):''}${TH?'ตั้งแต่เริ่มใช้ระบบ':'since the system started'} (${n} ${WKB==='day'?(TH?'วัน':'days'):WKB==='month'?(TH?'เดือน':'months'):(TH?'สัปดาห์':'weeks')})</span>
+    <span style="flex:1"></span>
+    <span style="font-size:12px;display:inline-flex;align-items:center;gap:6px"><i style="width:14px;height:3px;background:#2563EB;display:inline-block;border-radius:2px"></i>PM % <b>${last.pm_pct??'—'}${last.pm_pct!=null?'%':''}</b> <span class="muted">(${TH?'เฉลี่ย':'avg'} ${avg('pm_pct')??'—'}%)</span></span>
+    <span style="font-size:12px;display:inline-flex;align-items:center;gap:6px"><i style="width:14px;height:3px;background:#F07B1F;display:inline-block;border-radius:2px"></i>CM % <b>${last.cm_pct??'—'}${last.cm_pct!=null?'%':''}</b> <span class="muted">(${TH?'เฉลี่ย':'avg'} ${avg('cm_pct')??'—'}%)</span></span>
+    <button class="btn sm" onclick="wkExport()">⬇ Excel</button></div>
+   ${wkCompareHtml(TH)}
+   <div style="position:relative;overflow-x:auto"><svg width="${cw}" height="${h}" style="display:block">${grid}${tgt}${line('pm_pct','#2563EB')}${line('cm_pct','#F07B1F')}${xl}${hits}</svg>
+    <div id="wkTipBox" style="position:absolute;display:none;pointer-events:none;background:#1E293B;color:#fff;font-size:12px;border-radius:8px;padding:7px 10px;line-height:1.5;white-space:nowrap;z-index:2"></div></div>
+   <div class="muted" style="font-size:11px;margin-top:2px">${TH?'PM % = PM ที่เสร็จทันรอบ ÷ PM ที่ครบรอบในช่วงนั้น + PM เก่าที่ยังค้าง · CM % = CM+BD ที่แจ้งในช่วงนั้นและปิดแล้ว ÷ ที่แจ้งทั้งหมด · สูตรเดียวกับวงกลมด้านบน · จุดขาว = ช่วงปัจจุบัน (ยังไม่จบ)'
+     :'PM % = PMs done on time ÷ PMs due in the period + older PMs still open · CM % = CM+BD raised in the period and closed (up to now) ÷ all raised · same rules as the rings above · hollow dot = current period (still running)'}</div></div>`;
+}
+/* b511: this period against the one before — the goal is PM up, CM + BD down */
+function wkCompareHtml(TH){
+  const W=WKT;if(W.length<2)return '';
+  const cur=W[W.length-1],prv=W[W.length-2];
+  const unit=WKB==='day'?(TH?'วัน':'day'):WKB==='month'?(TH?'เดือน':'month'):(TH?'สัปดาห์':'week');
+  const lbl=w=>WKB==='month'?wkLbl(w).join(' '):WKB==='day'?wkLbl(w).join(' '):'W'+w.iso;
+  const arrow=(a,b,good)=>{if(a==null||b==null)return '<span class="muted">—</span>';const d=Math.round((b-a)*10)/10;
+    if(!d)return '<span class="muted">= 0</span>';const ok=good==='up'?d>0:d<0;
+    return `<b style="color:${ok?'#16A34A':'#DC2626'}">${d>0?'▲':'▼'} ${Math.abs(d)}</b>`;};
+  const cell=(t,a,b,good,suf)=>`<div style="flex:1;min-width:150px;background:#F8FAFC;border-radius:8px;padding:8px 10px">
+    <div class="muted" style="font-size:11px">${t}</div>
+    <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><span class="muted" style="font-size:12px">${a??'—'}${a!=null?suf:''}</span><span>→</span>
+      <b style="font-size:16px">${b??'—'}${b!=null?suf:''}</b> ${arrow(a,b,good)}</div></div>`;
+  return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 8px;align-items:stretch">
+    <div style="min-width:130px;font-size:12px;display:flex;flex-direction:column;justify-content:center">
+      <b>${lbl(prv)} → ${lbl(cur)}</b><span class="muted">${TH?`${unit}ก่อน → ${unit}นี้`:`last ${unit} → this ${unit}`}${cur.partial?(TH?' (ยังไม่จบ)':' (still running)'):''}</span></div>
+    ${cell(TH?'PM เสร็จ (PM done) — ควรเพิ่ม':'PM done — should go UP',prv.pm_done,cur.pm_done,'up','')}
+    ${cell(TH?'PM ทันกำหนด % (PM on time %)':'PM on time %',prv.pm_pct,cur.pm_pct,'up','%')}
+    ${cell(TH?'CM + BD ที่แจ้ง — ควรลด':'CM + BD raised — should go DOWN',prv.cm_raised,cur.cm_raised,'down','')}
+    ${cell(TH?'CM ปิดแล้ว % (CM closed %)':'CM closed %',prv.cm_pct,cur.cm_pct,'up','%')}
+  </div>`;
+}
+function wkTip(ev,i){
+  const t=document.getElementById('wkTipBox');if(!t)return;
+  if(!ev){t.style.display='none';return;}
+  const w=WKT[i],TH=LANG==='TH',f=s=>s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4);
+  t.innerHTML=`<b>${WKB==='day'?wkLbl(w)[1]+' '+f(w.week):WKB==='month'?wkLbl(w).join(' '):'W'+w.iso+' · '+f(w.week)+' – '+f(w.end)}</b>${w.partial?` <span style="opacity:.7">(${TH?'ยังไม่จบ':'running'})</span>`:''}<br>
+    <span style="color:#93C5FD">PM</span> ${w.pm_pct??'—'}${w.pm_pct!=null?'%':''} · ${w.pm_ontime}/${w.pm_due} ${TH?'ทันกำหนด':'on time'}<br>
+    <span style="color:#FDBA74">CM</span> ${w.cm_pct??'—'}${w.cm_pct!=null?'%':''} · ${w.cm_done_week}/${w.cm_raised} ${TH?'ปิดแล้ว':'closed'}`;
+  const r=ev.currentTarget.ownerSVGElement.parentElement.getBoundingClientRect();
+  let x=ev.clientX-r.left+12;if(x>r.width-200)x-=220;
+  t.style.left=x+'px';t.style.top=(ev.clientY-r.top-10)+'px';t.style.display='block';
+}
+function wkExport(){
+  const q=v=>{v=String(v??'');return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
+  const H=[WKB==='day'?'Day':WKB==='month'?'Month':'Week','From','To','PM due','PM on time','PM done','PM %','CM+BD raised','Closed','Closed by now','CM %','Running'];
+  const rows=WKT.map(w=>[wkLbl(w).join(' '),w.week,w.end,w.pm_due,w.pm_ontime,w.pm_done,w.pm_pct??'',w.cm_raised,w.cm_done_week,w.cm_done_now,w.cm_pct??'',w.partial?'yes':'']);
+  const csv='﻿'+[H,...rows].map(r=>r.map(q).join(',')).join('\r\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download=`PM-CM-${WKB}_${(ME&&ME.factory_code)||''}.csv`;document.body.appendChild(a);a.click();a.remove();
+}
 async function renderDash(){
   stopPoll();
   const [d,k,tr]=await Promise.all([api('/api/dashboard'+facQ('?')),
@@ -14880,6 +15176,7 @@ async function renderDash(){
   ${/* 1 — the three rings lead. They are the only thing on this page that answers
         "did we keep the schedule and were the machines there" in one look. */''}
   <div id="mixpanel" style="margin-bottom:6px"></div>
+  <div id="wkTrend">${(setTimeout(wkTrendLoad,0),'')}</div>
   <div id="pmcm" style="margin-bottom:6px"></div>
   ${/* 2 — MTTR and MTBF ride directly under the rings, on the same window.
 
@@ -15008,7 +15305,7 @@ async function renderDash(){
   loadDowntime();
   loadIssues();
   loadTechs();
-  loadPmCm();          // b461: replaces the PM planned-vs-completed line
+  loadPmCm();          // b511: back, under the completion chart — last vs this week / month side by side
 }
 
 // ── Downtime: engineering vs production ──────────────────────────────────────
@@ -15343,7 +15640,8 @@ async function loadPmCm(){
    Same rules as the trend below it; the right-hand panel runs only to today. */
 function pmcmSide(p,isCur,TH,bucket,mxAll){
   const PMC='#2a78d6',CMC='#eb6834';
-  const W=480,H=170,L=30,R=12,T=10,B=24,n=p.days.length;
+  // b514: drawn at its real on-screen width, so its text is the same size as the Completion % chart above (no 2× zoom)
+  const W=Math.max(320,Math.round(((document.getElementById('pmcm')||{}).clientWidth||960)/2-44)),H=180,L=30,R=12,T=10,B=24,n=p.days.length;
   const shown=isCur?p.days.filter(x=>x.d<=p.upto):p.days;
   const X=i=>n<2?L+(W-L-R)/2:L+i*(W-L-R)/(n-1), Y=v=>T+(H-T-B)*(1-v/mxAll);
   const path=k=>shown.map((x,i)=>`${i?'L':'M'}${X(i).toFixed(1)},${Y(x[k]+(k==='cm'?x.bd:0)).toFixed(1)}`).join('');
@@ -15394,7 +15692,7 @@ function drawPmCm(){
   const head=`📉 ${TH?'PM ที่ทำเสร็จ เทียบกับงานซ่อม (CM + BD)':'PM done vs corrective work (CM + BD)'}`;
   if(!d){box.innerHTML='';return;}
   const pts=d.points,n=pts.length,PMC='#2a78d6',CMC='#eb6834';
-  const W=1000,H=220,L=38,R=110,T=14,B=28;
+  const W=Math.max(600,(box.clientWidth||1000)-32),H=220,L=38,R=110,T=14,B=28;   // b514: real width, no zoomed text
   const mx=Math.max(1,...pts.map(p=>Math.max(p.pm,p.cm)));
   const X=i=>n<2?L+(W-L-R)/2:L+i*(W-L-R)/(n-1), Y=v=>T+(H-T-B)*(1-v/mx);
   // the last week / month is still running: drawn dashed, so a half-finished period does

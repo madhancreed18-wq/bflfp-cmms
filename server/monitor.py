@@ -15,7 +15,10 @@ Alerts (push to every admin's phone, at most once per 30 min per kind):
   errors ≥ 5 in 10 min · slow calls ≥ 10 in 10 min · hangs/freezes ≥ 3 in 10 min ·
   server lag ≥ 5 s · disk < 10 % or < 5 GB free · the app (re)started.
 
-perf_log is kept 90 days; perf_hourly 400 days.
+perf_log is kept 30 days in the database (b543, was 90); perf_hourly 400 days. Older rows are
+not deleted: they are moved to monthly CSV files in data/Report/log-archive/ (b544).
+Every night at 03:00 the database is tidied (PRAGMA optimize + WAL checkpoint); on Sunday
+night it is also compacted (VACUUM) so deleted rows give their space back.
 """
 import asyncio, json, logging, os, re, shutil, threading, time
 from collections import defaultdict, deque
@@ -205,12 +208,67 @@ def _check():
         _alert("disk", "disk almost full", f'{d["free_gb"]} GB free ({d["free_pct"]} %)')
 
 
+def _archive(c, table, col, cutoff):
+    """b544: old log rows are not thrown away — they are moved out of the database into
+    monthly CSV files (open in Excel): data/Report/log-archive/<table>-YYYY-MM.csv"""
+    import csv
+    from .config import REPORTS
+    rows = [dict(r) for r in c.execute(f"SELECT * FROM {table} WHERE {col}<? ORDER BY {col}", (cutoff,))]
+    if not rows:
+        return 0
+    folder = os.path.join(REPORTS, "log-archive")
+    os.makedirs(folder, exist_ok=True)
+    by_month = {}
+    for r in rows:
+        by_month.setdefault(str(r.get(col) or "")[:7] or "unknown", []).append(r)
+    for month, items in by_month.items():
+        path = os.path.join(folder, f"{table}-{month}.csv")
+        new = not os.path.exists(path)
+        with open(path, "a", newline="", encoding="utf-8-sig") as fh:
+            w = csv.DictWriter(fh, fieldnames=list(items[0].keys()))
+            if new:
+                w.writeheader()
+            w.writerows(items)
+    c.execute(f"DELETE FROM {table} WHERE {col}<?", (cutoff,))   # only after the file is written
+    return len(rows)
+
+
 def _prune():
     with closing(db()) as c:
         _ensure(c)
-        c.execute("DELETE FROM perf_log WHERE at<?", ((datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d"),))
-        c.execute("DELETE FROM perf_hourly WHERE hour<?", ((datetime.now() - timedelta(days=400)).strftime("%Y-%m-%d"),))
+        n1 = _archive(c, "perf_log", "at", (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d"))
+        n2 = _archive(c, "perf_hourly", "hour", (datetime.now() - timedelta(days=400)).strftime("%Y-%m-%d"))
         c.commit()
+    if n1 or n2:
+        _log.info("[monitor] moved %s old log rows to data/Report/log-archive", n1 + n2)
+
+
+_MAINT = {"day": ""}
+
+
+def _maint():
+    """b543: nightly database tidy-up — runs once a day at 03:00 (quiet time)."""
+    now = datetime.now()
+    if now.hour != 3 or _MAINT["day"] == now.strftime("%Y-%m-%d"):
+        return
+    _MAINT["day"] = now.strftime("%Y-%m-%d")
+    t0 = time.time()
+    _prune()
+    import sqlite3
+    from .database import engine
+    path = engine.url.database
+    if engine.dialect.name != "sqlite" or not path:
+        return
+    con = sqlite3.connect(path, timeout=60, isolation_level=None)
+    try:
+        con.execute("PRAGMA busy_timeout=60000")
+        con.execute("PRAGMA optimize")
+        if now.weekday() == 6:                       # Sunday night: give deleted space back
+            con.execute("VACUUM")
+        con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    finally:
+        con.close()
+    _log.info("[monitor] nightly database tidy-up done in %.1f s", time.time() - t0)
 
 
 def _bg():
@@ -225,6 +283,7 @@ def _bg():
                 _flush()
             if tick % 1440 == 0:
                 _prune()
+            _maint()
         except Exception as e:
             _log.warning("[monitor] background: %s", e)
         tick += 1

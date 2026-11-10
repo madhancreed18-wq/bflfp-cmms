@@ -428,8 +428,16 @@ async def jobs(req: Request, view: str = "", d: str = "", q_text: str = "", fac:
         q += (" WHERE " + _m +
               " AND j.status IN ('Assigned','InProgress','Paused','Rework','Hold','ServiceCompleted')")
         args = _a
-    elif view == "technew":                                    # unassigned new reports only (incoming pool)
-        q += " WHERE j.lead_tech IS NULL AND j.status IN ('Reported','WaitingApproval','WaitingAssignment')"
+    elif view == "technew":                                    # every job nobody has been given yet
+        # New Jobs = ALL waiting work with nobody on it, whatever its date. It used to be
+        # new reports only (Reported / WaitingApproval / WaitingAssignment with a NULL
+        # lead), so a job the planner had dated or released but not given to anyone —
+        # status Assigned / Released, or a lead stored as 0 — showed on no tab a
+        # technician could pick it up from. Started work with nobody on it stays in
+        # My jobs (see _pool below), where its timer can be stopped.
+        q += (" WHERE COALESCE(j.lead_tech,0)=0"
+              " AND COALESCE(j.helpers,'') IN ('','0')"
+              " AND j.status IN ('Reported','WaitingApproval','WaitingAssignment','Assigned','Released')")
         args = []
     elif view in ("techassigned", "techwaiting"):
         # The technician's phone keeps two lists of its own work. "My jobs" is what is
@@ -442,7 +450,11 @@ async def jobs(req: Request, view: str = "", d: str = "", q_text: str = "", fac:
         # or one booked to somebody no login can sign in as. Work in that state used to
         # vanish from every list while sitting at In progress, with no way to stop the
         # timer.
-        _pool = ("(j.lead_tech IS NULL OR j.lead_tech IN (SELECT id FROM users"
+        # A job with nobody on it that has NOT been started is waiting work — it lives in
+        # New Jobs (technew), not here, so it is never on two tabs at once.
+        _pool = ("((COALESCE(j.lead_tech,0)=0 AND (j.status NOT IN ('Assigned','Released')"
+                 " OR COALESCE(j.helpers,'') NOT IN ('','0')))"
+                 " OR j.lead_tech IN (SELECT id FROM users"
                  " WHERE COALESCE(can_login,0)=0 AND COALESCE(login_id,'')=''))")
         _st = ("('ServiceCompleted')" if view == "techwaiting"
                else "('Assigned','InProgress','Paused','Rework','Hold')")

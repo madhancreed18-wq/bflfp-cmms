@@ -267,10 +267,19 @@ async def day(req: Request, d: str = ""):
                       j.problem_type,j.fault_category,j.machine_id,j.pm_freq,
                       j.planned_start,j.planned_end,j.planned_date, m.code mcode, m.name mname, m.floor mfloor, m.line mline, m.department mdept, m.asset_group mgroup, m.pm_group_color mcolor
                FROM jobs j LEFT JOIN machines m ON m.id=j.machine_id
-               WHERE j.planned_date < ? AND j.planned_date IS NOT NULL AND j.planned_date != ''
+               WHERE j.planned_date IS NOT NULL AND j.planned_date != ''
+                 AND (j.planned_date < ?
+                      -- Work with NOBODY on it is waiting work, whatever day it is planned
+                      -- for — past, today or a later day. The planner wants every
+                      -- unassigned job in the pool on whichever day the board is opened
+                      -- (a 5 Nov job could not be seen from the 6 Nov board). Work that
+                      -- already has a crew is only carried when it is actually late, so a
+                      -- crew's plan for another day is never pulled in and re-dated.
+                      OR (j.planned_date != ? AND COALESCE(j.lead_tech,0)=0))
                  AND j.status NOT IN ('Cancelled','Done','Rejected','ServiceCompleted')
                  AND (COALESCE(m.factory_id,j.factory_id)=? OR COALESCE(m.factory_id,j.factory_id) IS NULL)
-               ORDER BY j.planned_date DESC, j.priority DESC, j.id""", (min(d, today()), fac)):
+               ORDER BY j.planned_date DESC, j.priority DESC, j.id""",
+                (min(d, today()), d, fac)):
             # ONLY WORK THAT IS ACTUALLY LATE is carried. This used to be "any date before
             # the board's date", so planning ahead broke the plan behind it: opening 23 Sep
             # on the 21st pulled every job of 22 Sep in as "carried over", laid each one

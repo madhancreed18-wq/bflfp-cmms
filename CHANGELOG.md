@@ -1,6 +1,19 @@
 # Changelog — BFLFP CMMS
 All notable changes. Format: version · date · changes. Newest on top.
 
+## FG Stock ui b555 — 2026-11-11 (warehouse corrections)
+- Checker queue › Print form (F-WI04-WHD01-04) is now summarised per product + lot, like the
+  paper form: pallets first ↓ last, FG code, MFG / EXP, and the bag count as
+  full pallet × count + part pallet (e.g. 30×18+9 = 549 กส.). 5 products per sheet.
+- Checker queue: new "summary by product" table under the pallet list (receive and issue tabs).
+- Shift packing reports › "Make now (current shift)" now files the current shift's report
+  straight away (data up to now) instead of opening the pick-a-shift dialog. The end-of-shift
+  run still replaces it. Warehouse checker may now use it (server: remake allows "check").
+- New page "Shift summary" (สรุปกะ) for the warehouse checker: pick production day + shift
+  (defaults to the current one) — packing passed, received, released, waiting checker,
+  packed-not-received, by product / lot, and received kg per hour.
+- PDF and Excel (CSV) of the queue are unchanged (still one line per pallet).
+
 ## v3.0.2 — 2026-08-27 (the planner, on a phone)
 Built from the Planner-on-a-Phone design. Desktop planner untouched — every screen
 below only renders under 900px, and a wide tablet still gets the two-pane version.

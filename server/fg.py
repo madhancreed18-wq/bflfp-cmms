@@ -36,6 +36,7 @@ using Access before go-live — it only adds rows it has not seen. Run:
 ROLES (users.fg_role, set on FG › Users): admin · receiver · issuer · checker.
 CMMS admins are always FG admin. users.fg_only = 1 sends the login straight to /fg.html.
 """
+import asyncio
 import csv
 import datetime
 import json
@@ -53,16 +54,17 @@ router = APIRouter(prefix="/api/fg")
 
 FG_ROLES = ("admin", "packing", "packcheck", "receiver", "issuer", "checker")
 CAN = {
-    "admin": {"view", "pack", "packcheck", "receive", "issue", "check", "admin"},
+    "admin": {"view", "pack", "packcheck", "receive", "issue", "check", "admin", "master"},
     "packing": {"view", "pack"},                 # packing room: make + print the A6 QR slip
     "packcheck": {"view", "packcheck"},          # b497 packing-room checker: scan slip QR -> verify -> approve / reject
-    "checker": {"view", "check"},
+    "checker": {"view", "check", "master"},     # b544: + the master pages (not users / Access import / Access archive)
     "receiver": {"view", "receive"},
     "issuer": {"view", "issue"},
 }
-PACK_TYPES = ("Finished Goods", "Repack")
+PACK_TYPES = ("Finished Goods", "Semi", "WIP")         # b520: "Repack" renamed "Semi"; WIP added
 DEFAULT_LISTS = {   # the old VB pallet-slip app's lists — editable in FG › Lists
-    "machine": ("Pack 1 - Rovema", "Pack 2 - Form Fill", "Pack 3 - Rotary Pack", "Pack 4 - Statec", "Pack 6 - Chronos"),
+    "machine": ("Pack 1 - Rovema", "Pack 2 - Form Fill", "Pack 3 - Rotary Pack", "Pack 4 - Statec", "Pack 6 - Chronos",
+                "Pack 7 - Manual", "Pack 8 - Formfill Mini"),
     "line": ("Extruder Line 1", "Extruder Line 2", "Extruder Line 3", "Extruder 1 & 2", "Extruder 2 & 3", "Extruder 1 & 3"),
 }
 RELEASE_TYPES = ("ขาย", "อื่นๆ", "ชำรุด", "Repack")          # sale · other · damaged · repack
@@ -101,10 +103,45 @@ def ensure(c):
                      ("pc_note", "TEXT DEFAULT ''"), ("created_by", "TEXT DEFAULT ''"), ("edited_by", "TEXT DEFAULT ''"),
                      ("edited_at", "TEXT DEFAULT ''"), ("legacy_code", "TEXT DEFAULT ''"),
                      ("print_count", "INTEGER DEFAULT 0"), ("printed_at", "TEXT DEFAULT ''"),
-                     ("fg_reject_at", "TEXT DEFAULT ''"), ("fixed_at", "TEXT DEFAULT ''")):
+                     ("fg_reject_at", "TEXT DEFAULT ''"), ("fixed_at", "TEXT DEFAULT ''"),
+                     ("lot_run", "INTEGER DEFAULT 1"), ("scode", "TEXT DEFAULT ''"),
+                     ("exp_sfx", "TEXT DEFAULT ''"), ("exp_fmt", "TEXT DEFAULT ''")):
         if col not in pcols:
             c.execute(f"ALTER TABLE fg_packing ADD COLUMN {col} {typ}")
     c.execute("CREATE INDEX IF NOT EXISTS ix_fg_pack_lot ON fg_packing(factory_id, product_code, lot_no)")
+    # b531: short QR code = lot (9 digits) + slip no. (3) + 1 random letter = 13 characters,
+    # e.g. 261102001010K. Lot + slip can repeat (a lot packed again as run 2), so the random
+    # letter keeps them apart, and the UNIQUE index refuses any repeat. Given out in Python
+    # (with a retry), never by the database.
+    c.execute("DROP TRIGGER IF EXISTS tr_fg_pack_scode")
+    c.execute("DROP INDEX IF EXISTS ux_fg_pack_scode")
+    c.execute("UPDATE fg_packing SET scode='' WHERE scode IS NULL OR length(scode)<>13 OR scode GLOB '*[^0-9A-Z]*'")
+    c.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_fg_pack_scode ON fg_packing(scode) WHERE scode<>''")
+    c.execute("CREATE INDEX IF NOT EXISTS ix_fg_pack_scode ON fg_packing(scode)")   # b533: fast look-up (scan / new code)
+    _assign_codes(c)
+    # b524: Finish lot. A lot can be packed on several machines at once; each machine finishes
+    # on its own. When the LAST machine finishes, the packer says whether the lot will come back
+    # (paused: numbers continue) or not (closed). Packing a closed lot again either reopens it
+    # (numbers continue) or starts a new run (#1 again, run 2 — its own pkey and QR).
+    c.execute("""CREATE TABLE IF NOT EXISTS fg_lot(
+        id INTEGER PRIMARY KEY AUTOINCREMENT, factory_id INTEGER, product_code TEXT, lot_no TEXT,
+        run INTEGER DEFAULT 1, status TEXT DEFAULT 'open', last_slip INTEGER DEFAULT 0,
+        finished_at TEXT DEFAULT '', finished_by TEXT DEFAULT '', created_at TEXT DEFAULT '',
+        UNIQUE(factory_id, product_code, lot_no, run))""")
+    c.execute("""CREATE TABLE IF NOT EXISTS fg_shift_reports(
+        id INTEGER PRIMARY KEY AUTOINCREMENT, factory_id INTEGER, d TEXT, shift TEXT, file TEXT DEFAULT '',
+        lots INTEGER DEFAULT 0, pallets INTEGER DEFAULT 0, bags REAL DEFAULT 0, kg REAL DEFAULT 0,
+        made_at TEXT DEFAULT '', made_by TEXT DEFAULT '', UNIQUE(factory_id, d, shift))""")
+    if "fmt" not in _table_cols(c, "fg_shift_reports"):
+        c.execute("ALTER TABLE fg_shift_reports ADD COLUMN fmt INTEGER DEFAULT 1")
+    c.execute("""CREATE TABLE IF NOT EXISTS fg_shift_pack(
+        id INTEGER PRIMARY KEY AUTOINCREMENT, factory_id INTEGER, d TEXT, shift TEXT, lot_no TEXT,
+        packs TEXT DEFAULT '', updated_at TEXT DEFAULT '', updated_by TEXT DEFAULT '',
+        UNIQUE(factory_id, d, shift, lot_no))""")
+    c.execute("""CREATE TABLE IF NOT EXISTS fg_lot_mc(
+        id INTEGER PRIMARY KEY AUTOINCREMENT, factory_id INTEGER, product_code TEXT, lot_no TEXT,
+        run INTEGER DEFAULT 1, machine TEXT, finished_at TEXT DEFAULT '', finished_by TEXT DEFAULT '',
+        UNIQUE(factory_id, product_code, lot_no, run, machine))""")
     c.execute("CREATE INDEX IF NOT EXISTS ix_fg_pack_leg ON fg_packing(factory_id, legacy_code)")
     c.execute("CREATE INDEX IF NOT EXISTS ix_fg_pack_pc ON fg_packing(factory_id, pc_status)")
     c.execute("""CREATE TABLE IF NOT EXISTS fg_receive(
@@ -168,15 +205,23 @@ def ensure(c):
         for kind, names in DEFAULT_LISTS.items():
             for i, n in enumerate(names):
                 c.execute("INSERT INTO fg_lists(factory_id,kind,name,sort,active) VALUES(0,?,?,?,1)", (kind, n, i))
+    # b520: machines added after the lists were first seeded, and the pack type renamed
+    for _n in ("Pack 7 - Manual", "Pack 8 - Formfill Mini"):
+        if not c.execute("SELECT 1 FROM fg_lists WHERE kind='machine' AND name=?", (_n,)).fetchone():
+            _s = c.execute("SELECT COALESCE(MAX(sort),0)+1 FROM fg_lists WHERE kind='machine'").fetchone()[0]
+            c.execute("INSERT INTO fg_lists(factory_id,kind,name,sort,active) VALUES(0,'machine',?,?,1)", (_n, _s))
+    try:
+        c.execute("UPDATE fg_packing SET pack_type='Semi' WHERE pack_type='Repack'")
+    except Exception:
+        pass
     c.execute("""CREATE TABLE IF NOT EXISTS fg_plants(factory_id INTEGER PRIMARY KEY, enabled INTEGER DEFAULT 1)""")
     c.execute("""CREATE TABLE IF NOT EXISTS fg_log(
         id INTEGER PRIMARY KEY AUTOINCREMENT, factory_id INTEGER, kind TEXT, ref_id INTEGER,
         action TEXT, note TEXT DEFAULT '', user_name TEXT DEFAULT '', created_at TEXT DEFAULT '')""")
-    # b502: the whole old Access database, every table and every column, row by row as JSON
-    c.execute("""CREATE TABLE IF NOT EXISTS fg_access_raw(
-        id INTEGER PRIMARY KEY AUTOINCREMENT, factory_id INTEGER, tbl TEXT, row_key TEXT, sort_key TEXT DEFAULT '',
-        data TEXT DEFAULT '', imported_at TEXT DEFAULT '', UNIQUE(factory_id, tbl, row_key))""")
-    c.execute("CREATE INDEX IF NOT EXISTS ix_fg_raw_t ON fg_access_raw(factory_id, tbl, sort_key)")
+    # b502: the whole old Access database, every table and every column, row by row as JSON.
+    # b543: it lives in its OWN file now (data/fg_access_archive.db) — 400k rows / ~300 MB made
+    # cmms.db 456 MB. A copy left in the main database from before is moved out here, once.
+    move_raw_out(c)
     # b497: every pallet-slip print, one row per slip per print, by user (reprint audit)
     c.execute("""CREATE TABLE IF NOT EXISTS fg_print_log(
         id INTEGER PRIMARY KEY AUTOINCREMENT, factory_id INTEGER, packing_id INTEGER, copy_no INTEGER DEFAULT 1,
@@ -197,6 +242,8 @@ def ensure(c):
         c.execute("UPDATE users SET fg_roles=COALESCE(fg_role,'') WHERE COALESCE(fg_role,'')<>''")
     if "fg_default" not in cols:
         c.execute("ALTER TABLE users ADD COLUMN fg_default TEXT DEFAULT ''")
+    if "fg_packsup" not in cols:     # b553: หัวหน้าแพค (pack supervisor / production manager) — approves scan overrides
+        c.execute("ALTER TABLE users ADD COLUMN fg_packsup INTEGER DEFAULT 0")
     # b503: slips made from the Access history were stored with no QR text, so their QR was a
     # code of nothing — it scanned as blank. Give every such slip the same QR a new slip carries.
     try:
@@ -208,6 +255,62 @@ def ensure(c):
 
 
 _READY = False
+
+
+# ---------------------------------------------------------------- b543 raw Access archive file
+ARCHIVE_FILE = "fg_access_archive.db"
+
+
+def archive_path():
+    from .config import DATA
+    return os.path.join(DATA, ARCHIVE_FILE)
+
+
+def aconn():
+    """The raw Access archive (its own SQLite file, beside cmms.db)."""
+    import sqlite3
+    a = sqlite3.connect(archive_path(), timeout=60)
+    a.row_factory = sqlite3.Row
+    a.execute("""CREATE TABLE IF NOT EXISTS fg_access_raw(
+        id INTEGER PRIMARY KEY AUTOINCREMENT, factory_id INTEGER, tbl TEXT, row_key TEXT, sort_key TEXT DEFAULT '',
+        data TEXT DEFAULT '', imported_at TEXT DEFAULT '', UNIQUE(factory_id, tbl, row_key))""")
+    a.execute("CREATE INDEX IF NOT EXISTS ix_fg_raw_t ON fg_access_raw(factory_id, tbl, sort_key)")
+    return a
+
+
+def move_raw_out(c, log=print):
+    """Move fg_access_raw out of the main database into the archive file, then drop it there.
+    Copied in batches, checked by count, and only then dropped — nothing is lost if it stops
+    half-way (the next start carries on: INSERT OR IGNORE on the same keys)."""
+    try:
+        if not _table_cols(c, "fg_access_raw"):
+            return 0
+    except Exception:
+        return 0
+    n = c.execute("SELECT COUNT(*) FROM fg_access_raw").fetchone()[0]
+    moved, last = 0, 0
+    if n:
+        log(f"[fg] moving {n:,} raw Access rows out of cmms.db into {ARCHIVE_FILE} …")
+        with closing(aconn()) as a:
+            while True:
+                rows = c.execute("SELECT id,factory_id,tbl,row_key,sort_key,data,imported_at FROM fg_access_raw"
+                                 " WHERE id>? ORDER BY id LIMIT 5000", (last,)).fetchall()
+                if not rows:
+                    break
+                a.executemany("INSERT OR IGNORE INTO fg_access_raw(id,factory_id,tbl,row_key,sort_key,data,imported_at)"
+                              " VALUES(?,?,?,?,?,?,?)", [tuple(r) for r in rows])
+                a.commit()
+                last = rows[-1][0]
+                moved += len(rows)
+            # every main row must now be in the archive (same factory + table + key)
+            have = a.execute("SELECT COUNT(*) FROM fg_access_raw").fetchone()[0]
+        if have < n:
+            log(f"[fg] raw Access move NOT finished ({have:,} of {n:,}) — main copy kept")
+            return 0
+    c.execute("DROP TABLE fg_access_raw")
+    c.commit()
+    log(f"[fg] raw Access archive moved: {moved:,} rows -> {ARCHIVE_FILE} (run shrink_db.py to give the space back)")
+    return moved
 
 
 def conn():
@@ -291,12 +394,31 @@ def plant_on(c, fac):
                 or c.execute("SELECT 1 FROM fg_packing WHERE factory_id=? LIMIT 1", (fac,)).fetchone())
 
 
+def is_sup(u):
+    """b553: pack supervisor / production manager tick (FG › Users) — admin always."""
+    if u.get("role") == "admin":
+        return True
+    try:
+        with closing(conn()) as c:
+            r = c.execute("SELECT COALESCE(fg_packsup,0) s FROM users WHERE id=?", (u["id"],)).fetchone()
+        return bool(r and r["s"])
+    except Exception:
+        return False
+
+
+def caps_of(u, rs=None):
+    out = can_set(rs if rs is not None else roles_of(u))
+    if is_sup(u):
+        out = out | {"override"}
+    return out
+
+
 def ctx(req: Request, need="view"):
     u = user_from(req)
     fac = u.get("active_factory") or u.get("factory_id")
     rs = roles_of(u)
     fr = rs[0] if rs else ""
-    if need and need not in can_set(rs):
+    if need and need not in caps_of(u, rs):
         raise HTTPException(403, {"msg": "ไม่มีสิทธิ์ (no permission) — ask the FG admin"})
     if not fac:
         raise HTTPException(400, {"msg": "เลือกโรงงานก่อน (choose a plant at sign-in)"})
@@ -328,10 +450,100 @@ def _today():
 
 
 # ---------------------------------------------------------------- QR + dates
+# b521 — a USB scanner TYPES the QR like a keyboard. Two settings on the PC or the scanner
+# can garble it, and we cannot visit every scanner of every brand to fix them, so the text
+# is repaired here, whatever screen it came from:
+#   · letters case-flipped ("Caps Lock" mode in the scanner, or Caps Lock on the PC):
+#       {"iD":28609,"pRODUCT_CODE":...,"lOT_nO":"261102002-pc"}  -> {"Id":...,"Lot_No":"261102002-PC"}
+#   · Thai keyboard layout on: ฐ.ณก.ซๅ/…  -> {"Id":1…   (see untai below)
+_QR_KEYS = ("Id", "Product_code", "Product_Name", "Lot_No", "Pallet", "Station", "Operator", "weight", "MFG", "EXP")
+_FLIP_RE = re.compile('"(?:' + "|".join(re.escape(k.swapcase()) for k in _QR_KEYS if k.swapcase() != k) + ')"\\s*:')
+
+
+def fix_scan(text):
+    t = (text or "").strip()
+    if _THAI_RE.search(t) and not re.search(r'"Id"\s*:', t, re.I):
+        u = untai(t)
+        if u.lstrip().startswith("{"):
+            t = u
+    # the real keys always start with a capital (or are "weight"): seeing them flipped means
+    # EVERY letter was flipped — values included — so the whole text is flipped back
+    if _FLIP_RE.search(t) and not re.search(r'"(?:Id|Lot_No|Product_code)"\s*:', t):
+        t = t.swapcase()
+    return t
+
+
+# b531: SHORT slip code in the QR — lot 9 digits + slip no. 3 digits + 1 random letter
+# (13 characters, e.g. 261102001010K), stored in fg_packing.scode. A tiny QR scans much faster
+# than the long JSON; the JSON stays in raw_qr as the reference, and old printed slips with the
+# JSON QR still scan.
+_SC_RE = re.compile(r"^\d{12}[A-Z]{1,2}$")
+_SC_ABC = "ACDEFHJKLMNPRTUVWXY"
+
+
+def _sc_base(lot, sn):
+    d = re.sub(r"\D", "", lot or "")[:9].rjust(9, "0")
+    try:
+        n = int(float(sn or 0)) % 1000
+    except (TypeError, ValueError):
+        n = 0
+    return f"{d}{n:03d}"
+
+
+def _new_code(used, lot, sn):
+    """used = set of codes already given (checked in memory — fast even for 100,000 slips)."""
+    import secrets
+    base = _sc_base(lot, sn)
+    free = [x for x in _SC_ABC if base + x not in used]
+    v = base + secrets.choice(free) if free else None
+    while v is None or v in used:    # 19 runs of the same lot + slip no.: 2 letters (14 chars)
+        v = base + secrets.choice(_SC_ABC) + secrets.choice(_SC_ABC)
+    used.add(v)
+    return v
+
+
+def _assign_codes(c, ids=None):
+    """Give a code to every slip that has none (or to these ids, again — after an edit)."""
+    if ids:
+        for i in ids:
+            c.execute("UPDATE fg_packing SET scode='' WHERE id=?", (i,))
+    todo = c.execute("SELECT id,lot_no,pallet_no,slip_no FROM fg_packing WHERE scode='' OR scode IS NULL ORDER BY id").fetchall()
+    if not todo:
+        return
+    used = {r[0] for r in c.execute("SELECT scode FROM fg_packing WHERE scode<>''")}
+    c.executemany("UPDATE fg_packing SET scode=? WHERE id=?",
+                  [(_new_code(used, r["lot_no"], r["slip_no"] or r["pallet_no"]), r["id"]) for r in todo])
+
+
+def short_id(text):
+    """The scanned text as a slip code (Thai keyboard / Caps Lock put right) or None."""
+    t = (text or "").strip()
+    for v in (t, untai(t) if _THAI_RE.search(t) else t):
+        v = re.sub(r"\s+", "", v).upper()
+        if _SC_RE.match(v):
+            return v
+    return None
+
+
+def looks_short(text):
+    t = re.sub(r"\s+", "", untai(text or "") if _THAI_RE.search(text or "") else (text or "")).upper()
+    return bool(re.match(r"^\d{6,14}[A-Z]{0,2}$", t)) and not re.match(r"^\d{12,13}$", t)
+
+
+def qr_text(c, fac, text):
+    """A short code is swapped for that slip's full JSON (raw_qr) so every place that reads
+    slips (receive, issue, checker) works the same with either kind of QR."""
+    i = short_id(text)
+    if i is None:
+        return text
+    r = c.execute("SELECT raw_qr FROM fg_packing WHERE scode=? AND factory_id=?", (i, fac)).fetchone()
+    return (r["raw_qr"] if r and r["raw_qr"] else text)
+
+
 def parse_qr(text):
     """Pallet-slip QR (JSON) -> dict; anything else -> None.
     {"Product_code","Product_Name","Lot_No","No"(bags),"weight","Station","Pallet","Operator"}"""
-    t = (text or "").strip()
+    t = fix_scan(text)
     if not t.startswith("{"):
         return None
     try:
@@ -345,16 +557,19 @@ def parse_qr(text):
     if not lot or not pal:
         return None
     prod = k.get("product_code", "")
-    return {"pkey": pkey_of(prod, lot, pal), "lot_no": lot, "pallet_no": pal, "id": k.get("id", ""),
+    run = int(_num(k.get("run", "") or 1)) or 1
+    return {"pkey": pkey_of(prod, lot, pal, run), "lot_no": lot, "pallet_no": pal, "id": k.get("id", ""),
             "product_code": k.get("product_code", ""), "product_name": k.get("product_name", ""),
             "weight": k.get("weight", ""), "qty": _num(re.sub(r"[^\d.]", "", k.get("no", "")) or 0),
             "station": k.get("station", ""), "operator": k.get("operator", ""), "raw_qr": t}
 
 
-def pkey_of(product, lot, pallet):
+def pkey_of(product, lot, pallet, run=1):
     """A pallet = product + lot + slip number (one lot can carry several products, and the
-    slip number restarts per lot + product — same rule as the old packing app)."""
-    return f"{(product or '').strip()}|{(lot or '').strip()}|{str(pallet).strip()}"
+    slip number restarts per lot + product — same rule as the old packing app).
+    b524: a lot packed again as a NEW run restarts at #1, so run 2+ adds "|R2" to stay unique."""
+    k = f"{(product or '').strip()}|{(lot or '').strip()}|{str(pallet).strip()}"
+    return k + (f"|R{int(run)}" if run and int(run) > 1 else "")
 
 
 EAN_RE = re.compile(r"^\d{12,13}$")
@@ -551,7 +766,7 @@ async def me(req: Request):
     rs = roles_of(u)
     return {"id": u["id"], "name": _who(u), "username": u.get("username", ""), "fg_role": fr,
             "fg_roles": rs, "fg_default": fg_default(u), "cmms_role": u.get("role"),
-            "slip_form_code": _slip_form_code(), "can": sorted(can_set(rs)), "role_can": {r: sorted(CAN.get(r, set())) for r in FG_ROLES}, "factory_id": fac,
+            "slip_form_code": _slip_form_code(), "can": sorted(caps_of(u, rs)), "packsup": is_sup(u), "role_can": {r: sorted(CAN.get(r, set())) for r in FG_ROLES}, "factory_id": fac,
             "factory_code": f["code"] if f else "", "factory_name": f["name"] if f else "",
             "fg_only": fg_only(u), "checkers": checkers, "release_types": RELEASE_TYPES}
 
@@ -598,8 +813,9 @@ async def scan_receive(req: Request):
     u, fac, _ = ctx(req, "receive")
     b = await req.json()
     text = (b.get("text") or "").strip()
-    slip = parse_qr(text)
     with closing(conn()) as c:
+        text = qr_text(c, fac, text)
+        slip = parse_qr(text)
         if slip:
             pk = packing_lookup(c, fac, slip, _who(u))
             c.commit()
@@ -726,9 +942,10 @@ async def scan_issue(req: Request):
     u, fac, _ = ctx(req, "issue")
     b = await req.json()
     text = (b.get("text") or "").strip()
-    slip = parse_qr(text)
     who = _who(u)
     with closing(conn()) as c:
+        text = qr_text(c, fac, text)
+        slip = parse_qr(text)
         rec = None
         if not slip and EAN_RE.match(text):
             pk = c.execute("SELECT product_code,lot_no,pallet_no,pkey,qty FROM fg_packing WHERE factory_id=? AND legacy_code=?",
@@ -1032,11 +1249,31 @@ async def confirm(req: Request):
 
 
 # ---------------------------------------------------------------- history / stock / reports
+def _time_cond(tcol, t1, t2):
+    """b506: HH:MM range on a time column; '20:00'-'08:00' wraps past midnight (night shift)."""
+    ok = lambda t: bool(re.fullmatch(r"\d{1,2}:\d{2}", t or ""))
+    t1, t2 = (t1 if ok(t1) else ""), (t2 if ok(t2) else "")
+    t1 = t1.zfill(5) if t1 else ""
+    t2 = t2.zfill(5) if t2 else ""
+    if t1 and t2 and t1 > t2:
+        return f"({tcol}>=? OR ({tcol}<=? AND {tcol}<>''))", [t1, t2]
+    c, a = [], []
+    if t1:
+        c.append(f"{tcol}>=?")
+        a.append(t1)
+    if t2:
+        c.append(f"({tcol}<=? AND {tcol}<>'')")
+        a.append(t2)
+    return (" AND ".join(c), a) if c else ("", [])
+
+
 @router.get("/history")
 async def history(req: Request, kind: str = "recv", d1: str = "", d2: str = "", q: str = "",
-                  status: str = "", limit: int = 500):
+                  status: str = "", limit: int = 500, t1: str = "", t2: str = "", product: str = "", lot: str = ""):
     u, fac, _ = ctx(req, "check")
     tbl, dcol = ("fg_receive", "receive_date") if kind == "recv" else ("fg_release", "release_date")
+    tcol = ("substr(COALESCE(NULLIF(receive_time,''),substr(recv_at,12,5)),1,5)" if kind == "recv"
+            else "substr(COALESCE(NULLIF(release_time,''),substr(issue_at,12,5)),1,5)")
     conds, args = ["factory_id=?"], [fac]
     if d1:
         conds.append(f"{dcol}>=?")
@@ -1050,6 +1287,16 @@ async def history(req: Request, kind: str = "recv", d1: str = "", d2: str = "", 
     if q:
         conds.append("(lot_no LIKE ? OR product_id LIKE ? OR product_name LIKE ?)")
         args += ["%" + q + "%"] * 3
+    if product.strip():
+        conds.append("(product_id LIKE ? OR product_name LIKE ?)")
+        args += ["%" + product.strip() + "%"] * 2
+    if lot.strip():
+        conds.append("lot_no LIKE ?")
+        args.append("%" + lot.strip() + "%")
+    tc, ta = _time_cond(tcol, t1, t2)
+    if tc:
+        conds.append(tc)
+        args += ta
     limit = max(1, min(int(limit or 500), 5000))
     with closing(conn()) as c:
         prods = _prods(c, fac)
@@ -1060,6 +1307,74 @@ async def history(req: Request, kind: str = "recv", d1: str = "", d2: str = "", 
             r.pop("log", None)
         n = c.execute(f"SELECT COUNT(*) FROM {tbl} WHERE {' AND '.join(conds)}", tuple(args)).fetchone()[0]
     return {"rows": rows, "total": n}
+
+
+@router.post("/pdf")
+async def table_pdf(req: Request):
+    """b506: any FG table as a real PDF file (A4 landscape, Sarabun) — same content as Print A4."""
+    import asyncio, io
+    from fastapi import Response
+    from xml.sax.saxutils import escape as xe
+    u, fac, _ = ctx(req, "view")
+    b = await req.json()
+    head = [str(h) for h in (b.get("head") or [])][:30]
+    rows = [[("" if v is None else str(v)) for v in r][:30] for r in (b.get("rows") or [])][:6000]
+    right = set(int(i) for i in (b.get("right") or []) if str(i).isdigit())
+    title, sub, foot = str(b.get("title") or "FG report")[:200], str(b.get("sub") or "")[:300], str(b.get("foot") or "")[:300]
+    fname = re.sub(r"[^A-Za-z0-9_.-]+", "-", str(b.get("file") or "fg-report"))[:80] + ".pdf"
+    who = _who(u)
+
+    def build():
+        from reportlab.lib.pagesizes import A4, landscape
+        from reportlab.lib.units import mm
+        from reportlab.lib import colors
+        from reportlab.lib.styles import ParagraphStyle
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, KeepTogether
+        from . import reports
+        reports._pdf_font()
+        k = reports.PDF_SCALE or 1.0
+        fs = 7.2 * k
+        st = ParagraphStyle("c", fontName="APP", fontSize=fs, leading=fs * 1.15)
+        sr = ParagraphStyle("r", parent=st, alignment=2)
+        sh = ParagraphStyle("h", fontName="APPB", fontSize=fs, leading=fs * 1.15)
+        buf = io.BytesIO()
+        W, H = landscape(A4)
+        doc = SimpleDocTemplate(buf, pagesize=(W, H), leftMargin=8 * mm, rightMargin=8 * mm, topMargin=8 * mm, bottomMargin=10 * mm,
+                                title=title, author=who)
+        P = lambda t, s_: Paragraph(xe(t).replace("\n", "<br/>"), s_)
+        data = [[P(h, sh) for h in head]] + [[P(v, sr if i in right else st) for i, v in enumerate(r)] for r in rows]
+        # column widths from content length, capped, scaled to the page width
+        n = max(1, len(head))
+        lens = [max([len(head[i])] + [len(r[i]) for r in rows[:400] if i < len(r)]) for i in range(n)]
+        lens = [min(max(l, len(head[i]) + 2, 6), 45) for i, l in enumerate(lens)]
+        tot = sum(lens) or 1
+        cw = [(W - 16 * mm) * l / tot for l in lens]
+        t = Table(data, colWidths=cw, repeatRows=1)
+        t.setStyle(TableStyle([("GRID", (0, 0), (-1, -1), 0.25, colors.black), ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E5E7EB")),
+                               ("VALIGN", (0, 0), (-1, -1), "TOP"), ("TOPPADDING", (0, 0), (-1, -1), 1.2),
+                               ("BOTTOMPADDING", (0, 0), (-1, -1), 1.2), ("LEFTPADDING", (0, 0), (-1, -1), 2.5), ("RIGHTPADDING", (0, 0), (-1, -1), 2.5)]))
+        ts = ParagraphStyle("t", fontName="APPB", fontSize=11 * k, leading=13 * k)
+        ss = ParagraphStyle("s", fontName="APP", fontSize=7.5 * k, leading=9 * k)
+        story = [P(title, ts), P(f"{sub} · printed by {who} {now()[:16]}", ss), Spacer(1, 3 * mm), t]
+        end = []
+        if foot:
+            end.append(Spacer(1, 2 * mm))
+            end.append(P(foot, ParagraphStyle("f", fontName="APPB", fontSize=8 * k, leading=10 * k)))
+        sg = Table([["..............................\nChecker", "..............................\nApproved by / ผู้ตรวจสอบ"]], colWidths=[(W - 16 * mm) / 2] * 2)
+        sg.setStyle(TableStyle([("FONTNAME", (0, 0), (-1, -1), "APP"), ("FONTSIZE", (0, 0), (-1, -1), 8 * k), ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                                ("TOPPADDING", (0, 0), (-1, -1), 8 * mm)]))
+        end.append(sg)
+        story.append(KeepTogether(end))
+
+        def pn(cv, d):
+            cv.saveState()
+            cv.setFont("APP", 7 * k)
+            cv.drawRightString(W - 8 * mm, 5 * mm, f"{d.page}")
+            cv.restoreState()
+        doc.build(story, onFirstPage=pn, onLaterPages=pn)
+        return buf.getvalue()
+    pdf = await asyncio.to_thread(build)
+    return Response(pdf, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 
 
 @router.get("/stock")
@@ -1159,6 +1474,8 @@ async def packing_list(req: Request, status: str = "", q: str = ""):
         conds.append("(lot_no LIKE ? OR product_code LIKE ? OR product_name LIKE ?)")
         args += ["%" + q + "%"] * 3
     with closing(conn()) as c:
+        _assign_codes(c)
+        c.commit()
         rows = [dict(r) for r in c.execute(
             f"SELECT * FROM fg_packing WHERE {' AND '.join(conds)} ORDER BY id DESC LIMIT 500", tuple(args))]
     return {"rows": rows}
@@ -1168,7 +1485,7 @@ async def packing_list(req: Request, status: str = "", q: str = ""):
 async def packing_add(req: Request):
     """Admin: key a packing record by hand (for testing until the packing DB is linked).
     Returns the slip QR text so a test label can be printed."""
-    u, fac, _ = ctx(req, "admin")
+    u, fac, _ = ctx(req, "master")
     b = await req.json()
     lot, pal, code = (b.get("lot_no") or "").strip(), str(b.get("pallet_no") or "").strip(), (b.get("product_code") or "").strip()
     if not lot or not pal or not code:
@@ -1186,7 +1503,12 @@ async def packing_add(req: Request):
         pk = packing_lookup(c, fac, slip, _who(u))
         c.execute("UPDATE fg_packing SET src='manual' WHERE id=?", (pk["id"],))
         c.commit()
-    return {"ok": True, "id": pk["id"], "qr": qr}
+    sc = c2 = None
+    with closing(conn()) as c2:
+        _assign_codes(c2)
+        c2.commit()
+        sc = (c2.execute("SELECT scode FROM fg_packing WHERE id=?", (pk["id"],)).fetchone() or {"scode": ""})["scode"]
+    return {"ok": True, "id": pk["id"], "qr": sc or qr, "qr_full": qr}
 
 
 
@@ -1205,22 +1527,35 @@ def slip_qr(pk):
     return json.dumps({"Id": pk["id"], "Product_code": pk["product_code"], "Product_Name": pk["product_name"],
                        "Lot_No": pk["lot_no"], "Pallet": str(pk["pallet_no"]), "No": _n(pk["qty"]),
                        "weight": _n(pk["weight_unit"]) + " kg", "MFG": pk.get("mfg", ""), "EXP": pk.get("exp", ""),
-                       "Station": pk.get("pack_machine") or pk.get("station", ""), "Operator": pk.get("operator", "")},
+                       "Station": pk.get("pack_machine") or pk.get("station", ""), "Operator": pk.get("operator", ""),
+                       **({"Run": int(pk["lot_run"])} if (pk.get("lot_run") or 1) > 1 else {}),
+                       **({"EXP_note": pk["exp_sfx"]} if pk.get("exp_sfx") else {})},
                       ensure_ascii=False, separators=(",", ":"))
 
 
 def _slip_out(r):
     d = dict(r)
-    d["qr"] = slip_qr(d)
+    d["qr_full"] = slip_qr(d)          # the long JSON — kept as the reference
+    d["code"] = d.get("scode") or ""
+    d["qr"] = d["code"]                 # what is printed in the QR (fast to scan)
     return d
 
 
-def _next_slip(c, fac, product, lot):
-    r = c.execute("SELECT MAX(slip_no) m FROM fg_packing WHERE factory_id=? AND product_code=? AND lot_no=?",
+def _lot_run(c, fac, product, lot):
+    """Current run of a lot + its status ('open' / 'paused' / 'closed')."""
+    r = c.execute("SELECT run,status,last_slip,finished_at,finished_by FROM fg_lot WHERE factory_id=? AND product_code=? AND lot_no=? ORDER BY run DESC LIMIT 1",
                   (fac, product, lot)).fetchone()
+    return dict(r) if r else {"run": 1, "status": "open", "last_slip": 0, "finished_at": "", "finished_by": ""}
+
+
+def _next_slip(c, fac, product, lot, run=None):
+    if run is None:
+        run = _lot_run(c, fac, product, lot)["run"]
+    w = "factory_id=? AND product_code=? AND lot_no=? AND COALESCE(lot_run,1)=?"
+    r = c.execute(f"SELECT MAX(slip_no) m FROM fg_packing WHERE {w}", (fac, product, lot, run)).fetchone()
     m = r["m"] if r and r["m"] else 0
     # pallets that came in by QR only (no slip_no) still hold their pallet numbers
-    for x in c.execute("SELECT pallet_no FROM fg_packing WHERE factory_id=? AND product_code=? AND lot_no=?", (fac, product, lot)):
+    for x in c.execute(f"SELECT pallet_no FROM fg_packing WHERE {w}", (fac, product, lot, run)):
         try:
             m = max(m, int(x["pallet_no"]))
         except (TypeError, ValueError):
@@ -1261,7 +1596,9 @@ def _slip_fields(c, fac, b):
     pt = b.get("pack_type") or PACK_TYPES[0]
     return {"product_code": code, "product_name": p["name"], "packaging": p.get("packaging", ""), "lot_no": lot,
             "qty": bags, "unit": "กระสอบ", "weight_unit": wu, "bag_weight": bw, "total_weight": wu * bags,
-            "mfg": mfg, "exp": exp, "doc_no": _slip_form_code(),   # b503: fixed Document Control number, not typed
+            "mfg": mfg, "exp": exp, "exp_sfx": "B." if (b.get("exp_sfx") or "").strip().upper() in ("B", "B.") else "",
+            "exp_fmt": b.get("exp_fmt") if b.get("exp_fmt") in ("dd/mm/yy", "dd/mm/yyyy", "yy/mm/dd", "mm/yyyy", "yyyy/mm/dd", "dd mm yyyy") else "",
+            "doc_no": _slip_form_code(),   # b503: fixed Document Control number, not typed
             "pack_machine": (b.get("pack_machine") or "").strip()[:60], "pd_line": (b.get("pd_line") or "").strip()[:60],
             "pack_type": pt if pt in PACK_TYPES else PACK_TYPES[0], "staff_name": (b.get("staff_name") or "").strip()[:60]}
 
@@ -1277,7 +1614,7 @@ async def lists(req: Request):
 
 @router.post("/lists")
 async def list_save(req: Request):
-    u, fac, _ = ctx(req, "admin")
+    u, fac, _ = ctx(req, "master")
     b = await req.json()
     kind, name = b.get("kind"), (b.get("name") or "").strip()
     if kind not in DEFAULT_LISTS or not name:
@@ -1298,7 +1635,11 @@ async def slip_next(req: Request, product: str = "", lot: str = ""):
     """Next pallet / slip number for this product + lot (shown on the form before saving)."""
     u, fac, _ = ctx(req, "pack")
     with closing(conn()) as c:
-        return {"next": _next_slip(c, fac, product.strip(), lot.strip().upper()) if product and lot else 1}
+        if not (product and lot):
+            return {"next": 1, "run": 1, "status": "open"}
+        p, l = product.strip(), lot.strip().upper()
+        st = _lot_run(c, fac, p, l)
+        return dict(st, next=_next_slip(c, fac, p, l, st["run"]), machines=_lot_machines(c, fac, p, l, st["run"]))
 
 
 @router.post("/slips")
@@ -1313,20 +1654,32 @@ async def slip_new(req: Request):
     with closing(conn()) as c:
         f = _slip_fields(c, fac, b)
         f["staff_name"] = f["staff_name"] or who
+        st = _lot_run(c, fac, f["product_code"], f["lot_no"])
+        run = st["run"]
+        if st["status"] == "closed":
+            raise HTTPException(409, {"msg": "lot_closed", "last_slip": st["last_slip"], "run": run})
+        if st["status"] == "paused":
+            c.execute("UPDATE fg_lot SET status='open' WHERE factory_id=? AND product_code=? AND lot_no=? AND run=?",
+                      (fac, f["product_code"], f["lot_no"], run))
+        # this machine is packing the lot (again) -> no longer "finished"
+        c.execute("DELETE FROM fg_lot_mc WHERE factory_id=? AND product_code=? AND lot_no=? AND run=? AND machine=?",
+                  (fac, f["product_code"], f["lot_no"], run, f["pack_machine"]))
         for _ in range(copies):
-            sn = _next_slip(c, fac, f["product_code"], f["lot_no"])
+            sn = _next_slip(c, fac, f["product_code"], f["lot_no"], run)
             t = now()
             pid = c.insert_id("""INSERT INTO fg_packing(factory_id,pkey,lot_no,pallet_no,slip_no,product_code,product_name,
                 packaging,qty,unit,weight_unit,bag_weight,total_weight,mfg,exp,doc_no,pack_machine,pd_line,pack_type,
-                station,operator,staff_name,raw_qr,packed_at,src,status,status_at,pc_status,created_by)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'',?,'slip','packed',?,'pending',?)""",
-                (fac, pkey_of(f["product_code"], f["lot_no"], sn), f["lot_no"], str(sn), sn, f["product_code"],
+                station,operator,staff_name,raw_qr,packed_at,src,status,status_at,pc_status,created_by,lot_run)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'',?,'slip','packed',?,'pending',?,?)""",
+                (fac, pkey_of(f["product_code"], f["lot_no"], sn, run), f["lot_no"], str(sn), sn, f["product_code"],
                  f["product_name"], f["packaging"], f["qty"], f["unit"], f["weight_unit"], f["bag_weight"],
                  f["total_weight"], f["mfg"], f["exp"], f["doc_no"], f["pack_machine"], f["pd_line"], f["pack_type"],
-                 f["pack_machine"], f["staff_name"], f["staff_name"], t, t, who))
+                 f["pack_machine"], f["staff_name"], f["staff_name"], t, t, who, run))
+            c.execute("UPDATE fg_packing SET exp_sfx=?,exp_fmt=? WHERE id=?", (f["exp_sfx"], f["exp_fmt"], pid))   # b538/b539: "B." + date format
             r = c.execute("SELECT * FROM fg_packing WHERE id=?", (pid,)).fetchone()
             c.execute("UPDATE fg_packing SET raw_qr=? WHERE id=?", (slip_qr(dict(r)), pid))
-            _log(c, fac, "packing", pid, "slip_created", f'{f["lot_no"]} #{sn}', who)
+            _assign_codes(c)
+            _log(c, fac, "packing", pid, "slip_created", f'{f["lot_no"]} #{sn}' + (f" (run {run})" if run > 1 else ""), who)
             out.append(_slip_out(c.execute("SELECT * FROM fg_packing WHERE id=?", (pid,)).fetchone()))
         c.commit()
     return {"ok": True, "slips": out}
@@ -1453,6 +1806,8 @@ async def slip_list(req: Request, d1: str = "", d2: str = "", q: str = "", pc: s
             args += ["%" + q + "%"] * 4
     limit = max(1, min(int(limit or 500), 3000))
     with closing(conn()) as c:
+        _assign_codes(c)
+        c.commit()
         rows = [_slip_out(r) for r in c.execute(
             f"SELECT * FROM fg_packing WHERE {' AND '.join(conds)} ORDER BY {'pc_at' if datef == 'pc' else 'packed_at'} DESC, id DESC LIMIT {limit}", tuple(args))]
         cnt = {r["pc_status"]: r["n"] for r in c.execute(
@@ -1477,15 +1832,20 @@ async def slip_edit(req: Request, sid: int):
         was_fg_reject = r["status"] == "rejected_by_fg"
         f = _slip_fields(c, fac, dict(b, product_code=b.get("product_code") or r["product_code"], lot_no=b.get("lot_no") or r["lot_no"]))
         sn = r["slip_no"] or r["pallet_no"]
+        run = r.get("lot_run") or 1
         if (f["product_code"], f["lot_no"]) != (r["product_code"], r["lot_no"]):
-            sn = _next_slip(c, fac, f["product_code"], f["lot_no"])
-        c.execute("""UPDATE fg_packing SET pkey=?,lot_no=?,pallet_no=?,slip_no=?,product_code=?,product_name=?,packaging=?,
+            run = _lot_run(c, fac, f["product_code"], f["lot_no"])["run"]
+            sn = _next_slip(c, fac, f["product_code"], f["lot_no"], run)
+        c.execute("""UPDATE fg_packing SET lot_run=?,pkey=?,lot_no=?,pallet_no=?,slip_no=?,product_code=?,product_name=?,packaging=?,
             qty=?,weight_unit=?,bag_weight=?,total_weight=?,mfg=?,exp=?,doc_no=?,pack_machine=?,pd_line=?,pack_type=?,
             station=?,operator=?,staff_name=?,pc_status='pending',pc_by='',pc_at='',edited_by=?,edited_at=? WHERE id=?""",
-            (pkey_of(f["product_code"], f["lot_no"], sn), f["lot_no"], str(sn), int(_num(sn)), f["product_code"],
+            (run, pkey_of(f["product_code"], f["lot_no"], sn, run), f["lot_no"], str(sn), int(_num(sn)), f["product_code"],
              f["product_name"], f["packaging"], f["qty"], f["weight_unit"], f["bag_weight"], f["total_weight"], f["mfg"],
              f["exp"], f["doc_no"], f["pack_machine"], f["pd_line"], f["pack_type"], f["pack_machine"],
              f["staff_name"] or r["staff_name"], f["staff_name"] or r["staff_name"], who, now(), sid))
+        if (f["product_code"], f["lot_no"], str(sn)) != (r["product_code"], r["lot_no"], str(r["slip_no"] or r["pallet_no"])):
+            _assign_codes(c, [sid])          # lot / slip no. changed -> new code (old paper stops scanning)
+        c.execute("UPDATE fg_packing SET exp_sfx=?,exp_fmt=? WHERE id=?", (f["exp_sfx"], f["exp_fmt"], sid))
         nr = dict(c.execute("SELECT * FROM fg_packing WHERE id=?", (sid,)).fetchone())
         c.execute("UPDATE fg_packing SET raw_qr=? WHERE id=?", (slip_qr(nr), sid))
         if was_fg_reject:
@@ -1541,8 +1901,8 @@ async def slips_printed(req: Request):
     who, uid, ip, t = _who(u), int(u.get("id") or 0), _ip(req), now()
     with closing(conn()) as c:
         for i in ids:
-            r = c.execute("SELECT COALESCE(print_count,0) n FROM fg_packing WHERE id=? AND factory_id=?", (i, fac)).fetchone()
-            if not r:
+            r = c.execute("SELECT COALESCE(print_count,0) n, src FROM fg_packing WHERE id=? AND factory_id=?", (i, fac)).fetchone()
+            if not r or r["src"] == "access":      # b515: Access-made slips are not real pallets — never printed
                 continue
             copy = int(r["n"] or 0) + 1
             re_ = copy > 1
@@ -1569,7 +1929,30 @@ def untai(t):
 
 
 def find_slip(c, fac, text):
-    t = (text or "").strip()
+    i = short_id(text)
+    if i is not None:
+        return c.execute("SELECT * FROM fg_packing WHERE scode=? AND factory_id=?", (i, fac)).fetchone()
+    if looks_short(text):          # FG… but not a whole code -> mixed / mis-read
+        return None
+    t = fix_scan(text)
+    # b523: a QR that is not COMPLETE JSON is refused, not guessed at. With several USB
+    # scanners on one PC, two scans at the same instant can mix their characters; reading
+    # just the "Id" out of such text could open the WRONG pallet.
+    if t.startswith("{"):
+        try:
+            d = json.loads(t)
+            if not isinstance(d, dict):
+                return None
+        except Exception:
+            return None
+        k = {str(a).strip().lower(): str(b).strip() for a, b in d.items() if b is not None}
+        if k.get("id", "").isdigit():
+            r = c.execute("SELECT * FROM fg_packing WHERE id=? AND factory_id=?", (int(k["id"]), fac)).fetchone()
+            # the lot on the QR must be the lot of that slip
+            if r and (not k.get("lot_no") or (r["lot_no"] or "").strip().upper() == k["lot_no"].upper()):
+                return r
+            if r:
+                return None
     tries = [t]
     if _THAI_RE.search(t) and not re.search(r'"Id"\s*:', t, re.I):
         tries.append(untai(t))
@@ -1581,8 +1964,9 @@ def find_slip(c, fac, text):
                 return r
         g = lambda k: (re.search(r'"' + k + r'"\s*:\s*"([^"]*)"', s, re.I) or [None, ""])[1]
         code, lot, pal = g("Product_code"), g("Lot_No"), g("Pallet")
+        mr = re.search(r'"Run"\s*:\s*"?(\d+)', s, re.I)
         if code and lot and pal:
-            r = c.execute("SELECT * FROM fg_packing WHERE factory_id=? AND pkey=?", (fac, pkey_of(code, lot, pal))).fetchone()
+            r = c.execute("SELECT * FROM fg_packing WHERE factory_id=? AND pkey=?", (fac, pkey_of(code, lot, pal, int(mr.group(1)) if mr else 1))).fetchone()
             if r:
                 return r
         if re.fullmatch(r"\d{8,14}", s):   # old VB slip barcode
@@ -1597,26 +1981,132 @@ async def slips_scan(req: Request):
     u, fac, _ = ctx(req, "packcheck")
     b = await req.json()
     via = (b.get("via") or "").strip()[:20]
+    auto = bool(b.get("approve"))
+    dup, approved_now = False, False
     with closing(conn()) as c:
         r = find_slip(c, fac, b.get("text"))
         if not r:
+            # b527: failed scans are history too (all devices see them). A short plain text is a
+            # lot number typed to look something up, kept as a look-up, not as a failed scan.
+            t = fix_scan(b.get("text") or "").strip()
+            if t.startswith("{") or len(t) > 20 or looks_short(t):
+                bad = "incomplete"
+                if t.startswith("{"):
+                    try:
+                        json.loads(t)
+                        bad = "notfound"
+                    except Exception:
+                        pass
+                else:
+                    bad = "incomplete" if looks_short(t) and short_id(t) is None else "notfound"
+                _log(c, fac, "packing", 0, "checker_scan_failed", f"{bad}|{via}|{t[:160]}", _who(u))
+            elif t:
+                _log(c, fac, "packing", 0, "checker_lookup", f"{via}|{t[:40]}", _who(u))
+            c.commit()
             raise HTTPException(404, {"msg": "ไม่พบใบพาเลทนี้ (pallet slip not found) — สแกนใหม่ (scan again)"})
-        _log(c, fac, "packing", r["id"], "checker_scanned", via, _who(u))
+        # b524: scanning the slip on the pallet IS the check — approved at once, in the same
+        # write, so two scanners (or a phone and a PC) can never approve it twice.
+        # A slip scanned before — on this device or any other — is a DUPLICATE: alarm.
+        rv = c.execute("SELECT MAX(id) FROM fg_log WHERE factory_id=? AND kind='packing' AND ref_id=? AND action='revived'",
+                       (fac, r["id"])).fetchone()[0] or 0          # b531: a revived slip starts fresh
+        seen = c.execute("SELECT 1 FROM fg_log WHERE factory_id=? AND kind='packing' AND ref_id=? AND action='checker_scanned' AND id>? LIMIT 1",
+                         (fac, r["id"], rv)).fetchone()
+        dup = bool(seen) or r["pc_status"] == "approved" or r["status"] != "packed"
+        if auto and not dup and r["status"] == "packed" and r["pc_status"] in ("pending", "rejected"):
+            blk = _interlock(c, fac, r, u, bool(b.get("offline_at")))     # b553: in order + 2 minutes
+            if blk:
+                _log(c, fac, "packing", r["id"], "checker_blocked", f"{blk['kind']}|{via}|{blk['msg_en']}", _who(u))
+                c.commit()
+                raise HTTPException(409, {"msg": blk["msg"], "block": blk, "slip": _slip_out(r)})
+        if auto and r["status"] == "packed" and r["pc_status"] in ("pending", "rejected"):
+            n = c.execute("UPDATE fg_packing SET pc_status='approved',pc_by=?,pc_at=?,pc_note='' WHERE id=? AND factory_id=?"
+                          " AND status='packed' AND pc_status IN ('pending','rejected')", (_who(u), now(), r["id"], fac)).rowcount
+            if n:
+                approved_now = True
+                _log(c, fac, "packing", r["id"], "pack_approve", f"verified by scan ({via})", _who(u))
+        off = str(b.get("offline_at") or "")[:40]          # b552: scanned while offline, sent later
+        if off:
+            try:
+                off = datetime.datetime.fromisoformat(off.replace("Z", "+00:00")).astimezone().strftime("%Y-%m-%d %H:%M:%S")
+            except Exception:
+                off = off[:19]
+        _log(c, fac, "packing", r["id"], "checker_scanned", via + (" · DUPLICATE" if dup else "") + (f" · offline scan {off}" if off else ""), _who(u))
         c.commit()
+        r = c.execute("SELECT * FROM fg_packing WHERE id=?", (r["id"],)).fetchone()
         log = [dict(x) for x in c.execute(
             "SELECT action,note,user_name,created_at FROM fg_log WHERE factory_id=? AND kind='packing' AND ref_id=? ORDER BY id DESC",
             (fac, r["id"]))]
         prints = [dict(x) for x in c.execute(
             "SELECT copy_no,reprint,reason,user_name,printed_at FROM fg_print_log WHERE factory_id=? AND packing_id=? ORDER BY id DESC",
             (fac, r["id"]))]
-        return {"slip": _slip_out(r), "log": log, "prints": prints}
+        return {"slip": _slip_out(r), "log": log, "prints": prints, "dup": dup, "approved_now": approved_now}
+
+
+@router.get("/scans")
+async def scans_day(req: Request, d: str = ""):
+    """b526: the pack checker's scan history for one day, from the server — every PC and phone
+    (and admin) sees the same list. One row per slip: last scan time, how many times, who, how."""
+    u, fac, _ = ctx(req, "view")
+    if not ({"admin", "packcheck", "pack"} & can_set(roles_of(u))):
+        raise HTTPException(403, {"msg": "ไม่มีสิทธิ์ (no permission)"})
+    d = (d or _today())[:10]
+    with closing(conn()) as c:
+        ev = c.execute("""SELECT ref_id, MIN(created_at) first_at, MAX(created_at) last_at, COUNT(*) n,
+                GROUP_CONCAT(DISTINCT user_name) users, MAX(id) mid FROM fg_log
+                WHERE factory_id=? AND kind='packing' AND action='checker_scanned' AND created_at>=? AND created_at<=?
+                GROUP BY ref_id ORDER BY last_at DESC LIMIT 2000""", (fac, d, d + " 23:59:59")).fetchall()
+        out = []
+        for e in ev:
+            p = c.execute("SELECT * FROM fg_packing WHERE id=? AND factory_id=?", (e["ref_id"], fac)).fetchone()
+            if not p:
+                continue
+            last = c.execute("SELECT note,user_name FROM fg_log WHERE id=?", (e["mid"],)).fetchone()
+            before = c.execute("SELECT 1 FROM fg_log WHERE factory_id=? AND kind='packing' AND ref_id=? AND action='checker_scanned' AND created_at<? LIMIT 1",
+                               (fac, e["ref_id"], d)).fetchone()
+            out.append({"slip": _slip_out(p), "at": e["last_at"], "first_at": e["first_at"],
+                        "n": e["n"] + (1 if before else 0), "users": e["users"] or "",
+                        "by": last["user_name"] if last else "", "via": ((last["note"] if last else "") or "").split(" ")[0]})
+        ev2 = [dict(x) for x in c.execute(
+            """SELECT action,note,user_name,created_at FROM fg_log WHERE factory_id=? AND kind='packing'
+               AND action IN ('checker_scan_failed','checker_lookup') AND created_at>=? AND created_at<=? ORDER BY id DESC LIMIT 500""",
+            (fac, d, d + " 23:59:59"))]
+    other = []
+    for e in ev2:
+        parts = (e["note"] or "").split("|")
+        if e["action"] == "checker_scan_failed":
+            other.append({"kind": "failed", "why": parts[0], "via": parts[1] if len(parts) > 1 else "",
+                          "text": "|".join(parts[2:]), "by": e["user_name"], "at": e["created_at"]})
+        else:
+            other.append({"kind": "lookup", "via": parts[0], "text": "|".join(parts[1:]), "by": e["user_name"], "at": e["created_at"]})
+    return {"d": d, "rows": out, "other": other}
+
+
+@router.post("/scans-approve")
+async def scans_approve(req: Request):
+    """b527: slips that WERE scanned but are still waiting (scanned before scan = approve was
+    switched on) are approved here — only slips that really have a scan on record."""
+    u, fac, _ = ctx(req, "packcheck")
+    b = await req.json()
+    ids = [int(i) for i in (b.get("ids") or []) if str(i).isdigit()][:2000]
+    who, t, n = _who(u), now(), 0
+    with closing(conn()) as c:
+        for i in ids:
+            if not c.execute("SELECT 1 FROM fg_log WHERE factory_id=? AND kind='packing' AND ref_id=? AND action='checker_scanned' LIMIT 1", (fac, i)).fetchone():
+                continue
+            k = c.execute("UPDATE fg_packing SET pc_status='approved',pc_by=?,pc_at=?,pc_note='' WHERE id=? AND factory_id=?"
+                          " AND status='packed' AND pc_status IN ('pending','rejected')", (who, t, i, fac)).rowcount
+            if k:
+                n += 1
+                _log(c, fac, "packing", i, "pack_approve", "verified by scan (approved from scan history)", who)
+        c.commit()
+    return {"ok": True, "approved": n}
 
 
 @router.get("/packing-audit")
 async def packing_audit(req: Request, d1: str = "", d2: str = "", user: str = "", action: str = "", q: str = ""):
     """b497: who printed / reprinted / scanned / approved / rejected which pallet slip — per user."""
     u, fac, _ = ctx(req, "view")
-    if not ({"admin", "packcheck"} & can_set(roles_of(u))):
+    if not ({"admin", "packcheck", "master"} & can_set(roles_of(u))):
         raise HTTPException(403, {"msg": "ไม่มีสิทธิ์ (no permission)"})
     d1, d2 = d1 or _today(), d2 or _today()
     conds, args = ["l.factory_id=?", "l.kind='packing'", "l.created_at>=?", "l.created_at<=?"], [fac, d1, d2 + " 23:59:59"]
@@ -1645,7 +2135,11 @@ async def packing_audit(req: Request, d1: str = "", d2: str = "", user: str = ""
 
 @router.post("/slips/{sid}/cancel")
 async def slip_cancel(req: Request, sid: int):
-    u, fac, _ = ctx(req, "pack")
+    # b531: only the PACKING page deletes (voids) a slip — the pack checker no longer can.
+    # The slip stays in the register, greyed out with the reason, and can be revived.
+    u, fac, _ = ctx(req, "view")
+    if not ({"pack", "admin"} & can_set(roles_of(u))):
+        raise HTTPException(403, {"msg": "ไม่มีสิทธิ์ (no permission)"})
     b = await req.json()
     why = (b.get("note") or "").strip()
     if not why:
@@ -1657,6 +2151,93 @@ async def slip_cancel(req: Request, sid: int):
         packing_mark(c, fac, sid, "cancelled", _who(u), why)
         c.commit()
     return {"ok": True}
+
+
+@router.post("/slips-void")
+async def slips_void(req: Request):
+    """b531 — Packing page: delete = void. The slip stays (greyed out, "Deleted: reason"),
+    is left out of every total, and can be revived later. Not once FG has received it."""
+    u, fac, _ = ctx(req, "view")
+    if not ({"pack", "admin"} & can_set(roles_of(u))):
+        raise HTTPException(403, {"msg": "ไม่มีสิทธิ์ (no permission)"})
+    b = await req.json()
+    ids = [int(x) for x in (b.get("ids") or []) if str(x).isdigit()][:500]
+    why = (b.get("note") or "").strip()[:300]
+    if not why:
+        raise HTTPException(400, {"msg": "ใส่เหตุผล (give a reason)"})
+    done, refused = [], []
+    with closing(conn()) as c:
+        for i in ids:
+            r = c.execute("SELECT status,lot_no,pallet_no FROM fg_packing WHERE id=? AND factory_id=?", (i, fac)).fetchone()
+            if not r or r["status"] not in ("packed", "rejected_by_fg"):
+                refused.append(f'{r["lot_no"]} #{r["pallet_no"]}' if r else str(i))
+                continue
+            packing_mark(c, fac, i, "cancelled", _who(u), "ลบแล้ว (Deleted): " + why)
+            done.append(i)
+        c.commit()
+    return {"ok": True, "deleted": done, "refused": refused}
+
+
+@router.post("/slips/{sid}/revive")
+async def slip_revive(req: Request, sid: int):
+    """b531 — undo a delete: the slip comes back with the SAME slip number and code, waiting for
+    the packing check again (print it again and scan it)."""
+    u, fac, _ = ctx(req, "view")
+    if not ({"pack", "admin"} & can_set(roles_of(u))):
+        raise HTTPException(403, {"msg": "ไม่มีสิทธิ์ (no permission)"})
+    with closing(conn()) as c:
+        r = c.execute("SELECT * FROM fg_packing WHERE id=? AND factory_id=?", (sid, fac)).fetchone()
+        if not r or r["status"] != "cancelled":
+            raise HTTPException(409, {"msg": "ใบนี้ไม่ได้ถูกลบ (this slip is not deleted)"})
+        if _interlock_on(c, fac):          # b553: a later slip of the lot already passed -> stays deleted
+            later = c.execute("""SELECT pallet_no FROM fg_packing WHERE factory_id=? AND product_code=? AND lot_no=?
+                AND COALESCE(lot_run,1)=? AND COALESCE(pack_machine,'')=? AND pc_status='approved' AND status<>'cancelled'
+                AND CAST(pallet_no AS INTEGER)>? ORDER BY CAST(pallet_no AS INTEGER) LIMIT 1""",
+                              (fac, r["product_code"], r["lot_no"], r["lot_run"] or 1, r["pack_machine"] or "", _pint(r["pallet_no"]))).fetchone()
+            if later:
+                raise HTTPException(409, {"msg": f"กู้คืนไม่ได้ — สแกน #{later['pallet_no']} ไปแล้ว (cannot revive: #{later['pallet_no']} was already scanned)"})
+        c.execute("UPDATE fg_packing SET status='packed',status_at=?,status_by=?,note='',pc_status='pending',pc_by='',pc_at='',pc_note='' WHERE id=?",
+                  (now(), _who(u), sid))
+        _log(c, fac, "packing", sid, "revived", "กู้คืน (revived)", _who(u))
+        c.commit()
+        return {"ok": True, "slip": _slip_out(c.execute("SELECT * FROM fg_packing WHERE id=?", (sid,)).fetchone())}
+
+
+@router.post("/slips-delete")
+async def slips_delete(req: Request):
+    """b522 — admin only: remove pallet slips for good (test slips, mistakes). A slip FG has
+    already received cannot go — its stock record would be left pointing at nothing. Each
+    deletion is written to the log with what the slip was, by whom and why."""
+    u, fac, _ = ctx(req, "view")
+    if "admin" not in roles_of(u):
+        raise HTTPException(403, {"msg": "ลบได้เฉพาะผู้ดูแลระบบ (admin only)"})
+    b = await req.json()
+    ids = [int(x) for x in (b.get("ids") or []) if str(x).isdigit()][:500]
+    why = (b.get("note") or "").strip()[:300]
+    if not ids:
+        raise HTTPException(400, {"msg": "ไม่ได้เลือกใบพาเลท (no slip selected)"})
+    if not why:
+        raise HTTPException(400, {"msg": "ใส่เหตุผล (give a reason)"})
+    done, refused = [], []
+    with closing(conn()) as c:
+        for sid in ids:
+            r = c.execute("SELECT * FROM fg_packing WHERE id=? AND factory_id=?", (sid, fac)).fetchone()
+            if not r:
+                continue
+            r = dict(r)
+            name = f"{r.get('lot_no') or ''} #{r.get('pallet_no') or ''}"
+            rcv = c.execute("SELECT 1 FROM fg_receive WHERE factory_id=? AND pkey=? AND COALESCE(status,'')"
+                            " NOT IN ('cancelled','rejected')", (fac, r.get("pkey") or "")).fetchone() if r.get("pkey") else None
+            if r.get("status") == "moved_to_fg" or rcv:
+                refused.append(name + " — FG รับแล้ว (already received by FG)")
+                continue
+            c.execute("DELETE FROM fg_print_log WHERE factory_id=? AND packing_id=?", (fac, sid))
+            c.execute("DELETE FROM fg_packing WHERE id=? AND factory_id=?", (sid, fac))
+            _log(c, fac, "packing", sid, "deleted",
+                 f"{why} · {r.get('product_code') or ''} {name} · {int(_num(r.get('qty')))} bags", _who(u))
+            done.append(name)
+        c.commit()
+    return {"ok": True, "deleted": done, "refused": refused}
 
 
 @router.post("/slips-check")
@@ -1766,7 +2347,7 @@ async def products(req: Request, q: str = ""):
 
 @router.post("/products")
 async def product_save(req: Request):
-    u, fac, _ = ctx(req, "admin")
+    u, fac, _ = ctx(req, "master")
     b = await req.json()
     code = (b.get("code") or "").strip()
     if not code:
@@ -1794,7 +2375,7 @@ async def customers(req: Request):
 
 @router.post("/customers")
 async def customer_save(req: Request):
-    u, fac, _ = ctx(req, "admin")
+    u, fac, _ = ctx(req, "master")
     b = await req.json()
     code = (b.get("code") or "").strip()
     if not code:
@@ -1818,7 +2399,7 @@ async def people(req: Request):
 
 @router.post("/people")
 async def people_save(req: Request):
-    u, fac, _ = ctx(req, "admin")
+    u, fac, _ = ctx(req, "master")
     b = await req.json()
     kind, name = b.get("kind"), (b.get("name") or "").strip()
     if kind not in ("checker", "leader") or not name:
@@ -1840,7 +2421,7 @@ async def users(req: Request):
     with closing(conn()) as c:
         rows = [dict(r) for r in c.execute(
             "SELECT id,username,name,role,COALESCE(fg_role,'') fg_role,COALESCE(fg_roles,'') fg_roles,"
-            "COALESCE(fg_default,'') fg_default,COALESCE(fg_only,0) fg_only,factory_id,active "
+            "COALESCE(fg_default,'') fg_default,COALESCE(fg_only,0) fg_only,COALESCE(fg_packsup,0) fg_packsup,factory_id,active "
             "FROM users WHERE active=1 AND COALESCE(can_login,1)=1 AND (factory_id=? OR COALESCE(factory_id,0)=0) "
             "ORDER BY (COALESCE(fg_role,'')=''), name", (fac,))]
     return {"users": rows, "roles": FG_ROLES}
@@ -1872,6 +2453,8 @@ async def user_set(req: Request, uid: int):
     with closing(conn()) as c:
         c.execute("UPDATE users SET fg_role=?, fg_roles=?, fg_default=?, fg_only=? WHERE id=?",
                   (rs[0] if rs else "", ",".join(rs), dflt if rs else "", only, uid))
+        if "packsup" in b:
+            c.execute("UPDATE users SET fg_packsup=? WHERE id=?", (1 if b.get("packsup") else 0, uid))
         c.commit()
     return {"ok": True, "fg_roles": rs, "fg_default": dflt}
 
@@ -2120,7 +2703,9 @@ def import_access(c, fac, data, log=print):
                    r.get("Log", ""), r.get("Log", ""), r.get("Log", "")))
         k += 1
     n["release"] = k
-    n["archive (all tables)"] = archive_access(c, fac, data)
+    with closing(aconn()) as a:                 # b543: the raw copy goes to its own file
+        n["archive (all tables)"] = archive_access(a, fac, data)
+        a.commit()
     c.commit()
     log(f"[fg] Access import into plant {fac}: " + ", ".join(f"{a} +{b}" for a, b in n.items()))
     return n
@@ -2159,7 +2744,7 @@ def archive_access(c, fac, data):
 @router.get("/access-archive")
 async def access_archive_tables(req: Request):
     u, fac, _ = ctx(req, "admin")
-    with closing(conn()) as c:
+    with closing(aconn()) as c:
         rows = [dict(r) for r in c.execute(
             "SELECT tbl, COUNT(*) n, MAX(imported_at) last FROM fg_access_raw WHERE factory_id=? GROUP BY tbl ORDER BY tbl", (fac,))]
     return {"tables": rows}
@@ -2176,7 +2761,7 @@ async def access_archive_rows(req: Request, tbl: str, q: str = "", page: int = 1
     w = " AND ".join(conds)
     size = 100000 if all else max(20, min(int(size or 200), 1000))
     page = max(1, int(page or 1))
-    with closing(conn()) as c:
+    with closing(aconn()) as c:
         total = c.execute(f"SELECT COUNT(*) FROM fg_access_raw WHERE {w}", tuple(args)).fetchone()[0]
         rows = [json.loads(r["data"]) for r in c.execute(
             f"SELECT data FROM fg_access_raw WHERE {w} ORDER BY sort_key DESC, id DESC LIMIT {size} OFFSET {(page - 1) * size}", tuple(args))]
@@ -2194,7 +2779,7 @@ async def dashboard(req: Request, days: int = 30):
     """Numbers for the Warehouse home: stock now, and receive / release over the chosen period.
     Works on the imported Access history and the app's own records alike."""
     u, fac, _ = ctx(req, "check")
-    days = days if days in (7, 30, 90, 365) else 30
+    days = days if days in (1, 7, 30, 90, 365) else 30
     d2 = _today()
     d1 = (datetime.date.today() - datetime.timedelta(days=days - 1)).isoformat()
     monthly = days == 365
@@ -2340,3 +2925,1086 @@ async def suggest(req: Request, q: str = "", kind: str = "all", product: str = "
                 lots.append({"v": r["lot_no"], "t": r["lot_no"], "s": "Lot · " + (r["n"] or "") + (" · " + r["d"][:10] if r["d"] else ""), "k": "lot"})
     # a lot number starts with digits (YYMMDD…) — show lots first when the typing looks like one
     return {"items": lots + out if q[:1].isdigit() else out + lots}
+
+
+# ---------------------------------------------------------------- Finish lot (b524)
+def _lot_machines(c, fac, product, lot, run):
+    """Machines that packed this lot in this run: slips, last no., finished or still packing."""
+    fin = {r["machine"]: dict(r) for r in c.execute(
+        "SELECT machine,finished_at,finished_by FROM fg_lot_mc WHERE factory_id=? AND product_code=? AND lot_no=? AND run=?",
+        (fac, product, lot, run))}
+    out = []
+    for r in c.execute("""SELECT pack_machine m, COUNT(*) n, MAX(slip_no) last, MAX(packed_at) at FROM fg_packing
+            WHERE factory_id=? AND product_code=? AND lot_no=? AND COALESCE(lot_run,1)=? AND status<>'cancelled'
+            AND COALESCE(pack_machine,'')<>'' GROUP BY pack_machine ORDER BY pack_machine""", (fac, product, lot, run)):
+        f = fin.get(r["m"])
+        out.append({"machine": r["m"], "slips": r["n"], "last": r["last"], "at": r["at"],
+                    "finished": bool(f), "finished_at": f["finished_at"] if f else "", "finished_by": f["finished_by"] if f else ""})
+    return out
+
+
+def _lot_row(c, fac, product, lot, run):
+    if not c.execute("SELECT 1 FROM fg_lot WHERE factory_id=? AND product_code=? AND lot_no=? AND run=?", (fac, product, lot, run)).fetchone():
+        c.execute("INSERT INTO fg_lot(factory_id,product_code,lot_no,run,status,created_at) VALUES(?,?,?,?,'open',?)",
+                  (fac, product, lot, run, now()))
+
+
+@router.post("/lot-finish")
+async def lot_finish(req: Request):
+    """Finish a lot on one or more packing machines. Only when no machine is still packing it
+    does the answer to "will you come back to pack this lot?" matter: yes = paused (numbers
+    continue next time), no = closed."""
+    u, fac, _ = ctx(req, "pack")
+    b = await req.json()
+    product, lot = (b.get("product_code") or "").strip(), (b.get("lot_no") or "").strip().upper()
+    mcs = [str(m).strip() for m in (b.get("machines") or []) if str(m).strip()]
+    if not product or not lot or not mcs:
+        raise HTTPException(400, {"msg": "product, lot and machine required"})
+    who, t = _who(u), now()
+    with closing(conn()) as c:
+        st = _lot_run(c, fac, product, lot)
+        run = st["run"]
+        still = [m["machine"] for m in _lot_machines(c, fac, product, lot, run) if not m["finished"] and m["machine"] not in mcs]
+        if not still and b.get("come_back") is None:
+            raise HTTPException(400, {"msg": "come_back required", "need_come_back": True})
+        _lot_row(c, fac, product, lot, run)
+        for m in mcs:
+            c.execute("""INSERT INTO fg_lot_mc(factory_id,product_code,lot_no,run,machine,finished_at,finished_by) VALUES(?,?,?,?,?,?,?)
+                ON CONFLICT(factory_id,product_code,lot_no,run,machine) DO UPDATE SET finished_at=excluded.finished_at, finished_by=excluded.finished_by""",
+                      (fac, product, lot, run, m, t, who))
+        last = _next_slip(c, fac, product, lot, run) - 1
+        status = "open"
+        if not still:
+            status = "paused" if b.get("come_back") else "closed"
+            c.execute("UPDATE fg_lot SET status=?, last_slip=?, finished_at=?, finished_by=? WHERE factory_id=? AND product_code=? AND lot_no=? AND run=?",
+                      (status, last, t, who, fac, product, lot, run))
+        _log(c, fac, "packing", 0, "lot_finish",
+             f"{lot} · {', '.join(mcs)} · #{last}" + (f" (run {run})" if run > 1 else "") +
+             {"open": f" · still packing: {', '.join(still)}", "paused": " · will come back", "closed": " · lot closed"}[status], who)
+        c.commit()
+    if status in ("paused", "closed"):     # b552: lot finished -> PDF + Excel kept on the server
+        _thr.Thread(target=_finish_files, args=(fac, product, lot, who), daemon=True).start()
+    return {"ok": True, "status": status, "still": still, "last_slip": last, "run": run}
+
+
+@router.post("/lot-reopen")
+async def lot_reopen(req: Request):
+    """A closed lot is packed again: mode 'continue' = same run, numbers go on from the last slip;
+    mode 'new' = new run, slips start from #1 (QR/pkey carry the run, so nothing repeats)."""
+    u, fac, _ = ctx(req, "pack")
+    b = await req.json()
+    product, lot = (b.get("product_code") or "").strip(), (b.get("lot_no") or "").strip().upper()
+    mode = b.get("mode")
+    if not product or not lot or mode not in ("continue", "new"):
+        raise HTTPException(400, {"msg": "product, lot and mode required"})
+    who = _who(u)
+    with closing(conn()) as c:
+        st = _lot_run(c, fac, product, lot)
+        run = st["run"]
+        if mode == "continue":
+            c.execute("UPDATE fg_lot SET status='open' WHERE factory_id=? AND product_code=? AND lot_no=? AND run=?", (fac, product, lot, run))
+            c.execute("DELETE FROM fg_lot_mc WHERE factory_id=? AND product_code=? AND lot_no=? AND run=?", (fac, product, lot, run))
+        else:
+            run += 1
+            _lot_row(c, fac, product, lot, run)
+        _log(c, fac, "packing", 0, "lot_reopen", f"{lot} · {'continue' if mode == 'continue' else 'new run ' + str(run)}", who)
+        c.commit()
+        return {"ok": True, "run": run, "next": _next_slip(c, fac, product, lot, run)}
+
+
+# ---------------------------------------------------------------- Shift packing report (b532)
+SHIFTS = {"m": ("เช้า", "Morning", "08:00", "16:00", 0), "a": ("บ่าย", "Afternoon", "16:00", "00:00", 0),
+          "n": ("ดึก", "Night", "00:00", "08:00", 1)}
+COMPANY_TH = {"PC": "บริษัท บลูฟาโล่ เพ็ทแคร์ จำกัด", "BFL": "บริษัท บลูฟาโล่ จำกัด", "FP": "บริษัท บลูฟาโล่ ฟู้ด โปรดักส์ จำกัด"}
+PACK_REPORT_CODES = {"PC": os.environ.get("PACK_REPORT_CODE_PC", "F-WI07-PRD03-01 Rev.00"),
+                     "BFL": os.environ.get("PACK_REPORT_CODE_BFL", "F-WI06-PRD04-01 Rev.05"),
+                     "FP": os.environ.get("PACK_REPORT_CODE_FP", "")}
+
+
+def _shift_window(d, sh):
+    """Production day d runs 08:00 d -> 08:00 d+1: morning 08-16, afternoon 16-24, night 00-08 (of d+1)."""
+    day = datetime.date.fromisoformat(d)
+    if sh == "m":
+        a, b = datetime.datetime.combine(day, datetime.time(8)), datetime.datetime.combine(day, datetime.time(16))
+    elif sh == "a":
+        a = datetime.datetime.combine(day, datetime.time(16))
+        b = a + datetime.timedelta(hours=8)
+    else:
+        a = datetime.datetime.combine(day + datetime.timedelta(days=1), datetime.time(0))
+        b = a + datetime.timedelta(hours=8)
+    f = "%Y-%m-%d %H:%M:%S"
+    return a.strftime(f), b.strftime(f), a
+
+
+ROWS_PER_PAGE = 20
+
+
+def _store_short(t):
+    t = (t or "").strip().lower()
+    return {"finished goods": "FG", "semi": "SEMI", "wip": "WIP"}.get(t, t.upper())
+
+
+def _mc_short(m):
+    x = re.search(r"pack\s*(\d+)", m or "", re.I)
+    return f"PACK{x.group(1)}" if x else (m or "")
+
+
+def _lot_pages(items):
+    """One lot -> pages of 20 rows (b538 layout, form F-WI07-PRD03-01): product name, formula
+    code, lot, date and shift in the header; packaging, kg per bag, storage and machine once on
+    the first row; the pallet slip no. and its bags on every row. No MFG / EXP on the report."""
+    p = items[0]
+    common = {0: {"pk": p.get("packaging") or "", "kg": _num(p.get("weight_unit")) or "",
+                  "st": _store_short(p.get("pack_type")), "rm": _mc_short(p.get("pack_machine"))}}
+    pages = [items[i:i + ROWS_PER_PAGE] for i in range(0, len(items), ROWS_PER_PAGE)] or [[]]
+    return pages, common
+
+
+def _shift_rows(fac, d, sh, lot=""):
+    t1, t2, start = _shift_window(d, sh)
+    q = """SELECT * FROM fg_packing WHERE factory_id=? AND pc_status='approved' AND status<>'cancelled'
+           AND pc_at>=? AND pc_at<?""" + (" AND lot_no=?" if lot else "") + """
+           ORDER BY lot_no, product_code, COALESCE(lot_run,1), slip_no, CAST(pallet_no AS INTEGER), id"""
+    with closing(conn()) as c:
+        f = c.execute("SELECT code FROM factories WHERE id=?", (fac,)).fetchone()
+        rows = [dict(r) for r in c.execute(q, (fac, t1, t2) + ((lot,) if lot else ()))]
+        # b540: เวลาบรรจุ (packing time) — start = when the slip was first printed,
+        # stop = when the pack checker's scan read its code
+        for r in rows:
+            a = c.execute("SELECT MIN(printed_at) FROM fg_print_log WHERE factory_id=? AND packing_id=? AND printed_at<>''",
+                          (fac, r["id"])).fetchone()[0] or r.get("printed_at") or ""
+            z = c.execute("SELECT MIN(created_at) FROM fg_log WHERE factory_id=? AND kind='packing' AND ref_id=? AND action='checker_scanned'",
+                          (fac, r["id"])).fetchone()[0] or r.get("pc_at") or ""
+            r["t_start"], r["t_stop"] = (a or "")[11:16], (z or "")[11:16]
+    groups = {}
+    for r in rows:
+        groups.setdefault((r["lot_no"], r["product_code"]), []).append(r)
+    return (f["code"] if f else ""), start, rows, groups
+
+
+def _shift_packs(fac, d, sh):
+    """b542: packaging numbers typed for each lot of a shift (column 2, one per row)."""
+    with closing(conn()) as c:
+        return {r["lot_no"]: [x.strip() for x in (r["packs"] or "").split(",") if x.strip()]
+                for r in c.execute("SELECT lot_no,packs FROM fg_shift_pack WHERE factory_id=? AND d=? AND shift=?", (fac, d, sh))}
+
+
+def _shift_build(fac, d, sh, lot=""):
+    """Packing report (paper form "รายงานการบรรจุอาหารสัตว์"): a separate report for EACH lot
+    packed in the shift — from the pallet slips the PACKING CHECKER passed. Common data once,
+    one pallet per row, 20 rows a page (more pallets -> more pages). Start / stop time, clean
+    check and tank are left empty to be filled by hand. Returns (xlsx bytes, file name, stats)."""
+    from io import BytesIO
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Border, Font, Side
+    from .config import STATIC
+    fcode, start, rows, groups = _shift_rows(fac, d, sh, lot)
+    PK = _shift_packs(fac, d, sh)
+    name_th, name_en, h1, h2, _x = SHIFTS[sh]
+    thin, med = Side(style="thin", color="000000"), Side(style="medium", color="000000")
+    B = Border(left=thin, right=thin, top=thin, bottom=thin)
+    F = lambda sz=11, b=False: Font(name="Angsana New", size=sz + 4, bold=b)
+    C = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    Lf = Alignment(horizontal="left", vertical="center", wrap_text=False)
+    logo = {"PC": "fac_pc.png", "FP": "fac_fp.png"}.get(fcode, "logo.png")
+    COLS = "ABCDEFGHIJK"
+    W = [8, 38, 16, 12, 9, 10, 10, 8, 8, 10, 20]   # b549: No. + storage narrower, packaging wider
+    HEAD = {"A": "ลำดับที่", "B": "ลักษณะบรรจุภัณฑ์", "C": "ตรวจสอบความ\nสะอาดก่อนบรรจุ", "D": "น้ำหนัก/ถุง\n(กิโลกรัม)",
+            "E": "ถังบรรจุ", "F": "พาเลทที่", "G": "จำนวนถุง\n/พาเลท", "J": "สถานที่จัดเก็บ", "K": "หมายเหตุ"}
+    KEY = {"pk": 1, "kg": 3, "st": 9, "rm": 10}
+
+    def page(ws, items, common, pno, pcount, first_no, lot_items, notes=None):
+        for i, w in enumerate(W):
+            ws.column_dimensions[COLS[i]].width = w
+        p0 = lot_items[0] if lot_items else {}
+        try:
+            from openpyxl.drawing.image import Image as XImg
+            im = XImg(os.path.join(STATIC, logo))
+            im.height, im.width = 72, int(72 * im.width / im.height)
+            ws.add_image(im, "A1")
+        except Exception:
+            pass
+        ws.merge_cells("C1:H1"); ws["C1"] = COMPANY_TH.get(fcode, "บริษัท บลูฟาโล่")
+        ws.merge_cells("C2:H2"); ws["C2"] = "รายงานการบรรจุอาหารสัตว์"
+        for a in ("C1", "C2"):
+            ws[a].font, ws[a].alignment = F(15, True), C
+        ws.merge_cells("I1:K1"); ws["I1"] = PACK_REPORT_CODES.get(fcode, "")   # b549: 3 columns — J got narrower
+        ws["I1"].font, ws["I1"].alignment = F(10), Alignment(horizontal="right")
+        ws["K2"] = f"หน้า {pno}/{pcount}" if pcount > 1 else ""
+        ws["K2"].font, ws["K2"].alignment = F(10), Alignment(horizontal="right")
+        # b539: product name + FG code in the middle of the page; lot / date / shift on the right
+        ws.merge_cells("B3:H3"); ws["B3"] = "ชื่ออาหาร   " + (p0.get("product_name") or "")
+        ws.merge_cells("B4:H4"); ws["B4"] = "รหัสสูตรอาหาร   " + (p0.get("product_code") or "")
+        ws.merge_cells("I3:K3"); ws["I3"] = "Lot No.  " + (p0.get("lot_no") or "")
+        ws.merge_cells("I4:K4"); ws["I4"] = f"วันที่ {start.strftime('%d/%m/%Y')}   กะ {h1}-{h2}"
+        for a, sz in (("B3", 14), ("B4", 14), ("I3", 13), ("I4", 11)):
+            ws[a].font = F(sz, True)
+            ws[a].alignment = Alignment(horizontal="center" if a[0] == "B" else "left", vertical="center", shrink_to_fit=True)
+        ws.row_dimensions[3].height = ws.row_dimensions[4].height = 24
+        for r in (5, 6):
+            for col in COLS:
+                x = ws[f"{col}{r}"]
+                x.font, x.alignment = F(11, True), C
+                x.border = Border(left=thin, right=thin, top=med if r == 5 else thin, bottom=thin)
+        for col, t in HEAD.items():
+            ws.merge_cells(f"{col}5:{col}6"); ws[f"{col}5"] = t
+        ws.merge_cells("H5:I5"); ws["H5"] = "เวลาบรรจุ"; ws["H6"] = "เริ่ม"; ws["I6"] = "หยุด"
+        ws.row_dimensions[5].height = ws.row_dimensions[6].height = 30
+        for i in range(ROWS_PER_PAGE):
+            rr = 7 + i
+            vals = [""] * 11
+            vals[0] = first_no + i
+            for k, v in common.get(i, {}).items():
+                vals[KEY[k]] = v
+            pk = PK.get(f'{p0.get("lot_no") or ""}|{p0.get("product_code") or ""}') or PK.get(p0.get("lot_no") or "")
+            if pk:
+                vals[1] = pk[first_no - 1 + i] if first_no - 1 + i < len(pk) else ""
+            nt = (notes or {}).get(first_no - 1 + i)        # b553: deleted slip -> remark
+            if nt:
+                vals[10] = (str(vals[10]) + " · " if vals[10] else "") + nt
+            if i < len(items):
+                s_ = items[i]
+                run = int(s_.get("lot_run") or 1)
+                vals[2] = "✓"
+                vals[5] = str(s_["pallet_no"]) + (f" (R{run})" if run > 1 else "")
+                vals[6] = _num(s_["qty"]) or ""
+                vals[7], vals[8] = s_.get("t_start") or "", s_.get("t_stop") or ""
+            for j, col in enumerate(COLS):
+                x = ws[f"{col}{rr}"]
+                x.value = vals[j]
+                x.font = F(12, False)
+                x.alignment = Alignment(horizontal="left" if j == 1 else "center", vertical="center", shrink_to_fit=True)
+                x.border = B
+            ws.row_dimensions[rr].height = 21
+        fr = 7 + ROWS_PER_PAGE
+        ws.merge_cells(f"A{fr}:B{fr}")
+        ws[f"A{fr}"] = "หมายเหตุ : / สะอาด   x ไม่สะอาด   ⊗ แก้ไขแล้ว ตรวจซ้ำสะอาด"
+        ws[f"A{fr}"].font = F(10)
+        ws[f"A{fr}"].alignment = Alignment(horizontal="left", vertical="center", shrink_to_fit=True)
+        last = pno == pcount
+        kg = sum(_num(s_["total_weight"]) or _num(s_["qty"]) * _num(s_["weight_unit"]) for s_ in lot_items)
+        bags = sum(_num(s_["qty"]) for s_ in lot_items)
+        # b549: total bags, left of the total weight
+        ws[f"C{fr}"] = "จำนวนถุงรวม"
+        ws[f"D{fr}"] = bags if last else "ต่อหน้าถัดไป"
+        ws[f"E{fr}"] = "ถุง" if last else ""
+        for col in "CDE":
+            x = ws[f"{col}{fr}"]
+            x.font, x.alignment = F(12, True), Alignment(horizontal="center", vertical="center", shrink_to_fit=True)
+            x.border = Border(left=med if col == "C" else None, right=med if col == "E" else None, top=med, bottom=med)
+        ws[f"D{fr}"].number_format = "#,##0"
+        ws.merge_cells(f"F{fr}:G{fr}"); ws[f"F{fr}"] = "ยอดบรรจุรวม"
+        ws.merge_cells(f"H{fr}:I{fr}"); ws[f"H{fr}"] = kg if last else "ต่อหน้าถัดไป"
+        ws[f"J{fr}"] = "Kg." if last else ""
+        for col in "FGHI":
+            x = ws[f"{col}{fr}"]
+            x.font, x.alignment = F(12, True), C
+            x.border = Border(left=med if col == "F" else None, right=med if col == "I" else None, top=med, bottom=med)
+        ws[f"H{fr}"].number_format = "#,##0"
+        ws[f"J{fr}"].font = F(12, True)
+        ws.row_dimensions[fr].height = 22
+        sg = fr + 3
+        for a, b_ in ((f"A{sg}:D{sg}", "(........................................)"), (f"A{sg+1}:D{sg+1}", "หัวหน้าหน่วยงานบรรจุ"),
+                      (f"H{sg}:K{sg}", "(........................................)"), (f"H{sg+1}:K{sg+1}", "ผู้ตรวจสอบ")):
+            ws.merge_cells(a)
+            c0 = a.split(":")[0]
+            ws[c0] = b_
+            ws[c0].font, ws[c0].alignment = F(11), C
+        ws.page_setup.paperSize = ws.PAPERSIZE_A4
+        ws.page_setup.orientation = "landscape"
+        ws.page_setup.fitToWidth = ws.page_setup.fitToHeight = 1
+        ws.sheet_properties.pageSetUpPr.fitToPage = True
+        ws.print_options.horizontalCentered = ws.print_options.verticalCentered = True
+        ws.page_margins.left = ws.page_margins.right = 0.25
+        ws.page_margins.top = ws.page_margins.bottom = 0.3
+
+    wb = Workbook()
+    wb.remove(wb.active)
+    used = set()
+    for (lot_no, _pc), items in groups.items():
+        pages, common = _lot_pages(items)
+        notes = _void_notes(items, _voids_for(fac, d, sh, lot_no, _pc))
+        for n, pg_items in enumerate(pages, 1):
+            nm = re.sub(r"[\\/*?:\[\]]", "-", lot_no)[:24] or "lot"
+            if len(pages) > 1:
+                nm = f"{nm} ({n})"
+            base, k = nm, 2
+            while nm in used:
+                nm = f"{base[:22]}_{k}"; k += 1
+            used.add(nm)
+            page(wb.create_sheet(nm), pg_items, common, n, len(pages), (n - 1) * ROWS_PER_PAGE + 1, items, notes)
+    if not groups:
+        ws = wb.create_sheet("ไม่มีข้อมูล")
+        page(ws, [], {0: {"pk": "— ไม่มีพาเลทที่ผ่าน Checker แพคกิ้งในกะนี้ —"}}, 1, 1, 1, [])
+    buf = BytesIO()
+    wb.save(buf)
+    fname = f"packing-{fcode}-{d}-{name_en.lower()}" + (f"-{re.sub(r'[^0-9A-Za-z-]', '', lot)}" if lot else "") + ".xlsx"
+    stats = {"lots": len(groups), "pallets": len(rows), "bags": sum(_num(r["qty"]) for r in rows),
+             "kg": sum(_num(r["total_weight"]) or _num(r["qty"]) * _num(r["weight_unit"]) for r in rows)}
+    return buf.getvalue(), fname, stats
+
+
+XLSX_MT = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+@router.get("/shift-report")
+async def shift_report(req: Request, d: str = "", shift: str = "m", lot: str = ""):
+    """Download a shift report made now (live data)."""
+    from fastapi import Response
+    u, fac, _ = ctx(req, "view")
+    if not ({"pack", "packcheck", "admin", "check"} & can_set(roles_of(u))):
+        raise HTTPException(403, {"msg": "ไม่มีสิทธิ์ (no permission)"})
+    d = (d or _today())[:10]
+    sh = shift if shift in SHIFTS else "m"
+    data, fname, _ = await asyncio.to_thread(_shift_build, fac, d, sh, lot.strip())
+    return Response(data, media_type=XLSX_MT, headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+
+
+# ---- b534: every shift's report is made by itself at the end of the shift and kept ----
+SHIFT_GRACE_MIN = int(os.environ.get("FG_SHIFT_GRACE_MIN", "10"))   # wait for late scans before filing
+
+
+def _shift_dir(fcode):
+    from .config import REPORTS
+    p = os.path.join(REPORTS, "FG-shift", fcode or "X")
+    os.makedirs(p, exist_ok=True)
+    return p
+
+
+def _shift_file(fac, d, sh, who="auto"):
+    """Make (or re-make) one shift report, save the file, record it. Returns the record id."""
+    data, fname, st = _shift_build(fac, d, sh)
+    with closing(conn()) as c:
+        f = c.execute("SELECT code FROM factories WHERE id=?", (fac,)).fetchone()
+        path = os.path.join(_shift_dir(f["code"] if f else ""), fname)
+        with open(path, "wb") as fh:
+            fh.write(data)
+        c.execute("""INSERT INTO fg_shift_reports(factory_id,d,shift,file,lots,pallets,bags,kg,made_at,made_by,fmt)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(factory_id,d,shift) DO UPDATE SET file=excluded.file,lots=excluded.lots,
+            pallets=excluded.pallets,bags=excluded.bags,kg=excluded.kg,made_at=excluded.made_at,made_by=excluded.made_by,fmt=excluded.fmt""",
+                  (fac, d, sh, path, st["lots"], st["pallets"], st["bags"], st["kg"], now(), who, REPORT_FMT))
+        c.commit()
+        return c.execute("SELECT id FROM fg_shift_reports WHERE factory_id=? AND d=? AND shift=?", (fac, d, sh)).fetchone()["id"]
+
+
+REPORT_FMT = 5      # b538: bump when the report layout changes -> kept reports are made again in the new layout
+
+
+def _shift_auto():
+    """File every shift that has ended (+ grace) in the last 3 days and is not filed yet —
+    so shifts that ended while the server was off are filed when it comes back."""
+    nowt = datetime.datetime.now()
+    with closing(conn()) as c:
+        facs = [r["id"] for r in c.execute("SELECT id FROM factories")]
+        done = {(r["factory_id"], r["d"], r["shift"]) for r in c.execute(
+            "SELECT factory_id,d,shift FROM fg_shift_reports WHERE d>=?", ((nowt - datetime.timedelta(days=4)).date().isoformat(),))}
+        first = c.execute("SELECT MIN(created_at) FROM fg_log WHERE action='checker_scanned'").fetchone()[0]
+    made = 0
+    with closing(conn()) as c:      # b538: reports kept in an older layout are made again in the new one
+        old = [(r["factory_id"], r["d"], r["shift"]) for r in c.execute(
+            "SELECT factory_id,d,shift FROM fg_shift_reports WHERE COALESCE(fmt,1)<?", (REPORT_FMT,))]
+    for fac_, d_, sh_ in old:
+        try:
+            _shift_file(fac_, d_, sh_, "auto")
+            made += 1
+        except Exception as e:
+            print(f"[fg] remake {fac_} {d_} {sh_} failed: {e}")
+    if not first:
+        return made
+    for back in range(3, -1, -1):
+        d = (nowt.date() - datetime.timedelta(days=back)).isoformat()
+        for sh in ("m", "a", "n"):
+            t1, t2, _s = _shift_window(d, sh)
+            end = datetime.datetime.strptime(t2, "%Y-%m-%d %H:%M:%S")
+            if end + datetime.timedelta(minutes=SHIFT_GRACE_MIN) > nowt or t2 < first:
+                continue
+            for fac in facs:
+                if (fac, d, sh) in done:
+                    continue
+                try:
+                    _shift_file(fac, d, sh)
+                    made += 1
+                except Exception as e:
+                    print(f"[fg] shift report {fac} {d} {sh} failed: {e}")
+    return made
+
+
+_SHIFT_SCHED = {"on": False}
+
+
+@router.on_event("startup")
+async def _shift_sched():
+    if os.environ.get("FG_SHIFT_AUTO", "1") == "0" or _SHIFT_SCHED["on"]:
+        return
+    _SHIFT_SCHED["on"] = True          # one loop per server, even if startup runs twice
+
+    async def loop():
+        await asyncio.sleep(20)
+        while True:
+            try:
+                n = await asyncio.to_thread(_shift_auto)
+                if n:
+                    print(f"[fg] filed {n} shift report(s)")
+            except Exception as e:
+                print(f"[fg] shift scheduler error: {e}")
+            await asyncio.sleep(120)
+    asyncio.create_task(loop())
+
+
+def _report_data(fac, d, sh, lot=""):
+    """b536/b552: the shift report as data (per lot + FG code, pages of 20)."""
+    fcode, start, rows, groups = _shift_rows(fac, d, sh, lot)
+    PK = _shift_packs(fac, d, sh)
+    th, en, h1, h2, _x = SHIFTS[sh]
+    lots = []
+    for (lot_no, pc), items in groups.items():
+        pages, common = _lot_pages(items)
+        lots.append({"lot_no": lot_no, "product_code": pc, "packs": PK.get(f"{lot_no}|{pc}") or PK.get(lot_no, []), "product_name": items[0].get("product_name") or "",
+                     "common": common, "rows_per_page": ROWS_PER_PAGE,
+                     "pages": [[{"pallet_no": s["pallet_no"], "lot_run": s.get("lot_run") or 1, "qty": _num(s["qty"]),
+                                "t_start": s.get("t_start") or "", "t_stop": s.get("t_stop") or ""} for s in pg] for pg in pages],
+                     "pallets": len(items), "bags": sum(_num(s["qty"]) for s in items),
+                     "kg": sum(_num(s["total_weight"]) or _num(s["qty"]) * _num(s["weight_unit"]) for s in items),
+                     "notes": {str(k): v for k, v in _void_notes(items, _voids_for(fac, d, sh, lot_no, pc)).items()}})   # b553
+    return {"company": COMPANY_TH.get(fcode, "บริษัท บลูฟาโล่"), "form": PACK_REPORT_CODES.get(fcode, ""), "fcode": fcode,
+            "date": start.strftime("%d/%m/%Y"), "shift_th": th, "shift_en": en, "h1": h1, "h2": h2, "lots": lots}
+
+
+@router.get("/shift-report-data")
+async def shift_report_data(req: Request, d: str = "", shift: str = "m", lot: str = ""):
+    """b536: the same shift report as data (per lot, pages of 20) — for printing from the page."""
+    u, fac, _ = ctx(req, "view")
+    if not ({"pack", "packcheck", "admin", "check"} & can_set(roles_of(u))):
+        raise HTTPException(403, {"msg": "ไม่มีสิทธิ์ (no permission)"})
+    d = (d or _today())[:10]
+    sh = shift if shift in SHIFTS else "m"
+    return await asyncio.to_thread(_report_data, fac, d, sh, lot.strip())
+
+
+@router.post("/shift-packs")
+async def shift_packs_save(req: Request):
+    """b542: save the packaging numbers of each lot (kept in the database for every PC and the
+    Excel), then make the shift's kept report again so its Excel carries them."""
+    u, fac, _ = ctx(req, "view")
+    if not ({"pack", "packcheck", "admin"} & can_set(roles_of(u))):
+        raise HTTPException(403, {"msg": "ไม่มีสิทธิ์ (no permission)"})
+    b = await req.json()
+    d, sh = (b.get("d") or _today())[:10], b.get("shift") if b.get("shift") in SHIFTS else "m"
+    items = b.get("lots") or []
+    with closing(conn()) as c:
+        for it in items:
+            lot_no = (it.get("lot_no") or "").strip()
+            if lot_no and (it.get("product_code") or "").strip():   # b549: numbers kept per lot + FG code
+                lot_no = f'{lot_no}|{it["product_code"].strip()}'
+            packs = ", ".join(x.strip() for x in str(it.get("packs") or "").split(",") if x.strip())[:4000]
+            if not lot_no:
+                continue
+            c.execute("""INSERT INTO fg_shift_pack(factory_id,d,shift,lot_no,packs,updated_at,updated_by) VALUES(?,?,?,?,?,?,?)
+                ON CONFLICT(factory_id,d,shift,lot_no) DO UPDATE SET packs=excluded.packs,updated_at=excluded.updated_at,updated_by=excluded.updated_by""",
+                      (fac, d, sh, lot_no, packs, now(), _who(u)))
+        c.commit()
+        kept = c.execute("SELECT 1 FROM fg_shift_reports WHERE factory_id=? AND d=? AND shift=?", (fac, d, sh)).fetchone()
+    if kept:
+        await asyncio.to_thread(_shift_file, fac, d, sh, _who(u))
+    return {"ok": True}
+
+
+@router.get("/shift-reports")
+async def shift_reports(req: Request, d1: str = "", d2: str = ""):
+    u, fac, _ = ctx(req, "view")
+    if not ({"pack", "packcheck", "admin", "check"} & can_set(roles_of(u))):
+        raise HTTPException(403, {"msg": "ไม่มีสิทธิ์ (no permission)"})
+    d2 = (d2 or _today())[:10]
+    d1 = (d1 or (datetime.date.fromisoformat(d2) - datetime.timedelta(days=13)).isoformat())[:10]
+    with closing(conn()) as c:
+        rows = [dict(r) for r in c.execute(
+            """SELECT id,d,shift,lots,pallets,bags,kg,made_at,made_by FROM fg_shift_reports WHERE factory_id=? AND d>=? AND d<=?
+               ORDER BY d DESC, CASE shift WHEN 'n' THEN 3 WHEN 'a' THEN 2 ELSE 1 END DESC""", (fac, d1, d2))]
+    return {"rows": rows, "d1": d1, "d2": d2}
+
+
+@router.get("/shift-reports/{rid}/file")
+async def shift_report_file(req: Request, rid: int):
+    from fastapi import Response
+    u, fac, _ = ctx(req, "view")
+    with closing(conn()) as c:
+        r = c.execute("SELECT * FROM fg_shift_reports WHERE id=? AND factory_id=?", (rid, fac)).fetchone()
+    if not r or not os.path.exists(r["file"] or ""):
+        raise HTTPException(404, {"msg": "ไม่พบไฟล์ (file not found) — กดสร้างใหม่ (make it again)"})
+    with open(r["file"], "rb") as fh:
+        data = fh.read()
+    return Response(data, media_type=XLSX_MT, headers={"Content-Disposition": f'attachment; filename="{os.path.basename(r["file"])}"'})
+
+
+@router.post("/shift-reports/remake")
+async def shift_report_remake(req: Request):
+    """Make a shift's report again (e.g. a pallet was scanned late) — replaces the kept file."""
+    u, fac, _ = ctx(req, "view")
+    if not ({"pack", "packcheck", "check", "admin"} & can_set(roles_of(u))):
+        raise HTTPException(403, {"msg": "ไม่มีสิทธิ์ (no permission)"})
+    b = await req.json()
+    d, sh = (b.get("d") or _today())[:10], b.get("shift") if b.get("shift") in SHIFTS else "m"
+    rid = await asyncio.to_thread(_shift_file, fac, d, sh, _who(u))
+    return {"ok": True, "id": rid}
+
+
+# ════════ b552 — PDF copies of the packing report, kept on the server ════════
+# A PDF is made (only when the lot has real packaging numbers typed — not just the
+# packaging type the form fills in by itself):
+#   · when somebody presses Print (the page asks first if that report already has a file)
+#   · when a lot is finished (+ the lot's Excel)
+#   · at the end of each shift (07:59 · 15:59 · 23:59) for every lot of that shift
+# The PDF is drawn by the server PC's own Edge / Chrome (headless) from the same page as
+# the Print button, so Thai text looks exactly like the printed form. All files are listed
+# in fg_report_files and opened from the "Report files" page.
+import html as _html
+import base64 as _b64
+import shutil as _shutil
+import subprocess as _sp
+import tempfile as _tmp
+import threading as _thr
+
+_PDF_LOCK = _thr.Lock()
+HOW = {"print": "พิมพ์", "finish": "จบล็อต", "shift": "สิ้นกะ"}
+
+
+def _files_ensure(c):
+    c.execute("""CREATE TABLE IF NOT EXISTS fg_report_files(
+        id INTEGER PRIMARY KEY AUTOINCREMENT, factory_id INTEGER, d TEXT, shift TEXT, lot_no TEXT,
+        product_code TEXT DEFAULT '', kind TEXT, how TEXT, path TEXT, name TEXT, size INTEGER DEFAULT 0,
+        made_at TEXT DEFAULT '', made_by TEXT DEFAULT '', removed INTEGER DEFAULT 0)""")
+    c.execute("CREATE INDEX IF NOT EXISTS ix_fg_rf ON fg_report_files(factory_id, d, shift, lot_no)")
+    c.execute("""CREATE TABLE IF NOT EXISTS fg_shift_pdf_done(
+        factory_id INTEGER, d TEXT, shift TEXT, made_at TEXT DEFAULT '', PRIMARY KEY(factory_id, d, shift))""")
+
+
+def _browser():
+    """Edge or Chrome on the server PC (FG_PDF_BROWSER overrides)."""
+    env = os.environ.get("FG_PDF_BROWSER")
+    if env and os.path.exists(env):
+        return env
+    pf = [os.environ.get(k) for k in ("ProgramFiles(x86)", "ProgramFiles", "LOCALAPPDATA") if os.environ.get(k)]
+    for base in pf:
+        for rel in (r"Microsoft\Edge\Application\msedge.exe", r"Google\Chrome\Application\chrome.exe"):
+            p = os.path.join(base, rel)
+            if os.path.exists(p):
+                return p
+    for n in ("msedge", "google-chrome", "chromium", "chromium-browser", "chrome"):
+        p = _shutil.which(n)
+        if p:
+            return p
+    return None
+
+
+def _real_packs(o):
+    """True when at least one packaging number was really typed (not only the packaging
+    type, e.g. "Bag", that the form puts in row 1 by itself)."""
+    dflt = str(((o.get("common") or {}).get(0) or {}).get("pk") or "").strip().lower()
+    return any(str(x).strip() and str(x).strip().lower() != dflt for x in (o.get("packs") or []))
+
+
+def _logo_uri(fcode):
+    from .config import STATIC
+    f = {"PC": "fac_pc.png", "FP": "fac_fp.png"}.get(fcode, "logo.png")
+    try:
+        with open(os.path.join(STATIC, f), "rb") as fh:
+            return "data:image/png;base64," + _b64.b64encode(fh.read()).decode()
+    except Exception:
+        return ""
+
+
+def _report_html(r, lots):
+    """Same layout as the Print button in fg.html (shrPrintGo) — keep the two alike."""
+    E = lambda v: _html.escape(str(v if v is not None else ""))
+    n0 = lambda v: f"{(_num(v) or 0):,.2f}".rstrip("0").rstrip(".")
+    lg = _logo_uri(r["fcode"])
+    out = []
+    for o in lots:
+        pk = o.get("packs") or []
+        rpp = o["rows_per_page"]
+        pc = len(o["pages"])
+        for pno, items in enumerate(o["pages"], 1):
+            tr = []
+            for i in range(rpp):
+                c = (o.get("common") or {}).get(i) or {}
+                x = items[i] if i < len(items) else None
+                no = (pno - 1) * rpp + i + 1
+                pv = (pk[no - 1] if no - 1 < len(pk) else "") if pk else (c.get("pk") or "")
+                run = int((x or {}).get("lot_run") or 1)
+                tr.append(f"<tr><td>{no}</td><td class='l'>{E(pv)}</td><td class='tk'>{'✓' if x else ''}</td>"
+                          f"<td>{n0(c['kg']) if c.get('kg') else ''}</td><td></td>"
+                          f"<td>{E(x['pallet_no']) + (f' (R{run})' if run > 1 else '') if x else ''}</td><td>{n0(x['qty']) if x else ''}</td>"
+                          f"<td>{E(x.get('t_start')) if x else ''}</td><td>{E(x.get('t_stop')) if x else ''}</td><td>{E(c.get('st'))}</td>"
+                          f"<td class='rm'>{E(' · '.join(v for v in (c.get('rm'), (o.get('notes') or {}).get(str(no - 1))) if v))}</td></tr>")
+            last = pno == pc
+            out.append(f"""<section><div class="h"><img src="{lg}"><div class="t"><b>{E(r['company'])}</b><b>รายงานการบรรจุอาหารสัตว์</b></div>
+      <div class="hr"><div>{E(r['form'])}</div><div>{f'หน้า {pno}/{pc}' if pc > 1 else ''}</div></div></div>
+     <div class="hd"><div></div><div class="mid"><div><span class="k">ชื่ออาหาร</span> <b>{E(o['product_name'])}</b></div><div><span class="k">รหัสสูตรอาหาร</span> <b class="code">{E(o['product_code'])}</b></div></div>
+      <div class="rt"><div><span class="k">Lot No.</span> <b class="lot">{E(o['lot_no'])}</b></div><div><span class="k">วันที่</span> <b>{E(r['date'])}</b> &nbsp; <span class="k">กะ</span> <b>{E(r['h1'])}-{E(r['h2'])}</b></div></div></div>
+     <table class="g"><colgroup><col style="width:4%"><col style="width:30%"><col style="width:8%"><col style="width:7%"><col style="width:5%"><col style="width:6%"><col style="width:7%"><col style="width:6%"><col style="width:6%"><col style="width:7%"><col></colgroup>
+      <thead><tr><th rowspan="2">ลำดับที่</th><th rowspan="2">ลักษณะบรรจุภัณฑ์</th><th rowspan="2">ตรวจสอบความสะอาด<br>ก่อนบรรจุ</th><th rowspan="2">น้ำหนัก/ถุง<br>(กิโลกรัม)</th><th rowspan="2">ถังบรรจุ</th><th rowspan="2">พาเลทที่</th><th rowspan="2">จำนวนถุง<br>/พาเลท</th><th colspan="2">เวลาบรรจุ</th><th rowspan="2">สถานที่จัดเก็บ</th><th rowspan="2">หมายเหตุ</th></tr><tr><th>เริ่ม</th><th>หยุด</th></tr></thead><tbody>{''.join(tr)}</tbody></table>
+     <div class="ft"><span>หมายเหตุ : / สะอาด &nbsp; x ไม่สะอาด &nbsp; ⊗ แก้ไขแล้ว ตรวจซ้ำสะอาด</span>
+      <span class="tot"><span>จำนวนถุงรวม <b>{n0(o['bags']) if last else 'ต่อหน้าถัดไป'}</b> {'ถุง' if last else ''}</span><span>ยอดบรรจุรวม <b>{n0(o['kg']) if last else 'ต่อหน้าถัดไป'}</b> {'Kg.' if last else ''}</span></span></div>
+     <div class="sg"><div>(........................................)<br>หัวหน้าหน่วยงานบรรจุ</div><div>(........................................)<br>ผู้ตรวจสอบ</div></div></section>""")
+    return f"""<!doctype html><html><head><meta charset="utf-8"><style>
+   @page{{size:A4 landscape;margin:8mm 9mm}}body{{font-family:'Sarabun','Leelawadee UI','Tahoma',sans-serif;margin:0;color:#000}}
+   section{{height:193mm;display:flex;flex-direction:column;page-break-after:always;overflow:hidden}}section:last-child{{page-break-after:auto}}
+   .h{{display:flex;align-items:center;gap:10px}}.h img{{height:19mm;width:46mm;object-fit:contain;object-position:left}}.h .t{{flex:1;text-align:center}}.h .t b{{display:block;font-size:15pt;line-height:1.35}}
+   .h .hr{{width:46mm;text-align:right;font-size:9.5pt;align-self:flex-start;display:flex;flex-direction:column;gap:4mm}}
+   table{{border-collapse:collapse;width:100%}}
+   .hd{{display:grid;grid-template-columns:27% 46% 27%;align-items:center;margin:2mm 0 1.5mm;font-size:11.5pt}}.hd .mid{{text-align:center;line-height:1.55}}
+   .hd .rt{{line-height:1.55;white-space:nowrap;text-align:right;font-size:10.5pt}}.hd .rt b{{font-size:11.5pt}}.hd .rt .lot{{font-size:13.5pt}}.hd .k{{font-weight:700;margin-right:2mm}}.hd b{{font-size:12.5pt}}.hd .lot,.hd .code{{font-size:14pt}}.g td.tk{{font-size:13pt;font-weight:700}}
+   .g{{table-layout:fixed}}.g th,.g td{{border:1px solid #000;text-align:center;font-size:11pt;line-height:1.1;padding:0 3px;white-space:nowrap;overflow:hidden}}
+   .g td.l{{text-align:left}}.g td.rm{{font-size:8pt;text-align:left;white-space:normal;line-height:1.05;color:#B91C1C}}.g th{{font-size:10.5pt;font-weight:700;white-space:normal;line-height:1.2;padding:1mm 2px}}.g thead tr:first-child th{{border-top:2px solid #000}}
+   .g tbody td{{height:5.3mm}}
+   .ft{{display:flex;gap:16px;align-items:center;justify-content:space-between;font-size:10pt;margin-top:2mm}}.tot{{border:2px solid #000;font-size:12pt;display:flex}}.tot>span{{padding:1mm 16px}}.tot>span+span{{border-left:2px solid #000}}.tot b{{margin:0 12px}}
+   .sg{{display:flex;justify-content:space-around;text-align:center;font-size:11pt;margin-top:auto;padding-top:5mm;line-height:1.5}}
+  </style></head><body>{''.join(out)}</body></html>"""
+
+
+def _html_to_pdf(html_text, out_path):
+    exe = _browser()
+    if not exe:
+        raise RuntimeError("no Edge / Chrome on the server PC — cannot make PDF")
+    with _PDF_LOCK, _tmp.TemporaryDirectory(prefix="fgpdf") as td:
+        src = os.path.join(td, "r.html")
+        with open(src, "w", encoding="utf-8") as fh:
+            fh.write(html_text)
+        tmp_pdf = os.path.join(td, "r.pdf")
+        url = "file:///" + src.replace("\\", "/").lstrip("/")
+        shell = "headless-shell" in os.path.basename(exe)
+        cmd = [exe] + ([] if shell else ["--headless=new"]) + ["--disable-gpu", "--no-first-run", "--no-default-browser-check",
+               "--disable-extensions", "--disable-background-networking", "--disable-sync", "--disable-component-update",
+               "--no-pdf-header-footer", "--print-to-pdf-no-header", f"--user-data-dir={os.path.join(td, 'prof')}",
+               f"--print-to-pdf={tmp_pdf}", url]
+        if os.name != "nt" and hasattr(os, "geteuid") and os.geteuid() == 0:
+            cmd.insert(1, "--no-sandbox")
+        _sp.run(cmd, stdout=_sp.DEVNULL, stderr=_sp.DEVNULL, timeout=90,
+                creationflags=getattr(_sp, "CREATE_NO_WINDOW", 0))
+        if not os.path.exists(tmp_pdf) or os.path.getsize(tmp_pdf) < 500:
+            raise RuntimeError("PDF was not made")
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
+        _shutil.move(tmp_pdf, out_path)
+
+
+def _files_dir(fcode, d):
+    from .config import REPORTS
+    p = os.path.join(REPORTS, "FG", d[:4], d[5:7])
+    os.makedirs(p, exist_ok=True)
+    return p
+
+
+def _safe(s):
+    return re.sub(r"[^0-9A-Za-z._-]", "-", s or "")[:40]
+
+
+def _record(c, fac, d, sh, lot_no, pc, kind, how, path, who):
+    c.execute("""INSERT INTO fg_report_files(factory_id,d,shift,lot_no,product_code,kind,how,path,name,size,made_at,made_by)
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""", (fac, d, sh, lot_no, pc, kind, how, path, os.path.basename(path),
+                                             os.path.getsize(path) if os.path.exists(path) else 0, now(), who))
+
+
+def _existing(c, fac, d, sh, lot_no, pc):
+    return [dict(x) for x in c.execute(
+        "SELECT id,name,how,made_at,made_by FROM fg_report_files WHERE factory_id=? AND d=? AND shift=? AND lot_no=? AND product_code=?"
+        " AND kind='pdf' AND removed=0 ORDER BY id DESC", (fac, d, sh, lot_no, pc))]
+
+
+def _make_pdfs(fac, d, sh, lot="", how="print", who="", mode="keep", only=None):
+    """Make one PDF per lot + FG code that has real packaging numbers. mode: keep (new file
+    next to the old) · replace (the old PDFs of that lot are retired) · none (no file).
+    only = set of "lot|code" keys to limit to. Returns [{lot_no, product_code, id|skip}]."""
+    r = _report_data(fac, d, sh, lot)
+    out = []
+    if mode == "none":
+        return out
+    stamp = datetime.datetime.now().strftime("%H%M%S")
+    with closing(conn()) as c:
+        _files_ensure(c)
+        for o in r["lots"]:
+            key = f"{o['lot_no']}|{o['product_code']}"
+            if only and key not in only:
+                continue
+            if not _real_packs(o):
+                out.append({"lot_no": o["lot_no"], "product_code": o["product_code"], "skip": "no packaging numbers"})
+                continue
+            name = f"{r['fcode']}_{d}_{sh.upper()}_{_safe(o['lot_no'])}_{_safe(o['product_code'])}_{how}_{stamp}.pdf"
+            path = os.path.join(_files_dir(r["fcode"], d), name)
+            try:
+                _html_to_pdf(_report_html(r, [o]), path)
+            except Exception as e:
+                print(f"[fg] PDF {name} failed: {e}")
+                out.append({"lot_no": o["lot_no"], "product_code": o["product_code"], "skip": str(e)})
+                continue
+            if mode == "replace":
+                for old in _existing(c, fac, d, sh, o["lot_no"], o["product_code"]):
+                    c.execute("UPDATE fg_report_files SET removed=1 WHERE id=?", (old["id"],))
+            _record(c, fac, d, sh, o["lot_no"], o["product_code"], "pdf", how, path, who)
+            fid = c.execute("SELECT MAX(id) FROM fg_report_files").fetchone()[0]
+            c.commit()
+            out.append({"lot_no": o["lot_no"], "product_code": o["product_code"], "id": fid, "name": name})
+    return out
+
+
+def _shift_of(t=None):
+    """(production day, shift) that time t falls in."""
+    t = t or datetime.datetime.now()
+    if t.hour < 8:
+        return (t.date() - datetime.timedelta(days=1)).isoformat(), "n"
+    return t.date().isoformat(), ("m" if t.hour < 16 else "a")
+
+
+def _shift_pdf_auto():
+    """End of shift (1 minute before: 07:59 · 15:59 · 23:59): PDFs for every lot of the shift
+    that has real packaging numbers. Shifts of the last day missed while the server was off are
+    caught up."""
+    nowt = datetime.datetime.now()
+    made = 0
+    with closing(conn()) as c:
+        _files_ensure(c)
+        c.commit()
+        facs = [r["id"] for r in c.execute("SELECT id FROM factories")]
+        done = {(r["factory_id"], r["d"], r["shift"]) for r in c.execute("SELECT factory_id,d,shift FROM fg_shift_pdf_done")}
+    for back in (1, 0):
+        d = (nowt.date() - datetime.timedelta(days=back)).isoformat()
+        for sh in ("m", "a", "n"):
+            _t1, t2, _s = _shift_window(d, sh)
+            end = datetime.datetime.strptime(t2, "%Y-%m-%d %H:%M:%S")
+            if nowt < end - datetime.timedelta(minutes=1) or nowt > end + datetime.timedelta(hours=24):
+                continue
+            for fac in facs:
+                if (fac, d, sh) in done:
+                    continue
+                try:
+                    res = _make_pdfs(fac, d, sh, "", "shift", "auto")
+                    made += sum(1 for x in res if x.get("id"))
+                except Exception as e:
+                    print(f"[fg] shift-end PDF {fac} {d} {sh} failed: {e}")
+                with closing(conn()) as c:
+                    c.execute("INSERT OR IGNORE INTO fg_shift_pdf_done(factory_id,d,shift,made_at) VALUES(?,?,?,?)", (fac, d, sh, now()))
+                    c.commit()
+    return made
+
+
+_PDF_SCHED = {"on": False}
+
+
+@router.on_event("startup")
+async def _pdf_sched():
+    if os.environ.get("FG_SHIFT_AUTO", "1") == "0" or _PDF_SCHED["on"]:
+        return
+    _PDF_SCHED["on"] = True
+
+    async def loop():
+        await asyncio.sleep(25)
+        while True:
+            try:
+                n = await asyncio.to_thread(_shift_pdf_auto)
+                if n:
+                    print(f"[fg] shift-end: {n} PDF(s)")
+            except Exception as e:
+                print(f"[fg] PDF scheduler error: {e}")
+            await asyncio.sleep(30)
+    asyncio.create_task(loop())
+
+
+def _finish_files(fac, product, lot, who):
+    """Lot finished: PDF (when packaging numbers were typed) + Excel of that lot, for every
+    shift of the last 3 days that has passed pallets of it."""
+    with closing(conn()) as c:
+        _files_ensure(c)
+        c.commit()
+        ats = [r[0] for r in c.execute(
+            "SELECT pc_at FROM fg_packing WHERE factory_id=? AND product_code=? AND lot_no=? AND pc_status='approved'"
+            " AND status<>'cancelled' AND pc_at>=?", (fac, product, lot,
+                                                    (datetime.datetime.now() - datetime.timedelta(days=3)).strftime("%Y-%m-%d")))]
+    shifts = sorted({_shift_of(datetime.datetime.strptime(a[:19], "%Y-%m-%d %H:%M:%S")) for a in ats if a and len(a) >= 19})
+    if not shifts:          # nothing passed the checker yet — nothing to file
+        return
+    for d, sh in shifts:
+        try:
+            _make_pdfs(fac, d, sh, lot, "finish", who, "keep", {f"{lot}|{product}"})
+        except Exception as e:
+            print(f"[fg] finish-lot PDF {lot} failed: {e}")
+        try:
+            data, fname, _st = _shift_build(fac, d, sh, lot)
+            with closing(conn()) as c:
+                fc = (c.execute("SELECT code FROM factories WHERE id=?", (fac,)).fetchone() or {"code": ""})["code"]
+                name = f"{fc}_{d}_{sh.upper()}_{_safe(lot)}_finish_{datetime.datetime.now().strftime('%H%M%S')}.xlsx"
+                path = os.path.join(_files_dir(fc, d), name)
+                with open(path, "wb") as fh:
+                    fh.write(data)
+                _record(c, fac, d, sh, lot, product, "xlsx", "finish", path, who)
+                c.commit()
+        except Exception as e:
+            print(f"[fg] finish-lot Excel {lot} failed: {e}")
+
+
+def _files_role(u):
+    if not ({"pack", "packcheck", "admin", "check"} & can_set(roles_of(u))):
+        raise HTTPException(403, {"msg": "ไม่มีสิทธิ์ (no permission)"})
+
+
+@router.get("/report-files")
+async def report_files(req: Request, d1: str = "", d2: str = "", kind: str = "", how: str = "", q: str = "", since: int = 0):
+    u, fac, _ = ctx(req, "view")
+    _files_role(u)
+    d1, d2 = (d1 or (datetime.date.today() - datetime.timedelta(days=7)).isoformat())[:10], (d2 or _today())[:10]
+    conds, args = ["factory_id=?", "removed=0"], [fac]
+    if since:
+        conds.append("id>?"); args.append(since)
+    else:
+        conds += ["d>=?", "d<=?"]; args += [d1, d2]
+    if kind in ("pdf", "xlsx"):
+        conds.append("kind=?"); args.append(kind)
+    if how in HOW:
+        conds.append("how=?"); args.append(how)
+    if q.strip():
+        conds.append("(lot_no LIKE ? OR product_code LIKE ?)"); args += [f"%{q.strip()}%"] * 2
+    with closing(conn()) as c:
+        _files_ensure(c)
+        c.commit()
+        rows = [dict(x) for x in c.execute(
+            f"SELECT id,d,shift,lot_no,product_code,kind,how,name,size,made_at,made_by FROM fg_report_files WHERE {' AND '.join(conds)}"
+            " ORDER BY d DESC, id DESC LIMIT 1000", args)]
+    return {"rows": rows, "pdf_ok": bool(_browser())}
+
+
+@router.get("/report-files/check")
+async def report_files_check(req: Request, d: str = "", shift: str = "m", lot: str = ""):
+    """Before Print: which lots will get a PDF, and which already have one (the page asks)."""
+    u, fac, _ = ctx(req, "view")
+    _files_role(u)
+    d, sh = (d or _today())[:10], shift if shift in SHIFTS else "m"
+    r = await asyncio.to_thread(_report_data, fac, d, sh, lot.strip())
+    out = []
+    with closing(conn()) as c:
+        _files_ensure(c)
+        c.commit()
+        for o in r["lots"]:
+            out.append({"lot_no": o["lot_no"], "product_code": o["product_code"], "real": _real_packs(o),
+                        "existing": _existing(c, fac, d, sh, o["lot_no"], o["product_code"])})
+    return {"lots": out, "pdf_ok": bool(_browser())}
+
+
+@router.post("/report-pdf")
+async def report_pdf(req: Request):
+    """Print pressed: make the PDF(s) on the server. mode keep / replace / none."""
+    u, fac, _ = ctx(req, "view")
+    _files_role(u)
+    b = await req.json()
+    d, sh = (b.get("d") or _today())[:10], b.get("shift") if b.get("shift") in SHIFTS else "m"
+    mode = b.get("mode") if b.get("mode") in ("keep", "replace", "none") else "keep"
+    res = await asyncio.to_thread(_make_pdfs, fac, d, sh, (b.get("lot") or "").strip(), "print", _who(u), mode)
+    return {"ok": True, "files": res}
+
+
+@router.get("/report-files/{fid}")
+async def report_file_get(fid: int, req: Request, dl: int = 0):
+    from fastapi.responses import FileResponse
+    u, fac, _ = ctx(req, "view")
+    _files_role(u)
+    with closing(conn()) as c:
+        _files_ensure(c)
+        r = c.execute("SELECT * FROM fg_report_files WHERE id=? AND factory_id=?", (fid, fac)).fetchone()
+    if not r or not os.path.exists(r["path"]):
+        raise HTTPException(404, {"msg": "ไม่พบไฟล์ (file not found)"})
+    mt = "application/pdf" if r["kind"] == "pdf" else XLSX_MT
+    disp = "attachment" if dl or r["kind"] != "pdf" else "inline"
+    return FileResponse(r["path"], media_type=mt, headers={"Content-Disposition": f'{disp}; filename="{r["name"]}"'})
+
+
+# ════════ b553 — scan interlocks (packing checker) ════════
+#  1. In order: inside one lot (same FG code, run and packing machine) the slips are scanned
+#     #1, #2, #3 … — a slip is refused while a lower slip of that lot / machine is printed and
+#     not scanned yet. Deleted (voided) slips are skipped. Another lot can be scanned any time.
+#  2. 2 minutes: the same login cannot pass two slips of the same lot within FG_SCAN_GAP_SEC
+#     (default 120 s) — the slip has to be placed on the pallet first.
+#  A refused scan is NOT approved and NOT counted as a scan. The checker can ask for an
+#  override; only a pack supervisor / production manager (FG › Users tick) approves it.
+#  Factories: FG_INTERLOCK_FACS = factory codes, comma list (default "PC" = BFLPC).
+SCAN_GAP = int(os.environ.get("FG_SCAN_GAP_SEC", "120"))
+
+
+def _pint(v):
+    try:
+        return int(str(v).strip())
+    except Exception:
+        return 0
+
+
+def _interlock_on(c, fac):
+    codes = {x.strip().upper() for x in os.environ.get("FG_INTERLOCK_FACS", "PC").split(",") if x.strip()}
+    f = c.execute("SELECT code FROM factories WHERE id=?", (fac,)).fetchone()
+    return bool(f and ((f["code"] or "").upper() in codes or "ALL" in codes))
+
+
+def _interlock(c, fac, r, u, offline=False):
+    if not _interlock_on(c, fac) or (r["src"] or "") == "access":
+        return None
+    n = _pint(r["pallet_no"])
+    base = (fac, r["product_code"], r["lot_no"], r["lot_run"] or 1)
+    miss = [x["pallet_no"] for x in c.execute(
+        """SELECT pallet_no FROM fg_packing WHERE factory_id=? AND product_code=? AND lot_no=? AND COALESCE(lot_run,1)=?
+           AND COALESCE(pack_machine,'')=? AND status='packed' AND pc_status<>'approved' AND COALESCE(src,'')<>'access'
+           AND CAST(pallet_no AS INTEGER)<? AND id<>? ORDER BY CAST(pallet_no AS INTEGER)""",
+        base + (r["pack_machine"] or "", n, r["id"]))]
+    if miss:
+        first = miss[0]
+        return {"kind": "order", "slip_id": r["id"], "lot_no": r["lot_no"], "pallet_no": r["pallet_no"], "missing": miss[:20],
+                "msg": f"ข้ามลำดับ — ต้องสแกน #{first} ก่อน (out of order: scan #{first} first)",
+                "msg_en": f"out of order, #{first} not scanned"}
+    if offline:          # sent later from a queue: the 2-minute gap was kept at scan time
+        return None
+    who = _who(u)
+    last = c.execute(
+        """SELECT MAX(l.created_at) t, MAX(p.pallet_no) pn FROM fg_log l JOIN fg_packing p ON p.id=l.ref_id
+           WHERE l.factory_id=? AND l.kind='packing' AND l.action='pack_approve' AND l.user_name=?
+           AND p.product_code=? AND p.lot_no=? AND COALESCE(p.lot_run,1)=? AND l.created_at>=?""",
+        (fac, who, r["product_code"], r["lot_no"], r["lot_run"] or 1,
+         (datetime.datetime.now() - datetime.timedelta(seconds=SCAN_GAP + 5)).strftime("%Y-%m-%d %H:%M:%S"))).fetchone()
+    if last and last["t"]:
+        try:
+            el = (datetime.datetime.now() - datetime.datetime.strptime(last["t"][:19], "%Y-%m-%d %H:%M:%S")).total_seconds()
+        except Exception:
+            el = SCAN_GAP
+        if el < SCAN_GAP:
+            left = int(SCAN_GAP - el) + 1
+            return {"kind": "wait", "slip_id": r["id"], "lot_no": r["lot_no"], "pallet_no": r["pallet_no"], "wait": left,
+                    "last_at": last["t"], "gap": SCAN_GAP,
+                    "msg": f"เร็วเกินไป — สแกนได้อีกใน {left // 60}:{left % 60:02d} นาที วางบนพาเลทก่อน (too soon: wait {left} s, place it on the pallet first)",
+                    "msg_en": f"too soon, {left}s left"}
+    return None
+
+
+def _ovr_ensure(c):
+    c.execute("""CREATE TABLE IF NOT EXISTS fg_override(
+        id INTEGER PRIMARY KEY AUTOINCREMENT, factory_id INTEGER, packing_id INTEGER, kind TEXT, detail TEXT DEFAULT '',
+        reason TEXT DEFAULT '', note TEXT DEFAULT '', via TEXT DEFAULT '', req_by TEXT DEFAULT '', req_at TEXT DEFAULT '',
+        status TEXT DEFAULT 'pending', dec_by TEXT DEFAULT '', dec_at TEXT DEFAULT '', dec_note TEXT DEFAULT '')""")
+    c.execute("CREATE INDEX IF NOT EXISTS ix_fg_ovr ON fg_override(factory_id, status)")
+
+
+@router.post("/override-req")
+async def override_req(req: Request):
+    """The checker asks the pack supervisor to let a refused scan through."""
+    u, fac, _ = ctx(req, "packcheck")
+    b = await req.json()
+    sid = int(b.get("slip_id") or 0)
+    with closing(conn()) as c:
+        _ovr_ensure(c)
+        r = c.execute("SELECT * FROM fg_packing WHERE id=? AND factory_id=?", (sid, fac)).fetchone()
+        if not r:
+            raise HTTPException(404, {"msg": "ไม่พบใบพาเลท (slip not found)"})
+        old = c.execute("SELECT id FROM fg_override WHERE factory_id=? AND packing_id=? AND status='pending'", (fac, sid)).fetchone()
+        if old:
+            return {"ok": True, "id": old["id"]}
+        oid = c.insert_id("""INSERT INTO fg_override(factory_id,packing_id,kind,detail,reason,note,via,req_by,req_at)
+            VALUES(?,?,?,?,?,?,?,?,?)""", (fac, sid, (b.get("kind") or "")[:10], (b.get("detail") or "")[:300],
+                                         (b.get("reason") or "")[:60], (b.get("note") or "")[:300], (b.get("via") or "")[:20], _who(u), now()))
+        _log(c, fac, "packing", sid, "override_request", f"{b.get('kind')} · {b.get('reason')} {b.get('note') or ''}".strip(), _who(u))
+        c.commit()
+    return {"ok": True, "id": oid}
+
+
+@router.get("/override-req/{oid}")
+async def override_req_get(req: Request, oid: int):
+    u, fac, _ = ctx(req, "packcheck")
+    with closing(conn()) as c:
+        _ovr_ensure(c)
+        r = c.execute("SELECT id,status,dec_by,dec_at,dec_note FROM fg_override WHERE id=? AND factory_id=?", (oid, fac)).fetchone()
+    if not r:
+        raise HTTPException(404, {"msg": "not found"})
+    return dict(r)
+
+
+@router.get("/overrides")
+async def overrides(req: Request, status: str = "pending", d: str = ""):
+    u, fac, _ = ctx(req, "override")
+    with closing(conn()) as c:
+        _ovr_ensure(c)
+        c.commit()
+        q = "SELECT o.*, p.lot_no, p.pallet_no, p.product_code, p.product_name, p.pack_machine, p.qty, p.status slip_status, p.pc_status FROM fg_override o LEFT JOIN fg_packing p ON p.id=o.packing_id WHERE o.factory_id=?"
+        args = [fac]
+        if status == "pending":
+            q += " AND o.status='pending'"
+        else:
+            q += " AND o.req_at>=?"
+            args.append((d or (datetime.date.today() - datetime.timedelta(days=2)).isoformat())[:10])
+        rows = [dict(x) for x in c.execute(q + " ORDER BY o.id DESC LIMIT 300", args)]
+        pend = c.execute("SELECT COUNT(*) FROM fg_override WHERE factory_id=? AND status='pending'", (fac,)).fetchone()[0]
+    return {"rows": rows, "pending": pend}
+
+
+@router.post("/overrides/{oid}")
+async def override_decide(req: Request, oid: int):
+    """Pack supervisor: approve (the slip is passed now, as if scanned) or refuse."""
+    u, fac, _ = ctx(req, "override")
+    b = await req.json()
+    act = b.get("action")
+    if act not in ("approve", "refuse"):
+        raise HTTPException(400, {"msg": "action?"})
+    who, t = _who(u), now()
+    with closing(conn()) as c:
+        _ovr_ensure(c)
+        o = c.execute("SELECT * FROM fg_override WHERE id=? AND factory_id=?", (oid, fac)).fetchone()
+        if not o or o["status"] != "pending":
+            raise HTTPException(409, {"msg": "คำขอนี้ถูกตัดสินแล้ว (already decided)"})
+        note = (b.get("note") or "")[:300]
+        c.execute("UPDATE fg_override SET status=?,dec_by=?,dec_at=?,dec_note=? WHERE id=?",
+                  ("approved" if act == "approve" else "refused", who, t, note, oid))
+        sid = o["packing_id"]
+        if act == "approve":
+            k = c.execute("UPDATE fg_packing SET pc_status='approved',pc_by=?,pc_at=?,pc_note='' WHERE id=? AND factory_id=?"
+                          " AND status='packed' AND pc_status IN ('pending','rejected')", (o["req_by"], t, sid, fac)).rowcount
+            if k:
+                _log(c, fac, "packing", sid, "pack_approve", f"override by {who} ({o['kind']} · {o['reason']})", o["req_by"])
+                _log(c, fac, "packing", sid, "checker_scanned", f"{o['via'] or 'scan'} · override by {who}", o["req_by"])
+        _log(c, fac, "packing", sid, "override_" + ("approved" if act == "approve" else "refused"),
+             f"{o['kind']} · {o['reason']} · {note}".strip(" ·"), who)
+        c.commit()
+    return {"ok": True}
+
+
+@router.get("/hub-sync")
+async def hub_sync(req: Request, days: int = 3):
+    """b553: PACKBFLPC scan hub — the slips of the last days (+ who passed which lot when), so
+    the hub can check scans by itself while the internet is down."""
+    u, fac, _ = ctx(req, "packcheck")
+    since = (datetime.datetime.now() - datetime.timedelta(days=max(1, min(days, 7)))).strftime("%Y-%m-%d")
+    with closing(conn()) as c:
+        f = c.execute("SELECT code FROM factories WHERE id=?", (fac,)).fetchone()
+        rows = [_slip_out(r) for r in c.execute(
+            """SELECT * FROM fg_packing WHERE factory_id=? AND COALESCE(src,'')<>'access'
+               AND (packed_at>=? OR status_at>=? OR pc_at>=?)""", (fac, since, since, since))]
+        appr = [dict(x) for x in c.execute(
+            """SELECT l.user_name, p.product_code, p.lot_no, COALESCE(p.lot_run,1) lot_run, MAX(l.created_at) t
+               FROM fg_log l JOIN fg_packing p ON p.id=l.ref_id WHERE l.factory_id=? AND l.kind='packing'
+               AND l.action='pack_approve' AND l.created_at>=? GROUP BY l.user_name,p.product_code,p.lot_no,COALESCE(p.lot_run,1)""",
+            (fac, (datetime.datetime.now() - datetime.timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S")))]
+        on = _interlock_on(c, fac)
+    return {"at": now(), "factory_code": f["code"] if f else "", "slips": rows, "approvals": appr,
+            "interlock": on, "gap": SCAN_GAP}
+
+
+def _voids_for(fac, d, sh, lot_no, pc):
+    """Deleted (voided) slips of a lot, deleted inside the shift — shown in the remark column."""
+    t1, t2, _s = _shift_window(d, sh)
+    with closing(conn()) as c:
+        return [dict(x) for x in c.execute(
+            """SELECT pallet_no, COALESCE(lot_run,1) lot_run, qty, total_weight, weight_unit, status_by, status_at FROM fg_packing
+               WHERE factory_id=? AND lot_no=? AND product_code=? AND status='cancelled' AND status_at>=? AND status_at<?
+               ORDER BY CAST(pallet_no AS INTEGER)""", (fac, lot_no, pc, t1, t2))]
+
+
+def _void_notes(items, voids):
+    """{row index: remark} — each deleted slip goes on the row of the next slip that passed
+    (or the first empty row after the last one)."""
+    out = {}
+    for v in voids:
+        vn = _pint(v["pallet_no"])
+        idx = next((i for i, x in enumerate(items) if _pint(x.get("pallet_no")) > vn), len(items))
+        kg = _num(v.get("total_weight")) or _num(v.get("qty")) * _num(v.get("weight_unit"))
+        txt = f"#{v['pallet_no']} ลบโดย {v.get('status_by') or '-'} · {_num(v.get('qty')):g} ถุง · {kg:,.0f} kg ไม่รวมในยอด"
+        out[idx] = (out[idx] + " / " if idx in out else "") + txt
+    return out

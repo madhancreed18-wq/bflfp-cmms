@@ -79,6 +79,13 @@ input.in,select.in{width:100%}
 .scanbig svg{width:42px;height:42px}
 /* b497 packing checker: USB scanner box + verify card */
 .usbw{border:2px dashed #CBD5E1;border-radius:16px;padding:18px;background:#fff;margin:10px 0 14px;text-align:center}
+.psbar{display:flex;gap:10px;align-items:stretch;margin:10px 0 0}.pscam{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:130px;font-size:26px;border-radius:16px}.pscam span{font-size:13px;font-weight:600}
+.pstab td{vertical-align:middle}.pstab tr.psvoid td{background:#F8FAFC;color:#94A3B8}.pstab tr.psvoid td:not(:last-child){text-decoration:line-through}.pscard.psvoid{background:#F8FAFC;color:#94A3B8}.pscard.psvoid .psx,.pscard.psvoid span b{text-decoration:line-through}
+.psalm{position:fixed;left:0;right:0;top:0;z-index:200;background:#DC2626;color:#fff;display:flex;gap:14px;align-items:center;padding:14px 18px;box-shadow:0 8px 30px rgba(0,0,0,.35);animation:psblink 0.8s infinite}
+@keyframes psblink{50%{background:#991B1B}}
+tr.pkdel td{background:#F1F5F9!important;color:#94A3B8}tr.pkdel td b,tr.pkdel td .nm{text-decoration:line-through;color:#94A3B8}.expb{min-height:0;margin-top:4px}.shpg{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin-top:8px}.shpg label{display:flex;align-items:center;gap:6px}.shpg span{width:22px;text-align:right;font-weight:700;color:#64748B;font-size:13px}.shpg input{flex:1;min-width:0;padding:6px 8px}.pkfin{min-height:34px;padding:4px 12px;margin-left:8px;border-color:#F59E0B;color:#92400E;background:#FFFBEB;font-weight:700}.pkrun{font-size:12px;background:#EDE9FE;color:#5B21B6;border-radius:6px;padding:1px 6px;margin-left:4px}.pkfm.dis{opacity:.6}.psbox{position:relative}.psbox.msg input::placeholder{color:transparent}.psbox input.hide{color:transparent!important;caret-color:transparent}.psmsg{display:none;position:absolute;inset:0;align-items:center;justify-content:center;gap:10px;font-size:18px;pointer-events:none}.psmsg span{font-family:ui-monospace,Consolas,monospace;font-size:15px;color:#334155}.pscard{border-bottom:1px solid var(--line);padding:10px 14px;position:relative}.pscard.psdone{background:#F8FAFC}.pscard.pserr{background:#FEF2F2;color:#991B1B}.pscard.pserr .ibtn{position:absolute;right:10px;top:8px}.pstab tr.psdone td{background:#F8FAFC;color:#64748B}.pstab tr.pserr td{background:#FEF2F2;color:#991B1B}
+.pstab tr.psnew td{animation:psfl 1.6s ease-out}@keyframes psfl{0%{background:#FDE68A}100%{background:#fff}}
+@media(max-width:760px){.pscam{flex:1;flex-direction:row;font-size:22px;min-height:64px}.pstab th:nth-child(5),.pstab td:nth-child(5),.pstab th:nth-child(6),.pstab td:nth-child(6){display:none}}
 .usbw.on{border-color:#16A34A;background:#F0FDF4}
 .usbw .st{font-weight:700;font-size:15px;margin-bottom:10px;color:#64748B;display:flex;align-items:center;justify-content:center;gap:8px}
 .usbw.on .st{color:#15803D}.usbw .st i{width:12px;height:12px;border-radius:6px;background:#94A3B8;display:inline-block}
@@ -210,8 +217,8 @@ let ME=null,PAGE='home',CNT={};
 // which app this tab is: 'fg' = FG Stock (floor), 'wh' = Warehouse (checker office). Set by the launcher tile.
 // b471: the function this tab is in (FnBar) decides the menu. One person may hold several.
 let FN='';
-const FN_PAGES={packing:['slip'],packcheck:['pscan','papproved'],receiver:['recv','myrecv'],issuer:['issue','myissue'],
-  checker:['home','queue','hrecv','hrel','stock','card','daily'],
+const FN_PAGES={packing:['slip','ovr','shrep','rfiles'],packcheck:['pscan','ovr','papproved','shrep','rfiles'],receiver:['recv','myrecv'],issuer:['issue','myissue'],
+  checker:['home','shdash','queue','ovr','hrecv','hrel','stock','card','daily','shrep','rfiles','paudit','packing','lists','prod','cust','people'],   // b544: checker PC also gets the master pages
   admin:['paudit','packing','lists','prod','cust','people','users','accimp','accarch']};      // admin's setup pages live in the Warehouse function
 const isAdmin=()=>!!(ME&&(ME.fg_roles||[]).includes('admin'));
 function fnPages(){return (FN_PAGES[FN]||[]).concat(FN==='checker'&&isAdmin()?FN_PAGES.admin:[]);}
@@ -221,13 +228,56 @@ const can=k=>!!(ME&&ME.can.includes(k));
 const n0=v=>(+v||0).toLocaleString('en-US',{maximumFractionDigits:2});
 const fmtD=s=>s&&s.length>=10?s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4):'-';
 const fmtT=s=>s?fmtD(s.slice(0,10))+' '+s.slice(11,16):'-';
+/* b538 — every date box shows dd/mm/yyyy, whatever language Windows / the browser is set to.
+   The real <input type=date> stays (calendar picker, value yyyy-mm-dd for the code); when it is
+   not being typed in, its own text is hidden and a dd/mm/yyyy label is shown on top. */
+(function(){
+  const st=document.createElement('style');
+  st.textContent='.dmy{position:relative;display:block}.dmy.il{display:inline-block}.dmy>input:not(:focus)::-webkit-datetime-edit{color:transparent}'
+   +'.dmy>i{position:absolute;left:11px;top:50%;transform:translateY(-50%);pointer-events:none;font-style:normal;color:var(--navy,#0F172A);font-size:14.5px;white-space:nowrap}'
+   +'.dmy>input:focus+i{display:none}.dmy>i.e{color:#94A3B8}';
+  document.head.appendChild(st);
+  const lab=i=>{const t=i.nextElementSibling;if(!t||t.tagName!=='I')return;const v=i.value;t.textContent=v?fmtD(v):'dd/mm/yyyy';t.classList.toggle('e',!v);};
+  const wrap=i=>{if(i.dataset.dmy)return;i.dataset.dmy=1;const w=document.createElement('span');
+    w.className='dmy'+(getComputedStyle(i).width==='auto'||i.style.width==='auto'?' il':'');
+    i.parentNode.insertBefore(w,i);w.appendChild(i);const t=document.createElement('i');w.appendChild(t);
+    if(i.classList.contains('sm'))t.style.fontSize='13.5px';lab(i);
+    i.addEventListener('input',()=>lab(i));i.addEventListener('change',()=>lab(i));i.addEventListener('blur',()=>lab(i));};
+  const all=()=>document.querySelectorAll('input[type=date]:not([data-dmy])').forEach(wrap);
+  const d=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value');
+  Object.defineProperty(HTMLInputElement.prototype,'value',{get(){return d.get.call(this);},set(v){d.set.call(this,v);if(this.dataset&&this.dataset.dmy)lab(this);},configurable:true});
+  new MutationObserver(all).observe(document.documentElement,{childList:true,subtree:true});
+  document.addEventListener('DOMContentLoaded',all);
+})();
 const today=()=>new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
 const daysAgo=n=>new Date(Date.now()-n*864e5-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
 function toggleLang(){LANG=TH()?'EN':'TH';try{localStorage.setItem('bflfp_lang',LANG)}catch(e){}hdr();buildNav();go(PAGE,true);}
 
+/* b545 — a sign-in that has ended (account switched off, 1 / 30 days passed, or an old
+   server without saved sign-ins restarted) stops the screen at ONCE: no more polling with a
+   dead cookie (the 401 storm in the server window), a red panel says so, and on the scan
+   page an alarm sounds so nobody keeps scanning into nothing. */
+let EXPIRED=false;
+function fgExpired(){
+  if(EXPIRED)return;EXPIRED=true;
+  try{clearInterval(PSTMR);}catch(e){}try{stopScan();}catch(e){}
+  let o=document.getElementById('fgExp');if(!o){o=document.createElement('div');o.id='fgExp';document.body.appendChild(o);}
+  o.style.cssText='position:fixed;inset:0;z-index:300;background:rgba(127,29,29,.92);display:flex;align-items:center;justify-content:center;padding:20px';
+  o.innerHTML=`<div style="background:#fff;border-radius:16px;padding:26px 28px;max-width:520px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+    <div style="font-size:44px">🔒</div>
+    <div style="font-size:22px;font-weight:700;color:#B91C1C;margin-top:6px">เข้าสู่ระบบหมดอายุ — กรุณาเข้าสู่ระบบใหม่</div>
+    <div style="font-size:15px;color:#475569;margin:6px 0 4px">Sign-in expired — please sign in again</div>
+    <div style="font-size:14px;color:#64748B;margin-bottom:18px">${PAGE==='pscan'?'การสแกนหลังจากนี้ยังไม่ถูกบันทึก · scans are NOT saved until you sign in':''}</div>
+    <button class="btn pri" style="min-height:54px;font-size:18px;width:100%" onclick="fgExpAlarmOff();location.href='/'">เข้าสู่ระบบ · Sign in</button></div>`;
+  if(PAGE==='pscan'){try{const a=psAudio();if(a){const g=a.createGain();g.gain.value=.3;g.connect(a.destination);const o2=a.createOscillator();o2.type='square';o2.connect(g);o2.start();
+    let hi=false;const t=setInterval(()=>{hi=!hi;try{o2.frequency.setValueAtTime(hi?900:500,a.currentTime);}catch(e){}},500);window.__expAlm={o2,g,t};}}catch(e){}}
+}
+function fgExpAlarmOff(){const x=window.__expAlm;if(x){clearInterval(x.t);try{x.o2.stop();x.g.disconnect();}catch(e){}window.__expAlm=null;}}
 async function api(url,opt){
+  if(EXPIRED){const e=new Error('login');e.status=401;throw e;}
   const r=await fetch(url,Object.assign({credentials:'same-origin',headers:{'Content-Type':'application/json'}},opt||{}));
   let d=null;try{d=await r.json()}catch(e){}
+  if(r.status===401&&ME&&!String(url).includes('/api/login'))fgExpired();
   if(!r.ok){const det=d&&d.detail;const e=new Error((det&&det.msg)||(typeof det==='string'?det:'')||('HTTP '+r.status));e.status=r.status;e.detail=det;throw e;}
   return d;
 }
@@ -271,6 +321,7 @@ const IC={home:I('<path d="M3 11l9-7 9 7v9H3z"/>'),recv:I('<path d="M12 3v12"/><
 /* ---------- navigation ---------- */
 function pages(){return [
   ['home',IC.rep,L('แดชบอร์ด','Dashboard'),'home',''],
+  ['shdash',IC.rep,L('สรุปกะ','Shift summary'),'check',''],
   ['slip',IC.pack,L('ใบพาเลท (QR)','Pallet slips (QR)'),'pack',''],
   ['slips',IC.hist,L('รายการใบพาเลท','Pallet slips'),'pack',''],
   ['slipchk',IC.check,L('Checker แพคกิ้ง','Packing check'),'packcheck',''],
@@ -286,12 +337,15 @@ function pages(){return [
   ['stock',IC.stock,L('สต็อกคงเหลือ','Stock balance'),'check',''],
   ['card',IC.card,L('สต็อกการ์ด','Stock card'),'check',''],
   ['daily',IC.rep,L('รายงานประจำวัน','Daily report'),'check',''],
-  ['paudit',IC.hist,L('ประวัติพิมพ์ / ตรวจใบพาเลท','Slip print & check audit'),'admin','M'],
-  ['packing',IC.pack,L('ข้อมูลแพคกิ้ง','Packing records'),'admin','M'],
-  ['lists',IC.master,L('เครื่องแพค / ไลน์','Machines & lines'),'admin','M'],
-  ['prod',IC.master,L('สินค้า','Products'),'admin','M'],
-  ['cust',IC.master,L('ลูกค้า','Customers'),'admin','M'],
-  ['people',IC.master,L('ผู้ตรวจสอบ / หัวหน้ากะ','Checkers & leaders'),'admin','M'],
+  ['shrep',IC.rep,L('รายงานการบรรจุ ประจำกะ','Shift packing reports'),'view',''],
+  ['rfiles',IC.hist,L('ไฟล์รายงาน','Report files'),'view',''],
+  ['ovr',IC.check,L('คำขอปลดล็อก','Override requests'),'override','o'],
+  ['paudit',IC.hist,L('ประวัติพิมพ์ / ตรวจใบพาเลท','Slip print & check audit'),'master','M'],
+  ['packing',IC.pack,L('ข้อมูลแพคกิ้ง','Packing records'),'master','M'],
+  ['lists',IC.master,L('เครื่องแพค / ไลน์','Machines & lines'),'master','M'],
+  ['prod',IC.master,L('สินค้า','Products'),'master','M'],
+  ['cust',IC.master,L('ลูกค้า','Customers'),'master','M'],
+  ['people',IC.master,L('ผู้ตรวจสอบ / หัวหน้ากะ','Checkers & leaders'),'master','M'],
   ['users',IC.user,L('ผู้ใช้งาน','Users & roles'),'admin','M'],
   ['accimp',IC.master,L('นำเข้า Access','Import Access'),'admin','M'],
   ['accarch',IC.hist,L('ข้อมูลเก่า Access (ทุกตาราง)','Old Access data (all tables)'),'admin','M']].filter(p=>fnPages().includes(p[0])&&(p[3]==='home'||can(p[3])))
@@ -300,7 +354,7 @@ function buildNav(){
   let h='',g=false;
   for(const p of pages()){
     if(p[4]==='M'&&!g){h+=`<div class="grp">${L('ข้อมูลหลัก','MASTERS')}</div>`;g=true;}
-    const b=p[4]==='q'?`<span class="bdg" id="qbdg">${(CNT.recv_waiting||0)+(CNT.issue_waiting||0)}</span>`:'';
+    const b=p[4]==='q'?`<span class="bdg" id="qbdg">${(CNT.recv_waiting||0)+(CNT.issue_waiting||0)}</span>`:p[4]==='o'?`<span class="bdg" id="obdg" style="background:#DC2626">${OVRN||''}</span>`:'';
     h+=`<button id="nv-${p[0]}" onclick="go('${p[0]}')">${p[1]}<span>${esc(p[2])}</span>${b}</button>`;
   }
   $('#side').innerHTML=h;
@@ -312,8 +366,8 @@ function go(p,keep){
   PAGE=p;if(!keep)history.replaceState(null,'','#'+p);
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.id==='nv-'+p||b.id==='nb-'+p));
   stopScan();closeDlg();
-  ({home:pgHome,myrecv:pgMyRecv,myissue:pgMyIssue,slip:pgSlip,slips:pgSlips,slipchk:pgSlipChk,pscan:pgPScan,papproved:pgPApproved,paudit:pgPAudit,lists:pgLists,recv:pgRecv,issue:pgIssue,queue:pgQueue,hrecv:()=>pgHist('recv'),hrel:()=>pgHist('issue'),stock:pgStock,card:pgCard,
-    daily:pgDaily,packing:pgPacking,prod:pgProd,cust:pgCust,people:pgPeople,users:pgUsers,accimp:pgAccImp,accarch:pgAccArch}[p])();
+  ({home:pgHome,shdash:pgShDash,myrecv:pgMyRecv,myissue:pgMyIssue,slip:pgSlip,slips:pgSlips,slipchk:pgSlipChk,pscan:pgPScan,papproved:pgPApproved,paudit:pgPAudit,lists:pgLists,recv:pgRecv,issue:pgIssue,queue:pgQueue,hrecv:()=>pgHist('recv'),hrel:()=>pgHist('issue'),stock:pgStock,card:pgCard,
+    daily:pgDaily,shrep:pgShRep,rfiles:pgRFiles,ovr:pgOvr,packing:pgPacking,prod:pgProd,cust:pgCust,people:pgPeople,users:pgUsers,accimp:pgAccImp,accarch:pgAccArch}[p])();
   window.scrollTo(0,0);
 }
 function dlg(html){closeDlg();const o=document.createElement('div');o.className='ov';o.id='dlg';o.onclick=e=>{if(e.target===o)closeDlg();};o.innerHTML=`<div class="modal">${html}</div>`;document.body.appendChild(o);}
@@ -327,6 +381,16 @@ function csv(name,head,rows){
 }
 
 /* A4 report print (checker) — opens a print window, landscape A4 */
+/* b506 — same table as Print A4, downloaded as a real PDF file (built on the server, Thai font) */
+async function pdfA4(title,sub,head,rows,foot,right,file){
+  try{
+    const r=await fetch('/api/fg/pdf',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({title,sub:`FG ${ME.factory_code||''} · ${sub||''}`,head,rows:rows.map(x=>x.map(v=>v==null?'':String(v))),foot,right:right||[],file:file||'fg-report'})});
+    if(!r.ok){let m='HTTP '+r.status;try{const d=await r.json();m=(d.detail&&d.detail.msg)||d.detail||m;}catch(e){}throw new Error(m);}
+    const b=await r.blob(),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=(file||'fg-report')+'.pdf';document.body.appendChild(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);
+  }catch(e){alert(L('สร้าง PDF ไม่ได้: ','Could not make the PDF: ')+(e.message||e));}
+}
 function printA4(title,sub,head,rows,foot,right){
   right=right||[];
   const w=window.open('','_blank');if(!w){alert(L('อนุญาต pop-up เพื่อพิมพ์','Allow pop-ups to print'));return;}
@@ -372,7 +436,7 @@ function xRender(id){
   const th=st.cols.map(c=>{const on=!!st.f[c.k],s=st.sort&&st.sort.k===c.k?(st.sort.dir>0?' ▲':' ▼'):'';
     return `<th class="${c.r?'r':''}" style="${c.w?'width:'+c.w:''}"><div class="xh"><span class="xl" onclick="xSort('${id}','${c.k}')">${esc(c.label)}${s}</span>${c.nf?'':`<button class="xf ${on?'on':''}" onclick="xFilter(event,'${id}','${c.k}')" aria-label="Filter ${esc(c.label)}">▾</button>`}</div></th>`;}).join('');
   const sel=o.select?`<th style="width:34px"><input type="checkbox" ${v.length&&v.every(r=>o.select[r.id])?'checked':''} onchange="xSelAll('${id}',this.checked)" aria-label="Select all"></th>`:'';
-  const body=vv.map((r,i)=>`<tr class="${o.select&&o.select[r.id]?'sel':''}${o.onRow?' click':''}" ${o.onRow?`onclick="if(!event.target.closest('button,input,a'))XT['${id}'].opts.onRow(XT['${id}'].view[${off+i}])"`:''}>
+  const body=vv.map((r,i)=>`<tr class="${o.select&&o.select[r.id]?'sel':''}${o.onRow?' click':''}${o.rowCls?' '+o.rowCls(r):''}" ${o.onRow?`onclick="if(!event.target.closest('button,input,a'))XT['${id}'].opts.onRow(XT['${id}'].view[${off+i}])"`:''}>
     ${o.select?`<td><input type="checkbox" ${o.select[r.id]?'checked':''} onchange="xSel('${id}',${r.id},this.checked)" aria-label="Select"></td>`:''}
     ${st.cols.map(c=>`<td class="${c.r?'r':''}${c.cls?' '+c.cls:''}">${c.fmt?c.fmt(r):esc(r[c.k]==null?'':r[c.k])}</td>`).join('')}</tr>`).join('');
   const pager=ps&&v.length?`<div class="xpg"><span>${v.length?off+1:0}–${Math.min(off+ps,v.length)} ${L('จาก','of')} ${v.length.toLocaleString()} ${L('รายการ','items')}</span><span style="flex:1"></span>
@@ -443,6 +507,8 @@ function ta(inp,source,onPick,min){
     else if(e.key==='Escape')close();});
   window.addEventListener('scroll',close,true);
 }
+const taProdName=q=>{q=q.toLowerCase();return (PRODS||[]).filter(p=>(p.name+' '+p.code).toLowerCase().includes(q))
+  .sort((a,b)=>(a.name.toLowerCase().startsWith(q)?0:1)-(b.name.toLowerCase().startsWith(q)?0:1)).slice(0,12).map(p=>({v:p.name,t:p.name,s:p.code,code:p.code}));};
 const taProd=q=>{q=q.toLowerCase();return (PRODS||[]).filter(p=>(p.code+' '+p.name).toLowerCase().includes(q))
   .sort((a,b)=>(a.code.toLowerCase().startsWith(q)?0:1)-(b.code.toLowerCase().startsWith(q)?0:1)).slice(0,12).map(p=>({v:p.code,t:p.code,s:p.name}));};
 const taSrv=(kind,prodSel)=>async q=>{try{return (await api(`/api/fg/suggest?kind=${kind}&q=${encodeURIComponent(q)}${prodSel?'&product='+encodeURIComponent(prodSel()||''):''}`)).items;}catch(e){return [];}};
@@ -586,7 +652,7 @@ async function pgDash(banner){
   const A=$('#app');
   A.innerHTML=(banner||'')+`<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:10px;margin-bottom:12px">
     <div><h1>${L('แดชบอร์ดคลังสินค้า FG','FG warehouse dashboard')}</h1><p class="sub" style="margin:0" id="dsub">${esc(ME.factory_code)}</p></div>
-    <div class="tabs" style="margin:0">${[[7,L('7 วัน','7 days')],[30,L('30 วัน','30 days')],[90,L('90 วัน','90 days')],[365,L('12 เดือน','12 months')]].map(([v,t])=>`<button class="tab ${DASHD===v?'on':''}" onclick="DASHD=${v};pgHome()">${t}</button>`).join('')}</div></div>
+    <div class="tabs" style="margin:0">${[[1,L('1 วัน','1 day')],[7,L('7 วัน','7 days')],[30,L('30 วัน','30 days')],[90,L('90 วัน','90 days')],[365,L('12 เดือน','12 months')]].map(([v,t])=>`<button class="tab ${DASHD===v?'on':''}" onclick="DASHD=${v};pgHome()">${t}</button>`).join('')}</div></div>
    <div id="dbody">${MEMO.has('/api/fg/dashboard?days='+DASHD)?'':LOADH}</div>`;
   let d;try{d=DASH=await apiC('/api/fg/dashboard?days='+DASHD,()=>pgDash(banner));}catch(e){$('#dbody').innerHTML=err(e);return;}
   $('#dsub').textContent=`${ME.factory_code} · ${fmtD(d.d1)} – ${fmtD(d.d2)}${d.last_receive?' · '+L('รับเข้าล่าสุด','last receive')+' '+fmtD(d.last_receive):''}`;
@@ -617,6 +683,54 @@ async function pgDash(banner){
   colChart($('#dcol'),d.series,d.monthly);hBars($('#dtype'),d.by_type);hBars($('#dage'),d.ages,{seq:true});hBars($('#dgrp'),d.by_group);hBars($('#drt'),d.release_types,{color:VZ.out});
   tipOn($('#dbody'));
   window.onresize=()=>{if(PAGE==='home'&&DASH&&$('#dcol'))colChart($('#dcol'),DASH.series,DASH.monthly);};
+}
+/* ════════ b555 — Shift summary dashboard ════════
+   One shift of one production day (08:00 → 08:00): what packing passed, what FG received and released,
+   what is still waiting for the checker. Sent-back / rejected rows are not counted. */
+let SD={d:'',sh:''};
+async function pgShDash(){
+  if(!SD.d){SD.d=shDay();SD.sh=shNow();}
+  const S={m:[L('กะเช้า','Morning'),'08:00–16:00','08:00','15:59',0],a:[L('กะบ่าย','Afternoon'),'16:00–00:00','16:00','23:59',0],n:[L('กะดึก','Night'),'00:00–08:00','00:00','07:59',1]};
+  const live=SD.d===shDay()&&SD.sh===shNow();
+  $('#app').innerHTML=`<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:10px;margin-bottom:12px">
+    <div><h1>${L('สรุปกะ','Shift summary')} ${live?`<span class="pill p-confirmed" style="font-size:12px;vertical-align:middle">${L('กะปัจจุบัน','current shift')}</span>`:''}</h1>
+     <p class="sub" style="margin:0">${esc(ME.factory_code)} · ${L('วันที่ผลิต','Production day')} ${fmtD(SD.d)} · ${S[SD.sh][0]} ${S[SD.sh][1]}</p></div>
+    <div class="btns" style="align-items:flex-end"><label class="f">${L('วันที่ผลิต','Production day')}<input class="in" type="date" id="sdD" value="${SD.d}" onchange="SD.d=this.value;pgShDash()"></label>
+     <div class="tabs" style="margin:0">${Object.keys(S).map(k=>`<button class="tab ${SD.sh===k?'on':''}" onclick="SD.sh='${k}';pgShDash()">${S[k][0]} <span class="muted" style="font-size:11px">${S[k][1]}</span></button>`).join('')}</div>
+     <button class="btn" onclick="SD={d:shDay(),sh:shNow()};pgShDash()">${L('กะปัจจุบัน','Current shift')}</button><button class="btn" title="${L('โหลดใหม่','Refresh')}" onclick="pgShDash()">↻</button></div></div>
+   <div id="sdB">${LOADH}</div>`;
+  const s=S[SD.sh],day=new Date(SD.d+'T12:00:00');if(s[4])day.setDate(day.getDate()+1);
+  const cd=day.getFullYear()+'-'+String(day.getMonth()+1).padStart(2,'0')+'-'+String(day.getDate()).padStart(2,'0');
+  const q=k=>api(`/api/fg/history?kind=${k}&d1=${cd}&d2=${cd}&t1=${s[2]}&t2=${s[3]}&limit=5000`).then(d=>d.rows.filter(r=>r.status==='waiting'||r.status==='confirmed')).catch(()=>null);
+  const [rv,is,pk]=await Promise.all([q('recv'),q('issue'),api(`/api/fg/shift-report-data?d=${SD.d}&shift=${SD.sh}`).catch(()=>null)]);
+  if(PAGE!=='shdash'||!$('#sdB'))return;
+  if(!rv&&!is){$('#sdB').innerHTML=err(L('โหลดข้อมูลไม่ได้','Could not load the data'));return;}
+  const T=a=>({p:(a||[]).length,q:(a||[]).reduce((x,r)=>x+(+r.qty||0),0),kg:(a||[]).reduce((x,r)=>x+(+r.total_kg||0),0),w:(a||[]).filter(r=>r.status==='waiting').length});
+  const tr=T(rv),ti=T(is),pl=(pk&&pk.lots)||[],tp={p:pl.reduce((a,o)=>a+(o.pallets||0),0),q:pl.reduce((a,o)=>a+(o.bags||0),0),kg:pl.reduce((a,o)=>a+(o.kg||0),0)};
+  const tile=(bg,l,v,sub,pg)=>`<button class="tile" style="background:${bg}" ${pg?`onclick="go('${pg}')"`:''}><div class="l">${l}</div><div class="v">${v}</div><div class="s">${sub}</div></button>`;
+  const by=(a,R)=>{const m=new Map();(a||[]).forEach(r=>{const k=r.product_id+'|'+r.lot_no+(R?'':'|'+(r.customer_id||''));let g=m.get(k);
+      if(!g){g={code:r.product_id,name:r.product_name,lot:r.lot_no,cust:r.customer_id||'',cn:r.customer_name||'',p:0,q:0,kg:0,w:0};m.set(k,g);}
+      g.p++;g.q+=+r.qty||0;g.kg+=+r.total_kg||0;if(r.status==='waiting')g.w++;});return [...m.values()].sort((a,b)=>b.kg-a.kg);};
+  const none=`<div class="muted" style="padding:14px">${L('ไม่มีรายการในกะนี้','Nothing in this shift')}</div>`;
+  const tbl=(a,R)=>{const G=by(a,R);return G.length?`<div class="tw" style="border:0;max-height:none"><table><thead><tr><th>${L('เบอร์อาหาร','Product')}</th><th>Lot No.</th>${R?'':`<th>${L('ลูกค้า','Customer')}</th>`}<th class="r">${L('พาเลท','Pallets')}</th><th class="r">${L('จำนวน','Qty')}</th><th class="r">kg</th></tr></thead><tbody>
+     ${G.map(g=>`<tr><td>${esc(g.code)}<div class="muted">${esc(g.name)}</div></td><td class="mono nw">${esc(g.lot)}</td>${R?'':`<td>${esc(g.cust)}<div class="muted">${esc(g.cn)}</div></td>`}<td class="r"><b>${g.p}</b>${g.w?`<div style="color:#B45309;font-size:12px">${g.w} ${L('รอ','waiting')}</div>`:''}</td><td class="r">${n0(g.q)}</td><td class="r"><b>${n0(g.kg)}</b></td></tr>`).join('')}</tbody></table></div>`:none;};
+  const hrs=[];for(let i=0;i<8;i++){const hh=(parseInt(s[2],10)+i)%24;hrs.push([String(hh).padStart(2,'0')+':00',0]);}
+  (rv||[]).forEach(r=>{const t=(r.receive_time||(r.recv_at||'').slice(11,16)||'').slice(0,2),x=hrs.find(h=>h[0].slice(0,2)===t);if(x)x[1]+=+r.total_kg||0;});
+  $('#sdB').innerHTML=`<div class="tiles">
+    ${tile('#0F766E',L('แพคกิ้งผ่าน Checker','Packing passed'),`${tp.p} ${L('พาเลท','pal.')}`,`${n0(tp.q)} ${L('ถุง','bags')} · ${kgT(tp.kg)} · ${pl.length} ${L('ล็อต','lots')}`,'shrep')}
+    ${tile('#1B75BC',L('รับเข้า FG','Received to FG'),`${tr.p} ${L('พาเลท','pal.')}`,`${n0(tr.q)} ${L('ถุง','bags')} · ${kgT(tr.kg)}`,'hrecv')}
+    ${tile('#C2410C',L('จ่ายออก','Released'),`${ti.p} ${L('พาเลท','pal.')}`,`${n0(ti.q)} ${L('ถุง','bags')} · ${kgT(ti.kg)}`,'hrel')}
+    ${tile('#D97706',L('รอ Checker','Waiting checker'),tr.w+ti.w,`${L('รับ','in')} ${tr.w} · ${L('จ่าย','out')} ${ti.w}`,'queue')}
+    ${tile('#334155',L('แพคแล้ว ยังไม่รับเข้า','Packed, not yet received'),`${Math.max(0,tp.p-tr.p)} ${L('พาเลท','pal.')}`,L('แพคกิ้ง − รับเข้า ในกะนี้','packing − received, this shift'),'')}
+   </div>
+   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:14px">
+    <div class="card" style="padding:0"><h2 style="margin:0;padding:12px 14px">${L('รับเข้า ตามสินค้า','Received by product')}</h2>${tbl(rv,1)}</div>
+    <div class="card" style="padding:0"><h2 style="margin:0;padding:12px 14px">${L('จ่ายออก ตามสินค้า','Released by product')}</h2>${tbl(is,0)}</div>
+    <div class="card"><h2>${L('รับเข้า รายชั่วโมง (kg)','Received per hour (kg)')}</h2><div id="sdH"></div></div>
+    <div class="card" style="padding:0"><h2 style="margin:0;padding:12px 14px">${L('แพคกิ้ง ตามล็อต','Packing by lot')}</h2>${pl.length?`<div class="tw" style="border:0;max-height:none"><table><thead><tr><th>${L('เบอร์อาหาร','Product')}</th><th>Lot No.</th><th class="r">${L('พาเลท','Pallets')}</th><th class="r">${L('ถุง','Bags')}</th><th class="r">kg</th></tr></thead><tbody>
+      ${pl.map(o=>`<tr><td>${esc(o.product_code)}<div class="muted">${esc(o.product_name)}</div></td><td class="mono nw">${esc(o.lot_no)}</td><td class="r"><b>${o.pallets}</b></td><td class="r">${n0(o.bags)}</td><td class="r">${n0(o.kg)}</td></tr>`).join('')}</tbody></table></div>`:none}</div>
+   </div>`;
+  hBars($('#sdH'),hrs,{color:VZ.in});tipOn($('#sdB'));
 }
 async function impAccess(){
   const b=$('#impBtn');b.disabled=true;b.textContent=L('กำลังนำเข้า… (ประมาณ 1 นาที)','Importing… (about 1 minute)');
@@ -922,7 +1036,11 @@ async function pgQueue(){
   A.innerHTML=`<div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:flex-end;margin-bottom:12px" class="noprint">
     <div><h1>${L('คิวตรวจสอบ','Checker queue')}</h1><p class="sub" style="margin:0">${L('บันทึกการรับเข้า-จ่ายออก FG/WIP/SEMI','Receive / issue record FG/WIP/SEMI')} · F-WI04-WHD01-04 · ${fmtD(today())}</p></div>
     <div class="btns"><label class="f">${L('ผู้ตรวจสอบ','Checker')}<select class="in" id="qChk">${(ME.checkers.length?ME.checkers:[ME.name]).map(n=>`<option ${n===localStorage.getItem('fg_checker')?'selected':''}>${esc(n)}</option>`).join('')}</select></label>
-     <button class="btn" onclick="qPrint()">${L('พิมพ์แบบฟอร์มวันนี้','Print today’s form')}</button>
+     <label class="f">${L('วันที่','Date')}<input class="in" type="date" id="qD" value="${QF.d}" onchange="qF()"></label>
+     <label class="f">${L('เวลา จาก','Time from')}<input class="in" type="time" id="qT1" value="${QF.t1}" onchange="qF()" style="width:115px"></label>
+     <label class="f">${L('ถึง','to')}<input class="in" type="time" id="qT2" value="${QF.t2}" onchange="qF()" style="width:115px"></label>
+     <button class="btn" onclick="qPrint()">${L('พิมพ์แบบฟอร์ม','Print form')}</button>
+     <button class="btn" onclick="qPdf()">PDF</button>
      <button class="btn" onclick="qCsv()">Excel (CSV)</button></div></div>
    <div class="tabs noprint" id="qTabs"></div>
    <div id="qBody">${LOADH}</div>
@@ -930,9 +1048,15 @@ async function pgQueue(){
   $('#qChk').onchange=e=>{try{localStorage.setItem('fg_checker',e.target.value)}catch(x){}};
   await qLoad();
 }
+/* b506: date + time range — filters the waiting list (by phone-check time) and is the period of the printed form / PDF */
+let QF={d:'',t1:'',t2:''},QALL=[];   // empty date = every waiting row (nothing hidden); form / PDF use today when empty
+const qAt=r=>(QK==='recv'?r.recv_at:r.issue_at)||'';
+function qIn(dt){const d=(dt||'').slice(0,10),t=(dt||'').slice(11,16);if(QF.d&&d!==QF.d)return false;
+  if(QF.t1&&QF.t2&&QF.t1>QF.t2)return t>=QF.t1||t<=QF.t2;return(!QF.t1||t>=QF.t1)&&(!QF.t2||t<=QF.t2);}
+function qF(){QF={d:$('#qD').value,t1:$('#qT1').value,t2:$('#qT2').value};QSEL={};QROWS=QALL.filter(r=>qIn(qAt(r)));qDraw();}
 async function qLoad(){
   QSEL={};
-  try{QROWS=(await api('/api/fg/queue?kind='+QK)).rows;}catch(e){$('#qBody').innerHTML=err(e);return;}
+  try{QALL=(await api('/api/fg/queue?kind='+QK)).rows;QROWS=QALL.filter(r=>qIn(qAt(r)));}catch(e){$('#qBody').innerHTML=err(e);return;}
   await refreshCounts();
   $('#qTabs').innerHTML=`<button class="tab ${QK==='recv'?'on':''}" onclick="QK='recv';qLoad()">${L('รับเข้า','Receive')} · ${CNT.recv_waiting||0}</button>
     <button class="tab ${QK==='issue'?'on':''}" onclick="QK='issue';qLoad()">${L('จ่ายออก','Issue')} · ${CNT.issue_waiting||0}</button>`;
@@ -953,6 +1077,39 @@ function qDraw(){
   $('#qBody').innerHTML=`<div id="qT"></div><div id="qFoot"></div>`;
   xTable($('#qT'),'q'+QK,cols,rows,{select:QSEL,empty:L('ไม่มีรายการรอตรวจสอบ','Nothing waiting — all confirmed'),foot:xFoot('qty','total_kg'),after:qFoot});
 }
+/* b555 — the paper form F-WI04-WHD01-04 is filled per product: one block per product + lot —
+   pallets first ↓ last, FG code, MFG / EXP, and bags as full pallet × count + part pallet(s). */
+const qUnit=u=>!u||u==='กระสอบ'?'กส.':u;
+function qPalRange(ps){
+  const n=ps.map(x=>parseInt(x,10)).filter(x=>!isNaN(x)).sort((a,b)=>a-b);if(!n.length)return {a:'',b:'',txt:ps.filter(Boolean).join(', ')};
+  const runs=[];n.forEach(x=>{const r=runs[runs.length-1];if(r&&x===r[1]+1)r[1]=x;else if(!r||x!==r[1])runs.push([x,x]);});
+  return {a:n[0],b:n[n.length-1],gap:runs.length>1,txt:runs.map(r=>r[0]===r[1]?r[0]:r[0]+'–'+r[1]).join(', ')};
+}
+function qGroups(rows){
+  const R=QK==='recv',m=new Map();
+  rows.forEach(r=>{const k=(r.product_id||'')+'|'+(r.lot_no||'');let g=m.get(k);
+    if(!g){g={product_id:r.product_id,product_name:r.product_name,lot_no:r.lot_no,packaging:r.packaging||'',mfg:r.mfg||'',exp:r.exp||'',unit:qUnit(r.unit),group:r.group||'',
+      rows:[],qty:0,kg:0,wu:0,man:[],loc:[],note:[]};m.set(k,g);}
+    const add=(a,v)=>{v=String(v||'').trim();if(v&&!a.includes(v))a.push(v);};
+    g.rows.push(r);g.qty+=+r.qty||0;g.kg+=+r.total_kg||0;if(!g.mfg&&r.mfg)g.mfg=r.mfg;if(!g.exp&&r.exp)g.exp=r.exp;
+    g.wu=g.wu||(R?+r.weight_unit||0:(r.qty?Math.round((r.total_kg||0)/r.qty*100)/100:0));
+    add(g.man,R?r.receive_man:r.issue_by);add(g.loc,R?r.location:r.customer_id);add(g.note,r.note||r.memo);});
+  return [...m.values()].map(g=>{
+    const q=g.rows.map(r=>+r.qty||0),full=Math.max(0,...q),nf=q.filter(x=>x===full).length,part=q.filter(x=>x!==full);
+    g.full=full;g.fullKg=g.rows.reduce((a,r)=>Math.max(a,(+r.qty||0)===full?+r.total_kg||0:0),0);
+    g.calc=(nf>1||!part.length?`${n0(full)}×${nf}`:n0(full))+part.map(x=>'+'+n0(x)).join('');
+    g.pal=qPalRange(g.rows.map(r=>r.pallet_no||''));return g;});
+}
+function qSumHtml(rows){
+  const G=qGroups(rows);if(!G.length)return '';
+  const tp=G.reduce((a,g)=>a+g.rows.length,0),tq=G.reduce((a,g)=>a+g.qty,0),tk=G.reduce((a,g)=>a+g.kg,0),R=QK==='recv';
+  return `<div class="card noprint" style="margin-top:12px;padding:0"><h2 style="margin:0;padding:12px 14px">${R?L('สรุปรับเข้า ตามสินค้า','Receive summary by product'):L('สรุปจ่ายออก ตามสินค้า','Issue summary by product')} <span class="muted" style="font-size:13px;font-weight:400">· ${G.length} ${L('รายการ','items')} · ${tp} ${L('พาเลท','pallets')}</span></h2>
+   <div class="tw" style="border:0;max-height:none"><table><thead><tr><th>${L('ลำดับ','No.')}</th><th>${L('พาเลท','Pallets')}</th><th>${L('เบอร์อาหาร','Product')}</th><th>Lot No.</th><th>MFG / EXP</th><th>${L('บรรจุภัณฑ์','Packaging')}</th><th class="r">${L('จำนวน/พาเลท','Qty / pallet')}</th><th class="r">kg/${L('หน่วย','unit')}</th><th>${L('คำนวณ','Count')}</th><th class="r">${L('รวม','Total')}</th><th class="r">${L('รวม kg','Total kg')}</th><th>${R?L('ผู้ดำเนินการ','Packed by'):L('ผู้จ่าย','Issued by')}</th><th>${R?L('แหล่งจัดเก็บ','Location'):L('ลูกค้า','Customer')}</th></tr></thead><tbody>
+   ${G.map((g,i)=>`<tr><td>${i+1}</td><td class="nw"><b>${esc(g.pal.txt)}</b><div class="muted">${g.rows.length} ${L('พาเลท','pallets')}</div></td><td>${esc(g.product_id)}<div class="muted">${esc(g.product_name)}</div></td><td class="mono nw"><b>${esc(g.lot_no)}</b></td>
+     <td class="nw mono" style="font-size:12.5px">MFG ${fmtD(g.mfg)}<br>EXP ${fmtD(g.exp)}</td><td>${esc(g.packaging)}</td><td class="r">${n0(g.full)}</td><td class="r">${n0(g.wu)}</td><td class="mono nw">${g.calc}</td>
+     <td class="r nw"><b>${n0(g.qty)}</b> ${esc(g.unit)}</td><td class="r"><b>${n0(g.kg)}</b></td><td>${esc(g.man.join(', '))}</td><td>${esc(g.loc.join(', '))}</td></tr>`).join('')}</tbody>
+   <tfoot><tr><th colspan="2">${L('รวม','Total')} ${tp} ${L('พาเลท','pallets')}</th><th colspan="7"></th><th class="r">${n0(tq)}</th><th class="r">${n0(tk)}</th><th colspan="2"></th></tr></tfoot></table></div></div>`;
+}
 function qFoot(){
   const rows=QROWS,sum={all:0,Brand:0,B2B:0,BB:0,'':0};rows.forEach(r=>{sum.all+=r.total_kg||0;sum[r.group||'']+=r.total_kg||0;});
   const nsel=rows.filter(r=>QSEL[r.id]).length;
@@ -963,32 +1120,53 @@ function qFoot(){
      <span class="muted">${nsel} ${L('รายการที่เลือก','selected')}</span></div>
     <div class="btns"><button class="btn badl" ${nsel?'':'disabled'} onclick="qAct('sendback')">${L('ส่งกลับ','Send back')}</button>
      <button class="btn ok" ${nsel?'':'disabled'} onclick="qAct('confirm')">${L('ยืนยันที่เลือก → ลงสต็อก','Confirm selected → stock')}</button></div></div>
+   ${qSumHtml(rows)}
    <p class="muted noprint">${L('ยืนยันแล้วจะบันทึกลงตารางรับเข้า/จ่ายออก ปรับยอดสต็อกและสต็อกการ์ด พร้อมชื่อผู้ตรวจสอบและเวลา ไม่มีการลบข้อมูล','Confirm posts the rows to the receive / release tables, updates stock and the stock card, and stamps the checker name and time. Nothing is deleted.')}</p>`;
   qPaper(sum);
 }
+async function qFormRows(){
+  const d=QF.d||today();
+  const rows=(await api(`/api/fg/history?kind=${QK}&d1=${d}&d2=${d}&t1=${QF.t1}&t2=${QF.t2}&limit=5000`)).rows.filter(r=>r.src==='app'&&(r.status==='waiting'||r.status==='confirmed'));
+  return rows.reverse();
+}
+async function qPdf(){
+  let rows=[];try{rows=await qFormRows();}catch(e){alert(e.message);return;}
+  const R=QK==='recv',d=QF.d||today(),tot=rows.reduce((a,r)=>a+(r.total_kg||0),0);
+  pdfA4(`F-WI04-WHD01-04 · บันทึกการ${R?'รับเข้า':'จ่ายออก'} FG / FG ${R?'receive':'issue'} record`,
+    `${fmtD(d)}${QF.t1||QF.t2?` · ${L('เวลา','time')} ${QF.t1||'00:00'}–${QF.t2||'23:59'}`:''}`,
+    ['No.','Pallet','Product','Name','Lot','Packaging','Qty','kg/unit','Total kg',R?'Packed by':'Customer',R?'Location':'Plate','Phone check','Status','Checker','Remark'],
+    rows.map((r,i)=>[i+1,r.pallet_no||'',r.product_id,r.product_name,r.lot_no,r.packaging||'',n0(r.qty),R?n0(r.weight_unit):(r.qty?n0((r.total_kg||0)/r.qty):''),n0(r.total_kg),R?r.receive_man:r.customer_id,R?r.location||'':r.plate||'',
+      `${R?r.recv_by:r.issue_by} ${(R?r.recv_at:r.issue_at||'').slice(11,16)}`,L(...(STL[r.status]||[r.status,r.status])),r.checker||'',r.note||r.memo||'']),
+    `${L('ยอดรวม','Total')}: ${n0(tot)} kg · ${rows.length} ${L('รายการ','rows')}`,[0,6,7,8],`fg-form-${QK}_${d}`);
+}
 async function qPrint(){
   let rows=[];
-  try{rows=(await api(`/api/fg/history?kind=${QK}&d1=${today()}&d2=${today()}&limit=5000`)).rows.filter(r=>r.src==='app'&&(r.status==='waiting'||r.status==='confirmed'));}catch(e){alert(e.message);return;}
-  rows.reverse();
+  try{rows=await qFormRows();}catch(e){alert(e.message);return;}
   const sum={all:0,Brand:0,B2B:0,BB:0,'':0};rows.forEach(r=>{sum.all+=r.total_kg||0;sum[r.group||'']+=r.total_kg||0;});
   qPaper(sum,rows);setTimeout(()=>window.print(),50);
 }
 function qPaper(sum,list){
-  const R=QK==='recv',rows=list||QROWS.filter(r=>!Object.values(QSEL).some(Boolean)||QSEL[r.id]);
-  // 20 rows per sheet like the paper form; every sheet has its own header and signature lines
-  const per=20,sheets=Math.max(1,Math.ceil(rows.length/per)),now=new Date().toTimeString().slice(0,5);
-  const col=`<colgroup><col style="width:4%"><col style="width:3%"><col style="width:3%"><col style="width:4%"><col style="width:5%"><col style="width:24%"><col style="width:10%"><col style="width:7%"><col style="width:6%"><col style="width:6%"><col style="width:7%"><col style="width:9%"><col style="width:6%"><col style="width:6%"></colgroup>`;
+  /* b555 — one block (3 lines, like the paper form) per product + lot instead of one line per pallet */
+  const R=QK==='recv',rows=list||QROWS.filter(r=>!Object.values(QSEL).some(Boolean)||QSEL[r.id]),G=qGroups(rows);
+  const per=5,sheets=Math.max(1,Math.ceil(G.length/per)),now=new Date().toTimeString().slice(0,5);
+  const tp=G.reduce((a,g)=>a+g.rows.length,0),tq=G.reduce((a,g)=>a+g.qty,0);
+  const col=`<colgroup><col style="width:3.5%"><col style="width:3%"><col style="width:3%"><col style="width:3.5%"><col style="width:5%"><col style="width:22%"><col style="width:11%"><col style="width:6%"><col style="width:6%"><col style="width:7%"><col style="width:7%"><col style="width:9%"><col style="width:7%"><col style="width:7%"></colgroup>`;
+  const C='style="text-align:center"',B='style="text-align:center;font-weight:700"',W='style="white-space:normal;text-align:center"';
   let h='';
   for(let p=0;p<sheets;p++){
-    const part=rows.slice(p*per,(p+1)*per),pad=per-part.length,last=p===sheets-1;
+    const part=G.slice(p*per,(p+1)*per),pad=per-part.length,last=p===sheets-1;
     h+=`<div class="pg"><div style="display:flex;justify-content:space-between"><span style="font-size:9px">${sheets>1?`หน้า / page ${p+1}/${sheets}`:''}</span><span style="font-size:9px">F-WI04-WHD01-04 Rev.00</span></div>
      <div style="text-align:center;font-weight:700;font-size:13px">FG ${esc(ME.factory_code)} · บันทึกการรับเข้า-จ่ายออก FG/WIP/SEMI</div>
-     <div style="display:flex;justify-content:space-between;margin:3px 0">วันที่ ${fmtD(today())}<span>เวลา ${now}</span></div>
-     <table>${col}<thead><tr><th>ลำดับ</th><th>รับ</th><th>จ่าย</th><th>Type</th><th>No.พาเลท</th><th>เบอร์อาหาร</th><th>Lot No.</th><th>บรรจุภัณฑ์</th><th>จำนวน/พาเลท</th><th>น้ำหนัก/หน่วย</th><th>รวมน้ำหนัก</th><th>ผู้ดำเนินการ</th><th>แหล่งจัดเก็บ</th><th>หมายเหตุ</th></tr></thead><tbody>
-     ${part.map((r,i)=>`<tr><td>${p*per+i+1}</td><td>${R?'/':''}</td><td>${R?'':'/'}</td><td>FG</td><td>${esc(r.pallet_no||'')}</td><td>${esc(r.product_id)} ${esc(r.product_name)}</td><td>${esc(r.lot_no)}</td><td>${esc(r.packaging||'')}</td><td>${n0(r.qty)}</td><td>${R?n0(r.weight_unit):''}</td><td>${n0(r.total_kg)}</td><td>${esc(R?r.receive_man:r.issue_by)}</td><td>${esc(R?r.location:r.customer_id)}</td><td>${esc(r.note||'')}</td></tr>`).join('')}
-     ${Array.from({length:pad},(x,i)=>'<tr><td>'+(p*per+part.length+i+1)+'</td>'+'<td></td>'.repeat(13)+'</tr>').join('')}
+     <div style="display:flex;justify-content:space-between;margin:3px 0">วันที่ ${fmtD(list?(QF.d||today()):today())}<span>เวลา ${list&&(QF.t1||QF.t2)?(QF.t1||'00:00')+' – '+(QF.t2||'23:59'):now}</span></div>
+     <table>${col}<thead><tr><th>ลำดับ</th><th>รับ</th><th>จ่าย</th><th>Type</th><th>No.พาเลท</th><th>เบอร์อาหาร</th><th>Lot No.</th><th>บรรจุภัณฑ์</th><th>จำนวน/พาเลท</th><th>น้ำหนัก/หน่วย</th><th>รวมน้ำหนัก</th><th>ผู้ดำเนินการ</th><th>${R?'ตำแหน่งจัดเก็บ':'ลูกค้า'}</th><th>หมายเหตุ</th></tr></thead><tbody>
+     ${part.map((g,i)=>`<tr><td rowspan="3" ${C}>${p*per+i+1}</td><td rowspan="3" ${C}>${R?'/':''}</td><td rowspan="3" ${C}>${R?'':'/'}</td><td rowspan="3" ${C}>FG</td>
+        <td ${B}>${g.pal.a}</td><td style="text-align:left">${esc(g.product_name||g.product_id)}</td><td style="text-align:left"><b>${esc(g.lot_no)}</b></td><td>${esc(g.packaging)}</td><td ${C}>${n0(g.full)}</td><td ${C}>${g.wu?n0(g.wu)+' kg':''}</td><td ${C}>${g.fullKg?n0(g.fullKg)+' kg':''}</td>
+        <td rowspan="3" ${W}>${esc(g.man.join(', '))}</td><td rowspan="3" ${W}>${esc(g.loc.join(', '))}</td><td rowspan="3" style="white-space:normal">${esc(g.note.join(', '))}${g.pal.gap?`<div style="font-size:8.5px">พาเลท ${esc(g.pal.txt)}</div>`:''}</td></tr>
+       <tr><td ${C}>↓</td><td style="text-align:left">&nbsp;&nbsp;&nbsp;${esc(g.product_id)}</td><td style="text-align:left">MFG ${fmtD(g.mfg)}</td><td colspan="4"></td></tr>
+       <tr><td ${B}>${g.pal.b}</td><td style="text-align:right;font-size:9px">${g.rows.length} พาเลท</td><td style="text-align:left">EXP ${fmtD(g.exp)}</td><td colspan="4" style="font-weight:700">= ${g.calc} = ${n0(g.qty)} ${esc(g.unit)} · ${n0(g.kg)} kg</td></tr>`).join('')}
+     ${Array.from({length:pad*3},()=>'<tr>'+'<td></td>'.repeat(14)+'</tr>').join('')}
      </tbody></table>
-     ${last?`<div style="margin-top:3px">ยอดรวม / total ${n0(sum.all)} kg (Brand ${n0(sum.Brand)} / B2B ${n0(sum.B2B)} / BB ${n0(sum.BB)})</div>`:''}
+     ${last?`<div style="margin-top:3px">ยอดรวม / total ${tp} พาเลท · ${n0(tq)} หน่วย · ${n0(sum.all)} kg (Brand ${n0(sum.Brand)} / B2B ${n0(sum.B2B)} / BB ${n0(sum.BB)})</div>`:''}
      <div class="sg"><div style="text-align:center">..............................................<br>Checker</div><div style="text-align:center">..............................................<br>ผู้ตรวจสอบ</div></div></div>`;
   }
   $('#qPaper').innerHTML=h;
@@ -1017,20 +1195,22 @@ function qCsv(){
 }
 
 /* ════════ History (receive / release) ════════ */
-let HF={d1:daysAgo(6),d2:today(),q:'',status:''},HROWS=[];
+let HF={d1:daysAgo(6),d2:today(),q:'',status:'',t1:'',t2:'',p:'',l:''},HROWS=[];
 async function pgHist(kind){
   const R=kind==='recv';
   $('#app').innerHTML=`<h1>${R?L('ประวัติรับเข้า','Receive history'):L('ประวัติจ่ายออก','Release history')}</h1><p class="sub">${L('รวมข้อมูลเก่าจาก Access','includes the history imported from Access')}</p>
    <div class="bar"><label class="f">${L('จาก','From')}<input class="in" type="date" id="h1" value="${HF.d1}"></label><label class="f">${L('ถึง','To')}<input class="in" type="date" id="h2" value="${HF.d2}"></label>
     <label class="f">${L('สถานะ','Status')}<select class="in" id="hs"><option value="">${L('ทั้งหมด','All')}</option>${['waiting','confirmed','rejected','sentback'].filter(s=>R||s!=='rejected').map(s=>`<option value="${s}" ${HF.status===s?'selected':''}>${esc(L(...STL[s]))}</option>`).join('')}</select></label>
-    <label class="f">${L('ค้นหา','Search')}<input class="in" id="hq" value="${esc(HF.q)}" placeholder="${L('ล็อต / สินค้า','lot / product')}" onkeydown="if(event.key==='Enter')hLoad('${kind}')"></label>
-    <button class="btn pri" onclick="hLoad('${kind}')">${L('แสดง','Show')}</button><button class="btn" onclick="hCsv('${kind}')">Excel (CSV)</button><button class="btn" onclick="hA4('${kind}')">${L('พิมพ์ A4','Print A4')}</button></div><div id="hBody"></div>`;
-  ta($('#hq'),taSrv('all'),()=>hLoad(kind));
+    <label class="f">${L('เวลา จาก','Time from')}<input class="in" type="time" id="ht1" value="${HF.t1}" style="width:120px"></label><label class="f">${L('ถึง','to')}<input class="in" type="time" id="ht2" value="${HF.t2}" style="width:120px"></label>
+    <label class="f">${L('สินค้า','Product')}<input class="in" id="hp" value="${esc(HF.p)}" placeholder="${L('เบอร์อาหาร / ชื่อ','code / name')}" onkeydown="if(event.key==='Enter')hLoad('${kind}')"></label>
+    <label class="f">${L('ล็อต','Lot')}<input class="in" id="hl" value="${esc(HF.l)}" placeholder="Lot No." onkeydown="if(event.key==='Enter')hLoad('${kind}')" style="width:150px"></label>
+    <button class="btn pri" onclick="hLoad('${kind}')">${L('แสดง','Show')}</button><button class="btn" onclick="hCsv('${kind}')">Excel (CSV)</button><button class="btn" onclick="hA4('${kind}')">${L('พิมพ์ A4','Print A4')}</button><button class="btn" onclick="hPdf('${kind}')">PDF</button></div><div id="hBody"></div>`;
+  ta($('#hp'),taSrv('product'),()=>hLoad(kind));ta($('#hl'),taSrv('lot',()=>$('#hp').value.trim()),()=>hLoad(kind),0);
   hLoad(kind);
 }
 async function hLoad(kind){
-  HF={d1:$('#h1').value,d2:$('#h2').value,q:$('#hq').value.trim(),status:$('#hs').value};
-  const B=$('#hBody'),u=`/api/fg/history?kind=${kind}&d1=${HF.d1}&d2=${HF.d2}&status=${HF.status}&q=${encodeURIComponent(HF.q)}&limit=3000`;loading(B,u);
+  HF={d1:$('#h1').value,d2:$('#h2').value,q:'',status:$('#hs').value,t1:$('#ht1').value,t2:$('#ht2').value,p:$('#hp').value.trim(),l:$('#hl').value.trim()};
+  const B=$('#hBody'),u=`/api/fg/history?kind=${kind}&d1=${HF.d1}&d2=${HF.d2}&status=${HF.status}&t1=${HF.t1}&t2=${HF.t2}&product=${encodeURIComponent(HF.p)}&lot=${encodeURIComponent(HF.l)}&limit=3000`;loading(B,u);
   let d;try{d=await apiC(u,()=>hLoad(kind));}catch(e){B.innerHTML=err(e);return;}
   HROWS=d.rows;const R=kind==='recv';
   const tq=HROWS.reduce((a,r)=>a+(r.status==='confirmed'?r.qty:0),0),tk=HROWS.reduce((a,r)=>a+(r.status==='confirmed'?r.total_kg||0:0),0);
@@ -1040,21 +1220,26 @@ async function hLoad(kind){
    .concat(R?[XC('pallet_no',L('พาเลท','Pallet'))]:[])
    .concat([XC('qty',L('จำนวน','Qty'),{r:1,num:1,fmt:r=>n0(r.qty)}),XC('total_kg','kg',{r:1,num:1,fmt:r=>n0(r.total_kg)}),
    XC('man',R?L('ผู้รับ / แพคกิ้ง','Receive man'):L('ผู้จ่าย','Release man'),{val:r=>R?r.receive_man:r.release_man}),
-   R?XC('get_type',L('ประเภท','Get type')):XC('customer_id',L('ลูกค้า','Customer'))]).concat(R?[]:[XC('release_type',L('ประเภท','Type')),XC('plate',L('ทะเบียน','Plate'))])
+   R?XC('get_type',L('ประเภท','Get type')):XC('customer_id',L('ลูกค้า','Customer'))]).concat(R?[XC('location',L('ที่จัดเก็บ','Location'))]:[XC('release_type',L('ประเภท','Type')),XC('plate',L('ทะเบียน','Plate'))])
+   .concat([XC('_rm',L('หมายเหตุ','Remark'),{val:hRemark,fmt:r=>`<span class="muted">${esc(hRemark(r))}</span>`})])
    .concat([XC('status',L('สถานะ','Status'),{val:r=>L(...(STL[r.status]||[r.status,r.status])),fmt:r=>stPill(r.status)+(R?'':' '+modePill(r.issue_mode)+' '+photoBtn(r))}),
    XC('checker','Checker'),XC('src',L('ที่มา','Source'),{val:r=>r.src==='access'?'Access':L('แอป','App'),cls:'muted'}),
    XC('_l','',{nf:1,fmt:r=>r.src==='app'?`<button class="btn sm" onclick="logDlg('${R?'receive':'release'}',${r.id},${esc(JSON.stringify(r.lot_no))})">${L('ขั้นตอน','Steps')}</button>`:''})]);
   xTable($('#hT'),'h'+kind,cols,HROWS,{foot:xFoot('qty','total_kg'),maxH:'calc(100vh - 290px)'});
 }
-function hA4(kind){const R=kind==='recv',HV=xView('h'+kind,HROWS);
+const hRemark=r=>[r.memo,r.note].filter((x,i,a)=>x&&a.indexOf(x)===i).join(' · ');
+function hRep(kind){const R=kind==='recv',HV=xView('h'+kind,HROWS);
   const tq=HV.reduce((a,r)=>a+(r.status==='confirmed'?r.qty:0),0),tk=HV.reduce((a,r)=>a+(r.status==='confirmed'?r.total_kg||0:0),0);
-  printA4(R?'รายงานรับเข้า FG / FG receive report':'รายงานจ่ายออก FG / FG release report',`${fmtD(HF.d1)} – ${fmtD(HF.d2)}${HF.q?' · '+HF.q:''}`,
-   ['Date','Time','Product','Name','Lot',R?'Pallet':'Customer','Qty','kg',R?'Receive man':'Release man',R?'Get type':'Type / mode','Status','Checker'],
-   HV.map(r=>[fmtD(R?r.receive_date:r.release_date),R?r.receive_time:r.release_time,r.product_id,r.product_name,r.lot_no,R?r.pallet_no||'':r.customer_id,n0(r.qty),n0(r.total_kg),R?r.receive_man:r.release_man,R?r.get_type:r.release_type+(r.issue_mode?' · '+r.issue_mode:''),L(...(STL[r.status]||[r.status,r.status])),r.checker]),
-   `${L('รวมที่ยืนยันแล้ว','Confirmed total')}: ${n0(tq)} ${L('หน่วย','units')} · ${n0(tk)} kg · ${HV.length} ${L('รายการ','rows')}`,[6,7]);}
+  const flt=[HF.t1||HF.t2?`${L('เวลา','time')} ${HF.t1||'00:00'}–${HF.t2||'23:59'}`:'',HF.p?L('สินค้า ','product ')+HF.p:'',HF.l?'lot '+HF.l:''].filter(Boolean).join(' · ');
+  return [R?'รายงานรับเข้า FG / FG receive report':'รายงานจ่ายออก FG / FG release report',`${fmtD(HF.d1)} – ${fmtD(HF.d2)}${flt?' · '+flt:''}`,
+   ['Date','Time','Product','Name','Lot',R?'Pallet':'Customer','Qty','kg',R?'Receive man':'Release man',R?'Get type':'Type / mode',R?'Location':'Plate','Status','Checker','Remark'],
+   HV.map(r=>[fmtD(R?r.receive_date:r.release_date),R?r.receive_time:r.release_time,r.product_id,r.product_name,r.lot_no,R?r.pallet_no||'':r.customer_id,n0(r.qty),n0(r.total_kg),R?r.receive_man:r.release_man,R?r.get_type:r.release_type+(r.issue_mode?' · '+r.issue_mode:''),R?r.location||'':r.plate||'',L(...(STL[r.status]||[r.status,r.status])),r.checker,hRemark(r)]),
+   `${L('รวมที่ยืนยันแล้ว','Confirmed total')}: ${n0(tq)} ${L('หน่วย','units')} · ${n0(tk)} kg · ${HV.length} ${L('รายการ','rows')}`,[6,7]];}
+function hA4(kind){printA4(...hRep(kind));}
+function hPdf(kind){const a=hRep(kind);pdfA4(...a,`fg-${kind==='recv'?'receive':'release'}_${HF.d1}_${HF.d2}`);}
 function hCsv(kind){const R=kind==='recv',HV=xView('h'+kind,HROWS);
-  csv(`fg-${R?'receive':'release'}-${HF.d1}_${HF.d2}.csv`,['Date','Time','Product','Name','Lot','Pallet','Qty','Unit','kg',R?'ReceiveMan':'ReleaseMan',R?'GetType':'Customer',R?'Location':'ReleaseType','Plate','Status','Checker','Checked at','Source'],
-    HV.map(r=>[R?r.receive_date:r.release_date,R?r.receive_time:r.release_time,r.product_id,r.product_name,r.lot_no,r.pallet_no||'',r.qty,r.unit,r.total_kg,R?r.receive_man:r.release_man,R?r.get_type:r.customer_id,R?r.location:r.release_type,r.plate||'',r.status,r.checker,r.checked_at,r.src]));}
+  csv(`fg-${R?'receive':'release'}-${HF.d1}_${HF.d2}.csv`,['Date','Time','Product','Name','Lot','Pallet','Qty','Unit','kg',R?'ReceiveMan':'ReleaseMan',R?'GetType':'Customer',R?'Location':'ReleaseType','Plate','Status','Checker','Checked at','Source','Remark'],
+    HV.map(r=>[R?r.receive_date:r.release_date,R?r.receive_time:r.release_time,r.product_id,r.product_name,r.lot_no,r.pallet_no||'',r.qty,r.unit,r.total_kg,R?r.receive_man:r.release_man,R?r.get_type:r.customer_id,R?r.location:r.release_type,r.plate||'',r.status,r.checker,r.checked_at,r.src,hRemark(r)]));}
 
 /* ════════ Stock balance ════════ */
 let SROWS=[];
@@ -1188,7 +1373,7 @@ async function pkrLoad(st){
   xTable($('#pkrT'),'pkrec',[XC('lot_no','Lot No.',{cls:'mono nw'}),XC('pallet_no',L('พาเลท','Pallet'),{num:1}),XC('product_code',L('สินค้า','Product'),{fmt:pName,val:pVal}),
    XC('qty',L('จำนวน','Qty'),{r:1,num:1,fmt:r=>n0(r.qty)}),XC('station','Station / operator',{val:r=>(r.station||'')+' '+(r.operator||'')}),
    XC('status',L('สถานะ','Status'),{val:r=>L(...(STL[r.status]||[r.status,r.status])),fmt:r=>stPill(r.status)}),XC('status_by',L('โดย','By'),{fmt:r=>esc(r.status_by)+' '+fmtT(r.status_at),cls:'muted'}),
-   XC('note',L('หมายเหตุ','Note')),XC('_q','',{nf:1,fmt:(r)=>`<button class="btn sm" onclick="pkQr(PKREC.find(x=>x.id===${r.id}).raw_qr)">QR</button>`})],d.rows,{foot:xFoot('qty'),maxH:'calc(100vh - 260px)'});
+   XC('note',L('หมายเหตุ','Note')),XC('_q','',{nf:1,fmt:(r)=>`<button class="btn sm" onclick="pkQr(PKREC.find(x=>x.id===${r.id}).scode||PKREC.find(x=>x.id===${r.id}).raw_qr)">QR</button>`})],d.rows,{foot:xFoot('qty'),maxH:'calc(100vh - 260px)'});
 }
 async function pkAdd(){
   const b={product_code:$('#pkC').value.trim(),lot_no:$('#pkL').value.trim(),pallet_no:$('#pkP').value.trim(),qty:+$('#pkQ').value||0,station:$('#pkS').value,operator:$('#pkO').value};
@@ -1204,7 +1389,7 @@ async function pkQr(text){
 }
 
 /* ════════ Packing room: A6 QR pallet slips ════════ */
-let LISTS={machine:[],line:[],pack_types:['Finished Goods','Repack']},PRODS=null;
+let LISTS={machine:[],line:[],pack_types:['Finished Goods','Semi','WIP']},PRODS=null;
 async function loadLists(){
   try{const d=await api('/api/fg/lists');LISTS={machine:d.rows.filter(r=>r.kind==='machine'&&r.active).map(r=>r.name),line:d.rows.filter(r=>r.kind==='line'&&r.active).map(r=>r.name),pack_types:d.pack_types,all:d.rows};}catch(e){}
   if(!PRODS){try{PRODS=(await api('/api/fg/products')).rows.filter(p=>p.active);}catch(e){PRODS=[];}}
@@ -1224,7 +1409,7 @@ function slipForm(v,pre){
    <label class="f" style="grid-column:span 2">${L('ชื่อสินค้า','Product name')}<input class="in" id="${pre}Pn" readonly style="background:var(--soft)" value="${esc(v.product_name||'')}"></label>
    <label class="f">${L('เลขล็อต','Lot No.')} *<input class="in" id="${pre}Lot" value="${esc(v.lot_no||'')}" placeholder="261027001-PC" oninput="slipLot('${pre}')" style="text-transform:uppercase"></label>
    <label class="f">${L('วันผลิต','MFG date')} *<input class="in" type="date" id="${pre}Mfg" value="${esc(v.mfg||'')}" onchange="slipExp('${pre}')"></label>
-   <label class="f">${L('วันหมดอายุ','Expiry date')} *<input class="in" type="date" id="${pre}Exp" value="${esc(v.exp||'')}"></label>
+   <label class="f">${L('วันหมดอายุ','Expiry date')} *<input class="in" type="date" id="${pre}Exp" value="${esc(v.exp||'')}" onchange="expAskB('${pre}')"><input type="hidden" id="${pre}ExpB" value="${esc(v.exp_sfx||'')}"><input type="hidden" id="${pre}ExpF" value="${esc(v.exp_fmt||'')}"><div id="${pre}ExpBt" class="expb"></div></label>
    <label class="f">${L('น้ำหนัก/ถุง (kg) เช่น 20 หรือ 1*20','Bag weight kg (20 or 1*20)')} *<input class="in" id="${pre}Bw" value="${esc(v.bag_weight||'')}" oninput="slipTot('${pre}')"></label>
    <label class="f">${L('จำนวนถุง/พาเลท','Total bags / pallet')} *<input class="in" type="number" inputmode="numeric" id="${pre}Bg" value="${v.qty?+v.qty:''}" oninput="slipTot('${pre}')"></label>
    <label class="f">${L('น้ำหนักรวม (kg)','Total weight (kg)')}<input class="in" id="${pre}Tw" readonly style="background:var(--soft);font-weight:700"></label>
@@ -1250,7 +1435,7 @@ function slipTot(pre){const t=bagKg($('#'+pre+'Bw').value)*(+$('#'+pre+'Bg').val
 function slipVals(pre){
   return {doc_no:$('#'+pre+'Doc').value.trim(),pack_machine:$('#'+pre+'Mc').value,pd_line:$('#'+pre+'Ln').value,pack_type:$('#'+pre+'Pt').value,
     product_code:$('#'+pre+'Pc').value.trim(),lot_no:$('#'+pre+'Lot').value.trim().toUpperCase(),mfg:$('#'+pre+'Mfg').value,exp:$('#'+pre+'Exp').value,
-    bag_weight:$('#'+pre+'Bw').value.trim(),bags:+$('#'+pre+'Bg').value||0,staff_name:$('#'+pre+'St').value.trim()};
+    bag_weight:$('#'+pre+'Bw').value.trim(),bags:+$('#'+pre+'Bg').value||0,staff_name:$('#'+pre+'St').value.trim(),exp_sfx:($('#'+pre+'ExpB')||{}).value||'',exp_fmt:($('#'+pre+'ExpF')||{}).value||''};
 }
 function slipCheck(v){
   if(!v.pack_machine||!v.pd_line)return L('เลือกเครื่องแพคและไลน์ผลิต','Choose packing machine and production line');
@@ -1265,7 +1450,7 @@ function slipCheck(v){
    Left: Pallet information (status rings, the form, live QR of the next slip).
    Right: Filter data (date / FG code / lot + totals) and the slip list.
    Save asks how many slips — each gets the next slip number and its own QR, the rest is the same. */
-let PKF={d1:today(),d2:today(),all:false,q:'',st:''},PKROWS=[],PKNEXT=1,PKT=null,PKCNT={};
+let PKF={d1:today(),d2:today(),all:false,q:'',st:'',mc:''},PKROWS=[],PKNEXT=1,PKT=null,PKCNT={};
 const PKC={blue:'#1B75BC',dblue:'#0F3D6E',green:'#43A047',orange:'#F97316',red:'#DC2626'};
 function ring(n,tot,col,label){
   const r=30,c=2*Math.PI*r,f=tot?Math.min(1,n/tot):0;
@@ -1291,11 +1476,12 @@ async function pgSlip(){
    .pkdq{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}.pkdq button{border:1px solid #CBD5E1;background:#fff;border-radius:99px;padding:2px 10px;font:inherit;font-size:12px;cursor:pointer;color:#334155}
    .pkdq button.on{background:var(--navy);border-color:var(--navy);color:#fff}
    .pkstats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}
-   .pks{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 16px;display:flex;gap:12px;align-items:center}
+   .pkL,.pkR{display:flex;flex-direction:column;min-width:0}.pkR .pks{margin-bottom:14px}.pkL>.pc,.pkR>.pc{flex:1}
+   .pks{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 16px;display:flex;gap:12px;align-items:center;min-height:92px;box-sizing:border-box}
    .pks .i{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none}
    .pks small{display:block;font-size:12.5px;color:var(--ink2)}.pks b{display:block;font-size:22px;font-weight:600;line-height:1.2}.pks em{font-style:normal;font-size:12px;color:var(--ink2)}
    .pks.cur{border-left:4px solid ${PKC.orange}}
-   .pkw{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:stretch;margin-bottom:14px}
+   .pkw{display:grid;grid-template-columns:minmax(0,960px) minmax(300px,1fr);gap:14px;align-items:stretch;margin-bottom:14px}
    .pc{background:#fff;border:1px solid var(--line);border-radius:12px;min-width:0}
    .pch{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}
    .pch h2{margin:0;font-size:16px;font-weight:600;flex:1;display:flex;align-items:center;gap:10px}
@@ -1303,10 +1489,10 @@ async function pgSlip(){
    .pnext{background:#E8F1FA;color:var(--blue);font-weight:600;font-size:13px;border-radius:8px;padding:4px 10px;border:1px solid #BFDBFE}
    .psec{padding:14px 18px}.psec+.psec{border-top:1px solid var(--line)}
    .psec h3{margin:0 0 10px;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:#475569;font-weight:600;display:flex;align-items:center;gap:8px}
-   .pg4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 12px}
-   .pg5{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 12px;margin-bottom:12px}
-   .pgr{display:grid;grid-template-columns:minmax(150px,1.3fr) minmax(150px,1.3fr) minmax(90px,1fr) minmax(70px,.6fr) minmax(70px,.6fr);gap:10px 12px;align-items:start}
-   .pgb{display:grid;grid-template-columns:minmax(0,1fr) 1px 200px;gap:16px;align-items:start}.pgb .vl{background:var(--line);align-self:stretch}
+   .pg4{display:grid;grid-template-columns:minmax(140px,220px) minmax(150px,1fr) minmax(130px,180px) minmax(120px,170px);gap:10px 12px}
+   .pg5{display:grid;grid-template-columns:minmax(100px,170px) minmax(100px,170px) minmax(150px,200px) minmax(128px,160px) minmax(128px,160px);gap:10px 12px;margin-bottom:12px;align-items:start}
+   .pgr{display:grid;grid-template-columns:minmax(110px,170px) minmax(70px,100px) minmax(90px,120px);gap:10px 12px;align-items:start}
+   .pgb{display:grid;grid-template-columns:minmax(0,1fr) 1px 170px;gap:14px;align-items:start}.pgb .vl{background:var(--line);align-self:stretch}
    .pg3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 12px}
    .pf{display:flex;flex-direction:column;gap:4px;min-width:0}
    .pf>span{font-size:12.5px;color:#475569;font-weight:500}
@@ -1314,9 +1500,9 @@ async function pgSlip(){
    .pf .in:focus{outline:2px solid #BFDBFE;border-color:var(--blue)}
    .sr{position:relative}.sr .in{padding-right:34px;width:100%}.sr svg{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#94A3B8;pointer-events:none}
    .pro{min-height:40px;border-radius:8px;background:#F8FAFC;border:1px solid #E2E8F0;padding:8px 10px;font-size:13.5px;color:#94A3B8;display:flex;align-items:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-   .pkx{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}.pkx button{border:1px solid #CBD5E1;background:#fff;border-radius:99px;padding:2px 10px;font:inherit;font-size:12px;cursor:pointer;color:#334155}
+   .pkx{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}.pkx button{border:1px solid #CBD5E1;background:#fff;border-radius:99px;padding:1px 6px;font:inherit;font-size:12px;cursor:pointer;color:#334155}
    .pkx button.on{background:var(--blue);border-color:var(--blue);color:#fff}
-   .psv{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-top:14px;align-items:stretch}
+   .psv{display:grid;grid-template-columns:minmax(130px,200px) minmax(160px,260px);gap:12px;margin-top:14px;align-items:stretch}
    .psv .btn{min-height:58px;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px}
    .pqb{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}.pqb .q{width:150px;height:150px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:5px}
    .pqb b{display:block;font-size:13px}.pqb span{display:block;font-size:12.5px;color:var(--ink2);font-family:ui-monospace,Consolas,monospace}
@@ -1327,6 +1513,11 @@ async function pgSlip(){
    .ppv .id{text-align:center;font-weight:700;font-size:14px;margin-bottom:2px}.ppv .tg{text-align:center;margin-bottom:8px}
    .ppv .kvs{padding:0 18px;flex:1}.ppv .kv{padding:6px 0;font-size:13px}
    .ppv .nav{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:14px 18px}
+   .pa6{padding:12px 16px 0;flex:none}.pa6w{position:relative;overflow:hidden;margin:0 auto}
+   .pa6w .a6{position:absolute;left:0;top:0;transform-origin:top left;border:1px solid #CBD5E1;box-shadow:0 4px 14px rgba(15,23,42,.10)}
+   .pa6w .a6 .nm{max-width:none;overflow:hidden;white-space:normal;text-overflow:clip}
+   .pa6w .a6 .q{width:46mm;height:46mm;margin:0;padding:0;border:0;border-radius:0;background:none}
+   .pa6e{border:1.5px dashed #CBD5E1;border-radius:8px;color:#94A3B8;display:flex;align-items:center;justify-content:center;text-align:center;padding:16px;aspect-ratio:148/105;font-size:13px}
    .ptool{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 18px;border-bottom:1px solid var(--line)}
    .pchip{border:1px solid #CBD5E1;background:#fff;border-radius:99px;padding:5px 12px;font:inherit;font-size:12.5px;cursor:pointer;color:#334155;display:flex;gap:6px;align-items:center;font-weight:500}
    .pchip.on{background:var(--blue);border-color:var(--blue);color:#fff}
@@ -1340,31 +1531,32 @@ async function pgSlip(){
    .plink{background:none;border:0;color:var(--blue);font:inherit;font-size:13px;cursor:pointer;padding:4px 6px;border-radius:6px}.plink:hover{background:#E8F1FA}
    .pmenu{position:fixed;z-index:80;background:#fff;border:1px solid #CBD5E1;border-radius:10px;box-shadow:0 10px 28px rgba(15,23,42,.16);padding:4px 0;min-width:170px}
    .pmenu button{display:block;width:100%;text-align:left;background:none;border:0;padding:9px 14px;font:inherit;font-size:13.5px;cursor:pointer}.pmenu button:hover{background:#F1F5F9}
-   @media(max-width:1200px){.pkw{grid-template-columns:minmax(0,1fr)}}
+   @media(max-width:1100px){.pkw{grid-template-columns:minmax(0,1fr)}.pg4{grid-template-columns:repeat(2,minmax(0,1fr))}.pgr{grid-template-columns:repeat(3,minmax(0,1fr))}.pg5{grid-template-columns:repeat(3,minmax(0,1fr))}.psv{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.pgb{grid-template-columns:minmax(0,1fr) 1px 180px}}
    @media(max-width:760px){.pgr{grid-template-columns:repeat(6,minmax(0,1fr))}.pgr>*{grid-column:span 2}.pgr>:nth-child(-n+2){grid-column:span 3}.pkhead .rt{text-align:left;align-items:flex-start}.pkstats,.pg4{grid-template-columns:repeat(2,minmax(0,1fr))}.pg5,.pg3{grid-template-columns:repeat(2,minmax(0,1fr))}.pgb{grid-template-columns:minmax(0,1fr)}.pgb .vl{display:none}.ppv .q{display:none}.pqb{margin-top:14px}}
   </style>
   <div class="pkhead"><div><h1>${L('ใบพาเลท (QR)','Pallet slips (QR)')}</h1><p class="sub" style="margin:0">${L('สร้าง ตรวจ และพิมพ์ใบพาเลท','Create, review and print pallet slips')}</p></div>
    <div class="rt"><b>${L('จัดการใบพาเลท','Pallet slip management')}</b><span id="pkAcc"></span><div class="pkdr"><label>${L('จาก','From')}<input class="in" type="date" id="pkD1" value="${PKF.d1}" onchange="pkRange(this.value,$('#pkD2').value)"></label>
      <label>${L('ถึง','To')}<input class="in" type="date" id="pkD2" value="${PKF.d2}" onchange="pkRange($('#pkD1').value,this.value)"></label></div>
-    <div class="pkdq" id="pkDq"></div></div></div>
-  <div class="pkstats" id="pkStats"></div>
+    <div class="pkdq" id="pkDq"></div><button class="btn" style="margin-top:6px;min-height:34px" onclick="shiftDlg()">📄 ${L('รายงานประจำกะ (Excel)','Shift report (Excel)')}</button></div></div>
   <div class="pkw">
+   <div class="pkL"><div class="pkstats" id="pkStats"></div>
    <div class="pc">
-    <div class="pch"><h2><span class="plus">+</span>${L('สร้างใบพาเลทใหม่','Create new pallet slip')}</h2><button class="plink" onclick="pkClear()">${L('ล้างฟอร์ม','Clear')}</button><span class="pnext">${L('ใบถัดไป','Next slip')} <span id="pkNo">#1</span></span></div>
+    <div class="pch"><h2><span class="plus">+</span>${L('สร้างใบพาเลทใหม่','Create new pallet slip')}</h2><button class="plink" onclick="pkClear()">${L('ล้างฟอร์ม','Clear')}</button><button class="btn pkfin" onclick="pkFinishDlg()" title="${L('จบการแพคล็อตนี้ที่เครื่องแพค','Finish packing this lot on a packing machine')}">🏁 ${L('จบล็อต','Finish lot')}</button><span class="pnext">${L('ใบถัดไป','Next slip')} <span id="pkNo">#1</span></span></div>
     <div class="psec"><h3>${ic(ICO.box,'#1B75BC')}${L('สินค้าและการตรวจสอบย้อนกลับ','Product & traceability')}</h3><div class="pg4">
      ${fld(L('รหัส FG','FG code')+' *',`<div class="sr"><input class="in" id="sfPc" value="${esc(v.product_code||'')}" placeholder="${L('ค้นหารหัส / ชื่อ','Search code / name')}" oninput="slipProd('sf');pkName();pkLive()" autocomplete="off"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></div>`)}
-     ${fld(L('ชื่อสูตร','Formula name'),`<div class="pro" id="pkPn">${L('เติมอัตโนมัติ','Auto-filled')}</div><input type="hidden" id="sfPn">`)}
+     ${fld(L('ชื่อสูตร','Formula name'),`<div class="sr"><input class="in" id="pkPn" placeholder="${L('พิมพ์ชื่อสินค้าเพื่อค้นหา','Type a product name to search')}" oninput="pkNameTyped()" autocomplete="off"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></div><input type="hidden" id="sfPn">`)}
      ${fld(L('เลขล็อต','Lot number')+' *',`<input class="in" id="sfLot" value="${esc(v.lot_no||'')}" placeholder="261027001-PC" oninput="slipLot('sf');pkLive()" style="text-transform:uppercase">`)}
      ${fld(L('ประเภทสินค้า','Product type'),sel('Pt',LISTS.pack_types,v.pack_type||LISTS.pack_types[0]))}</div></div>
     <div class="psec"><h3>${ic(ICO.box,'#1B75BC')}${L('รายละเอียดการแพค','Packing details')}</h3>
      <div class="pg5">
       ${fld(L('ไลน์ผลิต','PD line')+' *',sel('Ln',LISTS.line,v.pd_line))}
       ${fld(L('เครื่องแพค','Packing M/C')+' *',sel('Mc',LISTS.machine,v.pack_machine))}
-      ${fld(L('เลขที่เอกสาร','Document no.'),`<input class="in" id="sfDoc" value="${esc(ME.slip_form_code||'')}" readonly tabindex="-1" style="background:#F1F5F9;color:#334155;font-weight:600" title="${L('เลขเอกสารจากฝ่ายควบคุมเอกสาร (แก้ไม่ได้)','Fixed number from Document Control')}">`)}</div>
+      ${fld(L('เลขที่เอกสาร','Document no.'),`<input class="in" id="sfDoc" value="${esc(ME.slip_form_code||'')}" readonly tabindex="-1" style="background:#F1F5F9;color:#334155;font-weight:600" title="${L('เลขเอกสารจากฝ่ายควบคุมเอกสาร (แก้ไม่ได้)','Fixed number from Document Control')}">`)}
+      <div class="pf"><span>${L('วันผลิต','MFG date')} *</span><input class="in" type="date" id="sfMfg" value="${esc(v.mfg||'')}" onchange="const o=$('#sfExp').value;slipExp('sf');pkExpChip();if($('#sfExp').value&&$('#sfExp').value!==o)expAskB('sf');pkLive()">
+       <div class="pkx">${[[12,L('1 ปี','1 yr')],[18,L('1.5 ปี','1.5 yr')],[20,L('1.8 ปี','1.8 yr')],[24,L('2 ปี','2 yr')]].map(([m,t])=>`<button type="button" data-m="${m}" title="${L('อายุสินค้า','Shelf life')}" onclick="pkExpM(${m})">${t}</button>`).join('')}</div></div>
+      ${fld(L('วันหมดอายุ','Expiry date')+' *',`<input class="in" type="date" id="sfExp" value="${esc(v.exp||'')}" onchange="pkExpChip();expAskB('sf');pkLive()"><input type="hidden" id="sfExpB" value="${esc(v.exp_sfx||'')}"><input type="hidden" id="sfExpF" value="${esc(v.exp_fmt||'')}"><div id="sfExpBt" class="expb"></div>`)}
+     </div>
      <div class="pgb"><div><div class="pgr">
-      <div class="pf"><span>${L('วันผลิต','MFG date')} *</span><input class="in" type="date" id="sfMfg" value="${esc(v.mfg||'')}" onchange="slipExp('sf');pkExpChip();pkLive()">
-       <div class="pkx">${[[12,L('1 ปี','1 yr')],[18,L('1.5 ปี','1.5 yr')],[24,L('2 ปี','2 yr')]].map(([m,t])=>`<button type="button" data-m="${m}" title="${L('อายุสินค้า','Shelf life')}" onclick="pkExpM(${m})">${t}</button>`).join('')}</div></div>
-      ${fld(L('วันหมดอายุ','Expiry date')+' *',`<input class="in" type="date" id="sfExp" value="${esc(v.exp||'')}" onchange="pkExpChip();pkLive()">`)}
       ${fld(L('ผู้แพค','Staff'),`<input class="in" id="sfSt" value="${esc(v.staff_name||ME.name)}" oninput="pkLive()">`)}
       ${fld(L('จำนวนถุง','Bags')+' *',`<input class="in" type="number" inputmode="numeric" id="sfBg" value="${v.qty?+v.qty:''}" oninput="slipTot('sf');pkLive()">`)}
       ${fld(L('กก./ถุง','kg / bag')+' *',`<input class="in" id="sfBw" value="${esc(v.bag_weight||'')}" placeholder="20 / 1*20" oninput="slipTot('sf');pkLive()">`)}</div>
@@ -1373,24 +1565,29 @@ async function pgSlip(){
       <div class="vl"></div>
       <div class="pqb"><div class="q" id="pkQr2"></div><div><b>${L('QR ของใบนี้','QR for this slip')}</b><span id="pkQr2t">—</span></div></div></div>
      <div id="sfMsg" style="margin-top:8px"></div></div>
-   </div>
+   </div></div>
+   <div class="pkR">
    <div class="pc ppv">
-    <div class="pch"><h2>${L('ตัวอย่างใบพาเลท','Generated slip preview')}</h2></div>
-    <div class="q" id="pkQr"></div><div class="id mono" id="pkPid">—</div><div class="tg" id="pkPtag"></div>
+    <div class="pch"><h2>${L('ตัวอย่างใบพาเลท (A6)','Slip preview (A6)')}</h2></div>
+    <div class="q" id="pkQr" style="display:none"></div><div class="id mono" id="pkPid" style="display:none">—</div>
+    <div class="pa6" id="pkA6"></div><div class="tg" id="pkPtag" style="margin-top:10px"></div>
     <div class="kvs" id="pkQt"></div>
     <div class="nav"><button class="btn" id="pkPrev" onclick="pkPv(-1)">‹ ${L('ก่อนหน้า','Previous')}</button><button class="btn" id="pkNext" onclick="pkPv(1)">${L('ถัดไป','Next')} ›</button></div>
-   </div>
+   </div></div>
   </div>
   <div class="pc">
-   <div class="pch"><h2>${ic(ICO.doc,'#0F3D6E')}<span id="pkListT">${L('ทะเบียนใบพาเลท','Pallet slip register')}</span></h2></div>
+   <div class="pch"><h2>${ic(ICO.doc,'#0F3D6E')}<span id="pkListT">${L('ทะเบียนใบพาเลท','Pallet slip register')}</span></h2><div id="pkMc" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"></div></div>
    <div class="ptool"><div id="pkChips" style="display:flex;gap:6px;flex-wrap:wrap"></div><span style="flex:1"></span>
     <div class="psrch"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
      <input class="in" id="pkQ" value="${esc(PKF.q||'')}" placeholder="${L('ค้นหา รหัส FG / ล็อต','Search FG code / lot')}" oninput="clearTimeout(PKQT);PKQT=setTimeout(()=>{PKF.q=this.value.trim();pkLoad()},400)" autocomplete="off"></div>
+    ${pkCanDel()?`<button class="btn" id="pkDelSel" style="color:#DC2626;border-color:#FECACA" onclick="pkDelDlg(PKVIEW.filter(s=>SLSEL[s.id]).map(s=>s.id))">🗑 ${L('ลบที่เลือก','Delete selected')}</button>`:''}
     <button class="btn pri" id="pkPrSel" onclick="printSlips(PKVIEW.filter(s=>SLSEL[s.id]))">${L('พิมพ์ที่เลือก','Print selected')}</button></div>
    <div id="pkList"></div>
   </div>`;
-  ta($('#sfPc'),taProd);ta($('#pkQ'),taSrv('all'),it=>{PKF.q=it.v;pkLoad();});
-  slipProd('sf');pkName();slipTot('sf');pkExpChip();pkLive();pkLoad();
+  ta($('#sfPc'),taProd);
+  // b520: the product can be found by its NAME too — picking one fills the FG code
+  ta($('#pkPn'),taProdName,it=>{$('#sfPc').value=it.code;slipProd('sf');pkName(true);pkLive();});pkName();ta($('#pkQ'),taSrv('all'),it=>{PKF.q=it.v;pkLoad();});
+  slipProd('sf');pkName();slipTot('sf');pkExpChip();expBTag('sf');pkLive();pkLoad();
   if(isAdmin()||ME.cmms_role==='admin')api('/api/fg/access-slips').then(d=>{if(d.missing&&$('#pkAcc'))$('#pkAcc').innerHTML=`<button class="btn sm" id="pkAccB" onclick="pkAccMake(${d.missing})">${L('สร้าง QR ใบพาเลทจากข้อมูล Access','Make QR slips from Access history')} (${n0(d.missing)})</button>`;}).catch(()=>{});
 }
 async function pkAccMake(n){
@@ -1400,15 +1597,117 @@ async function pkAccMake(n){
   catch(e){alert(e.message);b.disabled=false;}
 }
 let PKQT=null,PKVIEW=[];
-function pkName(){const p=(PRODS||[]).find(x=>x.code===$('#sfPc').value.trim());$('#pkPn').textContent=p?p.name:L('เติมอัตโนมัติ','Auto-filled');$('#pkPn').title=p?p.name:'';$('#pkPn').style.color=p?'#0F172A':'#94A3B8';}
+function pkName(force){const p=(PRODS||[]).find(x=>x.code===$('#sfPc').value.trim()),n=$('#pkPn');if(!n)return;
+  // the name box follows the FG code — unless the person is typing in it right now
+  if(force||document.activeElement!==n)n.value=p?p.name:'';n.title=p?p.name:'';}
+function pkNameTyped(){const n=$('#pkPn'),c=$('#sfPc');if(!n||!c)return;
+  const p=(PRODS||[]).find(x=>x.code===c.value.trim());
+  if(p&&n.value.trim()!==p.name){c.value='';slipProd('sf');pkLive();}}       // name changed by hand: the old code no longer applies
 const ymd=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 function pkExpM(m){const mf=$('#sfMfg').value;if(!mf){alert(L('ใส่วันผลิตก่อน','Enter the MFG date first'));return;}
-  const d=new Date(mf+'T00:00:00');d.setMonth(d.getMonth()+m);$('#sfExp').value=ymd(d);pkExpChip();pkLive();}
+  const d=new Date(mf+'T00:00:00');d.setMonth(d.getMonth()+m);$('#sfExp').value=ymd(d);pkExpChip();expAskB('sf');pkLive();}
+/* b538 — some products print "B." after the expiry date: ask each time the expiry is chosen */
+function expBTag(pre){const t=$('#'+pre+'ExpBt'),b=($('#'+pre+'ExpB')||{}).value,f=($('#'+pre+'ExpF')||{}).value,ex=($('#'+pre+'Exp')||{}).value;if(!t)return;
+  t.innerHTML=ex&&(b||f)?`<span class="pill" style="background:#EDE9FE;color:#5B21B6;cursor:pointer" onclick="expAskB('${pre}')" title="${L('แก้ไข','Change')}">${L('พิมพ์','Prints')}: <b>${expFmt(ex,f)}${b?' '+b:''}</b> ✎</span>`:'';}
+const EXPF=['dd/mm/yy','dd/mm/yyyy','yy/mm/dd','mm/yyyy','yyyy/mm/dd','dd mm yyyy'];   // b549: + yyyy/mm/dd, dd mm yyyy
+function expFmt(d,f){if(!d||d.length<10)return '-';const Y=d.slice(0,4),y=d.slice(2,4),m=d.slice(5,7),dd=d.slice(8,10);
+  return ({'dd/mm/yy':`${dd}/${m}/${y}`,'yy/mm/dd':`${y}/${m}/${dd}`,'mm/yyyy':`${m}/${Y}`,'yyyy/mm/dd':`${Y}/${m}/${dd}`,'dd mm yyyy':`${dd} ${m} ${Y}`}[f])||`${dd}/${m}/${Y}`;}
+const expTxt=s=>expFmt(s.exp,s.exp_fmt)+(s.exp_sfx?' '+s.exp_sfx:'');
+/* b539 — when the expiry date is chosen, the packer answers 2 questions: 1) how the date is
+   printed, 2) add "B." or not. The answers go on the slip; the date itself stays a real date. */
+function expAskB(pre){
+  const ex=($('#'+pre+'Exp')||{}).value;if(!ex){$('#'+pre+'ExpB').value='';$('#'+pre+'ExpF').value='';expBTag(pre);return;}
+  let f0=($('#'+pre+'ExpF')||{}).value;if(!f0){try{f0=localStorage.getItem('fg_exp_fmt')||'';}catch(e){}}if(!EXPF.includes(f0))f0='dd/mm/yyyy';
+  const b0=($('#'+pre+'ExpB')||{}).value==='B.';
+  const o=document.createElement('div');o.id='expBdlg';o.className='ov';o.style.zIndex=120;
+  o.innerHTML=`<div class="modal" style="max-width:460px"><h2>${L('วันหมดอายุ','Expiry date')} · <span class="mono">${fmtD(ex)}</span></h2>
+   <b>1. ${L('รูปแบบวันที่ที่พิมพ์','Date format to print')}</b>
+   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 14px">${EXPF.map(f=>`<label class="card" style="margin:0;padding:9px 10px;display:flex;gap:8px;align-items:center;cursor:pointer">
+     <input type="radio" name="expF" value="${f}" ${f===f0?'checked':''} onchange="expPv('${ex}')" style="width:18px;height:18px"><span><b class="mono">${f}</b><br><small class="muted mono">${expFmt(ex,f)}</small></span></label>`).join('')}</div>
+   <b>2. ${L('ต้องการใส่ “B.” ไหม?','Do you want to include “B.”?')}</b>
+   <div style="display:flex;gap:10px;margin:8px 0 12px">${[[0,L('ไม่','No')],[1,L('ใช่ ใส่ B.','Yes, include B.')]].map(([v,t])=>`<label class="card" style="margin:0;padding:9px 14px;display:flex;gap:8px;align-items:center;cursor:pointer;flex:1">
+     <input type="radio" name="expB" value="${v}" ${(v===1)===b0?'checked':''} onchange="expPv('${ex}')" style="width:18px;height:18px"><b>${t}</b></label>`).join('')}</div>
+   <div style="background:#F5F3FF;border-radius:8px;padding:10px 12px;font-size:17px">EXP <b id="expPv" style="color:#5B21B6"></b></div>
+   <div class="btns" style="justify-content:flex-end;margin-top:12px"><button class="btn pri" id="expOk" style="min-width:120px">${L('ตกลง','OK')}</button></div></div>`;
+  document.body.appendChild(o);expPv(ex);
+  $('#expOk').onclick=()=>{const f=(document.querySelector('input[name=expF]:checked')||{}).value||'dd/mm/yyyy',b=(document.querySelector('input[name=expB]:checked')||{}).value==='1';
+    $('#'+pre+'ExpF').value=f;$('#'+pre+'ExpB').value=b?'B.':'';try{localStorage.setItem('fg_exp_fmt',f);}catch(e){}
+    expBTag(pre);if(pre==='sf')pkLive();o.remove();};
+}
+function expPv(ex){const f=(document.querySelector('input[name=expF]:checked')||{}).value,b=(document.querySelector('input[name=expB]:checked')||{}).value==='1';
+  const e=$('#expPv');if(e)e.textContent=expFmt(ex,f)+(b?' B.':'');}
+
 function pkExpChip(){const mf=$('#sfMfg').value,ex=$('#sfExp').value;
   document.querySelectorAll('.pkx button').forEach(b=>{let on=false;if(mf&&ex){const d=new Date(mf+'T00:00:00');d.setMonth(d.getMonth()+(+b.dataset.m));on=ymd(d)===ex;}b.classList.toggle('on',on);});}
-function pkClear(){['sfPc','sfPn','sfLot','sfBg','sfBw','sfTw','sfMfg','sfExp'].forEach(i=>{const e=$('#'+i);if(e)e.value='';});pkName();pkExpChip();pkLive();}
+/* b524: Finish lot — per packing machine. When the last machine still on this lot finishes,
+   ask if the lot will come back (numbers continue) or is closed. A closed lot typed again:
+   continue the numbers, or start a new run from #1 (QR carries the run, so nothing repeats). */
+let PKLOT=null,PKASKED='';
+
+async function pkFinishDlg(){
+  const v=slipVals('sf');
+  if(!v.product_code||!v.lot_no){$('#sfMsg').innerHTML=err(L('ใส่รหัส FG และเลขล็อตก่อน','Enter FG code and lot first'));return;}
+  let st;try{st=await api(`/api/fg/slips-next?product=${encodeURIComponent(v.product_code)}&lot=${encodeURIComponent(v.lot_no)}`);}catch(e){$('#sfMsg').innerHTML=err(e);return;}
+  const ms=st.machines||[],open=ms.filter(m=>!m.finished);
+  const head=`<h2>🏁 ${L('จบล็อต','Finish lot')}</h2><div class="card" style="margin-bottom:10px"><b class="mono" style="font-size:18px">${esc(v.lot_no)}</b> · ${esc(v.product_code)}${st.run>1?` · ${L('รอบ','Run')} ${st.run}`:''}<div class="muted">${L('ใบล่าสุด','Last slip')} #${st.next-1}</div></div>`;
+  if(!open.length){dlg(head+`<div class="msg m-bad">${ms.length?L('ทุกเครื่องจบล็อตนี้แล้ว','All machines already finished this lot'):L('ยังไม่มีใบพาเลทของล็อตนี้','No slips for this lot yet')}</div><div class="btns" style="justify-content:flex-end;margin-top:12px"><button class="btn" onclick="closeDlg()">${L('ปิด','Close')}</button></div>`);return;}
+  dlg(head+`<b>${L('เลือกเครื่องแพคที่จบล็อตนี้','Choose the packing machine(s) that finished this lot')}</b>
+   <div id="pkFm" style="display:grid;gap:6px;margin:8px 0 12px">${ms.map(m=>`<label class="card pkfm${m.finished?' dis':''}" style="display:flex;gap:10px;align-items:center;padding:10px 12px;margin:0">
+     <input type="checkbox" value="${esc(m.machine)}" ${m.finished?'checked disabled':(m.machine===v.pack_machine||open.length===1?'checked':'')} onchange="pkFinQ()" style="width:20px;height:20px">
+     <div style="flex:1"><b>${esc(m.machine)}</b><div class="muted" style="font-size:13px">${m.slips} ${L('ใบ','slips')} · ${L('ล่าสุด','last')} #${m.last}</div></div>
+     ${m.finished?`<span class="pill" style="background:#DCFCE7;color:#166534">✔ ${L('จบแล้ว','Finished')}</span>`:`<span class="pill" style="background:#DBEAFE;color:#1D4ED8">${L('กำลังแพค','Packing')}</span>`}</label>`).join('')}</div>
+   <div id="pkFq"></div><div id="pkFe"></div>
+   <div class="btns" style="justify-content:flex-end;margin-top:12px"><button class="btn" onclick="closeDlg()">${L('ยกเลิก','Cancel')}</button><button class="btn pri" id="pkFgo" onclick="pkFinishGo()">${L('ตกลง','OK')}</button></div>`);
+  PKFIN={v,st};pkFinQ();
+}
+let PKFIN=null;
+function pkFinSel(){return [...document.querySelectorAll('#pkFm input:checked:not(:disabled)')].map(i=>i.value);}
+function pkFinQ(){
+  const sel=pkFinSel(),left=[...document.querySelectorAll('#pkFm input:not(:checked)')].map(i=>i.value),last=PKFIN.st.next-1;
+  $('#pkFgo').disabled=!sel.length;
+  $('#pkFq').innerHTML=!sel.length?'':left.length?`<div class="msg" style="background:#EFF6FF;color:#1E3A8A">ℹ️ ${L('เครื่องที่ยังแพคล็อตนี้อยู่','Still packing this lot')}: <b>${left.map(esc).join(', ')}</b> — ${L('เลขใบพาเลทนับต่อ','slip numbers continue')} (#${last+1}…)</div>`
+   :`<div class="card" style="border:2px solid #F59E0B;background:#FFFBEB"><b>${L('จะกลับมาแพคล็อตนี้อีกไหม?','Will you come back to pack this lot again?')}</b>
+     <div class="muted" style="margin:4px 0 8px">${L('เช่น สั่งผลิต 100 ตัน แต่ผลิตแล้ว 50 ตัน','e.g. order is 100 t but only 50 t produced so far')}</div>
+     <label style="display:flex;gap:8px;align-items:flex-start;margin-bottom:6px"><input type="radio" name="pkCb" value="1" style="width:20px;height:20px"><span><b>${L('ใช่ — จะกลับมาแพคอีก','Yes — will come back')}</b><br><small class="muted">${L('ครั้งหน้าเลขใบนับต่อจาก','Next time numbers continue from')} #${last+1}</small></span></label>
+     <label style="display:flex;gap:8px;align-items:flex-start"><input type="radio" name="pkCb" value="0" style="width:20px;height:20px"><span><b>${L('ไม่ — ล็อตนี้จบแล้ว','No — this lot is finished')}</b><br><small class="muted">${L('ปิดล็อตที่','Lot closed at')} #${last}</small></span></label></div>`;
+}
+async function pkFinishGo(){
+  const sel=pkFinSel(),q=$('#pkFq input[name=pkCb]'),cb=document.querySelector('#pkFq input[name=pkCb]:checked');
+  if(q&&!cb){$('#pkFe').innerHTML=err(L('เลือก ใช่ หรือ ไม่','Choose Yes or No'));return;}
+  $('#pkFgo').disabled=true;
+  let d;try{d=await post('/api/fg/lot-finish',{product_code:PKFIN.v.product_code,lot_no:PKFIN.v.lot_no,machines:sel,come_back:cb?cb.value==='1':null});}
+  catch(e){$('#pkFe').innerHTML=err(e);$('#pkFgo').disabled=false;return;}
+  closeDlg();const lot=PKFIN.v.lot_no;
+  ['sfPc','sfPn','pkPn','sfLot','sfMfg','sfExp','sfExpB','sfExpF'].forEach(i=>{const e=$('#'+i);if(e)e.value='';});expBTag('sf');
+  Object.assign(LAST,{product_code:'',lot_no:'',mfg:'',exp:''});try{localStorage.setItem('fg_slip_last',JSON.stringify(LAST));}catch(e){}
+  pkName();pkExpChip();pkLive();
+  $('#sfMsg').innerHTML=`<div class="msg m-ok">🏁 ${esc(lot)} — ${d.status==='open'?L(`จบที่ ${sel.join(', ')} · เครื่องอื่นยังแพคต่อ`,`finished on ${sel.join(', ')} · other machines still packing`)
+    :d.status==='paused'?L(`พักล็อตไว้ที่ #${d.last_slip} — กลับมาแพคต่อได้`,`lot paused at #${d.last_slip} — can continue later`)
+    :L(`ปิดล็อตแล้ว ที่ #${d.last_slip}`,`lot closed at #${d.last_slip}`)}</div>`;
+}
+function pkReopenDlg(v,st){
+  dlg(`<h2>⚠️ ${L('ล็อตนี้จบไปแล้ว','This lot is already finished')}</h2>
+   <div class="card"><b class="mono" style="font-size:18px">${esc(v.lot_no)}</b> · ${esc(v.product_code)}${st.run>1?` · ${L('รอบ','Run')} ${st.run}`:''}
+    <div class="muted">${L('ปิดที่ใบ','Closed at slip')} #${st.last_slip} · ${esc((st.finished_at||'').slice(0,16).replace('T',' '))} · ${esc(st.finished_by||'')}</div></div>
+   <p style="margin:12px 0 6px"><b>${L('เป็นการผลิตเดียวกัน แพคต่อใช่ไหม?','Same production — continue packing?')}</b></p>
+   <div style="display:grid;gap:8px">
+    <button class="btn pri" style="display:block;text-align:left;min-height:56px;width:100%" onclick="pkReopen('continue')">✅ ${L('ใช่ — เปิดล็อตต่อ','Yes — reopen the lot')}<br><small style="font-weight:400">${L('เลขใบนับต่อจาก','Numbers continue from')} #${st.last_slip+1}</small></button>
+    <button class="btn" style="display:block;text-align:left;min-height:56px;width:100%" onclick="pkReopen('new')">🔁 ${L('ไม่ — ผลิตใหม่ เริ่มรอบใหม่','No — new production, new run')}<br><small style="font-weight:400">${L(`เริ่มใบ #1 (รอบ ${st.run+1}) — QR ไม่ซ้ำกับรอบก่อน`,`Starts at #1 (run ${st.run+1}) — QR never repeats the earlier run`)}</small></button>
+   </div><div id="pkRe"></div>
+   <div class="btns" style="justify-content:flex-end;margin-top:12px"><button class="btn" onclick="closeDlg();$('#sfLot').value='';pkLive()">${L('ยกเลิก (ล้างเลขล็อต)','Cancel (clear lot)')}</button></div>`);
+  PKFIN={v,st};
+}
+async function pkReopen(mode){
+  try{await post('/api/fg/lot-reopen',{product_code:PKFIN.v.product_code,lot_no:PKFIN.v.lot_no,mode});}catch(e){$('#pkRe').innerHTML=err(e);return;}
+  closeDlg();pkLive();
+}
+function pkClear(){['sfPc','sfPn','pkPn','sfLot','sfBg','sfBw','sfTw','sfMfg','sfExp','sfExpB','sfExpF'].forEach(i=>{const e=$('#'+i);if(e)e.value='';});expBTag('sf');pkName();pkExpChip();pkLive();}
 /* preview card: the next slip (live, exactly what its QR will hold) or a saved slip (‹ › browse the register) */
 const PKKV=(k,v)=>`<div class="kv"><span>${k}</span><b>${v}</b></div>`;
+/* b515: slips made from an old Access receive line are NOT real pallets (one Access line is often a whole lot,
+   e.g. 2,530 bags). Kept for history, labelled, left out of the totals, and they cannot be printed. */
+const ACC=s=>!!(s&&s.src==='access');
+const accTag=()=>`<span class="pill" style="background:#E5E7EB;color:#374151" title="${L('สร้างจากข้อมูลรับเข้าเก่าใน Access — 1 รายการอาจเป็นทั้งล็อต ไม่ใช่ 1 พาเลท','Made from an old Access receive line — one line can be a whole lot, not one pallet')}">${L('จาก Access — ไม่ใช่พาเลทจริง','From Access — not a real pallet')}</span>`;
 function pkPvDraw(){
   const prev=$('#pkPrev'),next=$('#pkNext');if(!prev)return;
   prev.disabled=PKPV>=PKVIEW.length-1;next.disabled=PKPV<0;
@@ -1416,32 +1715,54 @@ function pkPvDraw(){
   const s=PKVIEW[PKPV];if(!s){PKPV=-1;pkLive();return;}
   qrSvgStr(s.qr||'').then(h=>{if(PKPV>=0)$('#pkQr').innerHTML=h;}).catch(()=>{});
   $('#pkPid').textContent=`${s.lot_no} · #${s.pallet_no}`;
-  $('#pkPtag').innerHTML=(s.status==='packed'?pcPill(s.pc_status):stPill(s.status))+` <span class="muted">${PKPV+1} / ${PKVIEW.length}</span>`;
-  $('#pkQt').innerHTML=PKKV(L('สินค้า','Product'),esc(s.product_code))+PKKV('Lot No.',`<span class="mono">${esc(s.lot_no)}</span>`)+PKKV(L('ถุง','Bags'),n0(s.qty))
-    +PKKV(L('น้ำหนัก','Weight'),n0(s.total_weight)+' kg')+PKKV('MFG / EXP',`${fmtD(s.mfg)} / ${fmtD(s.exp)}`)
-    +`<div style="display:flex;gap:6px;margin-top:8px"><button class="btn sm" style="flex:1" onclick="slipPreview(${s.id})">A6</button><button class="btn sm" style="flex:1" onclick="printSlips([PKVIEW[${PKPV}]])">${L('พิมพ์','Print')}</button></div>`;
+  $('#pkPtag').innerHTML=(s.status==='packed'?pcPill(s.pc_status):stPill(s.status))+` <span class="muted">${PKPV+1} / ${PKVIEW.length}</span>`+(ACC(s)?'<div style="margin-top:6px">'+accTag()+'</div>':'');
+  pkA6Show(s,PKPV);
+  $('#pkQt').innerHTML=`<div style="display:flex;gap:6px;margin-top:4px"><button class="btn sm" style="flex:1" onclick="slipPreview(${s.id})">${L('ขยาย','Enlarge')}</button>${ACC(s)?'':`<button class="btn sm" style="flex:1" onclick="printSlips([PKVIEW[${PKPV}]])">${L('พิมพ์','Print')}</button>`}</div>`;
 }
+/* b519 — the preview IS the A6 slip as it will print, scaled to the column; ‹ › walk the saved slips */
+let PKA6SEQ=0;
+async function pkA6Show(s,idx){
+  const box=$('#pkA6');if(!box)return;const seq=++PKA6SEQ;
+  if(!s){box.innerHTML=`<div class="pa6e">${L('กรอกรหัส FG และเลขล็อต แล้วใบพาเลท A6 จะแสดงที่นี่','Enter FG code and lot — the A6 slip appears here')}</div>`;return;}
+  let h='';try{h=await slipHtml(s);}catch(e){h='';}
+  if(seq!==PKA6SEQ||(idx!==PKPV))return;                    // a newer slip was asked for meanwhile
+  if(!$('#a6css')){const st=document.createElement('style');st.id='a6css';st.textContent=A6CSS.replace('@page{size:148mm 105mm;margin:0}','');document.head.appendChild(st);}
+  box.innerHTML=`<div class="pa6w">${h}</div>`;pkA6Fit();
+}
+function pkA6Fit(){
+  const box=$('#pkA6'),w=box&&box.querySelector('.pa6w'),a=w&&w.querySelector('.a6');if(!a)return;
+  const MM=96/25.4,nw=148*MM,nh=105*MM;                      // the slip's own size, never what the page measured
+  const avail=Math.max(200,box.clientWidth-32),sc=Math.min(1.25,avail/nw);
+  a.style.width=nw+'px';a.style.height=nh+'px';a.style.transform=`scale(${sc})`;
+  w.style.width=(nw*sc)+'px';w.style.height=(nh*sc)+'px';
+}
+window.addEventListener('resize',()=>{clearTimeout(window._a6t);window._a6t=setTimeout(pkA6Fit,120);});
 function pkPv(d){PKPV=Math.max(-1,Math.min(PKVIEW.length-1,PKPV-d));pkPvDraw();}   // ‹ Previous = older saved slip, Next › = back toward the new slip
 function pkLive(){
   clearTimeout(PKT);PKT=setTimeout(async()=>{
     const v=slipVals('sf');
-    if(v.product_code&&v.lot_no){try{PKNEXT=(await api(`/api/fg/slips-next?product=${encodeURIComponent(v.product_code)}&lot=${encodeURIComponent(v.lot_no)}`)).next;}catch(e){PKNEXT=1;}}else PKNEXT=1;
-    $('#pkNo').textContent='#'+PKNEXT;
+    PKLOT=null;
+    if(v.product_code&&v.lot_no){try{PKLOT=await api(`/api/fg/slips-next?product=${encodeURIComponent(v.product_code)}&lot=${encodeURIComponent(v.lot_no)}`);PKNEXT=PKLOT.next;}catch(e){PKNEXT=1;}}else PKNEXT=1;
+    const run=(PKLOT&&PKLOT.run)||1;
+    $('#pkNo').innerHTML='#'+PKNEXT+(run>1?` <small class="pkrun">${L('รอบ','Run')} ${run}</small>`:'')+(PKLOT&&PKLOT.status==='paused'?` <small class="pkrun" style="background:#FEF3C7;color:#92400E">${L('พักไว้ — แพคต่อ','Paused — continue')}</small>`:'');
+    if(PKLOT&&PKLOT.status==='closed'){const k=v.product_code+'|'+v.lot_no;if(PKASKED!==k){PKASKED=k;pkReopenDlg(v,PKLOT);}}
     const p=(PRODS||[]).find(x=>x.code===v.product_code)||{};
-    const txt=JSON.stringify({Id:'(new)',Product_code:v.product_code,Product_Name:p.name||'',Lot_No:v.lot_no,Pallet:String(PKNEXT),No:String(v.bags||''),weight:n0(bagKg(v.bag_weight))+' kg',MFG:v.mfg,EXP:v.exp,Station:v.pack_machine,Operator:v.staff_name});
-    try{const h=await qrSvgStr(txt);$('#pkQr2').innerHTML=h;if(PKPV<0)$('#pkQr').innerHTML=h;}catch(e){}
+    const txt=JSON.stringify({Id:'(new)',Product_code:v.product_code,Product_Name:p.name||'',Lot_No:v.lot_no,Pallet:String(PKNEXT),No:String(v.bags||''),weight:n0(bagKg(v.bag_weight))+' kg',MFG:v.mfg,EXP:v.exp,Station:v.pack_machine,Operator:v.staff_name,...(run>1?{Run:run}:{})});
+    const qtx=(v.lot_no||'').replace(/\D/g,'').slice(0,9).padStart(9,'0')+String(PKNEXT%1000).padStart(3,'0');   // b531: lot 9 + slip 3 + 1 random letter (given on save)                    // the real code (FG + slip id + check) is given on save
+    try{const h=await qrSvgStr(qtx);$('#pkQr2').innerHTML=h;if(PKPV<0)$('#pkQr').innerHTML=h;}catch(e){}
     const ok=v.product_code&&v.lot_no,tw=bagKg(v.bag_weight)*(v.bags||0);$('#pkQr2t').textContent=ok?`${v.lot_no} · #${PKNEXT}`:L('กรอกรหัส FG และล็อต','enter FG code + lot');
     if(PKPV>=0)return;
     $('#pkPid').textContent=ok?`${v.lot_no} · #${PKNEXT}`:'—';
     $('#pkPtag').innerHTML=`<span class="pill" style="background:#E8F1FA;color:var(--blue)">${L('ใบใหม่ (ยังไม่บันทึก)','New slip (not saved)')}</span>`;
-    $('#pkQt').innerHTML=ok?PKKV(L('สินค้า','Product'),esc(v.product_code))+PKKV('Lot No.',`<span class="mono">${esc(v.lot_no)}</span>`)+PKKV(L('ถุง','Bags'),n0(v.bags||0))
-      +PKKV(L('น้ำหนัก','Weight'),n0(tw)+' kg')+PKKV('MFG / EXP',`${v.mfg?fmtD(v.mfg):'—'} / ${v.exp?fmtD(v.exp):'—'}`)
-      :`<p class="muted" style="text-align:center;margin:6px 0">${L('กรอกรหัส FG และเลขล็อตเพื่อดู QR','Enter FG code and lot to see the QR')}</p>`;
+    pkA6Show(ok?{qr:qtx,code:qtx,id:L('ใหม่','new'),pallet_no:PKNEXT,lot_run:run,product_code:v.product_code,product_name:p.name||'',lot_no:v.lot_no,mfg:v.mfg,exp:v.exp,exp_sfx:v.exp_sfx,exp_fmt:v.exp_fmt,
+      qty:v.bags||0,unit:'',bag_weight:v.bag_weight,weight_unit:bagKg(v.bag_weight),total_weight:tw,pack_machine:v.pack_machine,pd_line:v.pd_line,
+      staff_name:v.staff_name,pack_type:v.pack_type,packed_at:''}:null,-1);
+    $('#pkQt').innerHTML='';
     const n=$('#pkNext');if(n)n.disabled=true;const pv=$('#pkPrev');if(pv)pv.disabled=!PKVIEW.length;
   },250);
 }
 /* b489: date range + quick ranges; "All dates" searches every slip (newest 3,000 shown) */
-function pkRange(a,b,all){PKF.all=!!all;if(!all){if(!a||!b)return;if(a>b)[a,b]=[b,a];PKF.d1=a;PKF.d2=b;}if(PKF.st==='fgrej')PKF.st='';
+function pkRange(a,b,all){{const el=$('#pkList');if(el)el.style.minHeight='';}PKF.all=!!all;if(!all){if(!a||!b)return;if(a>b)[a,b]=[b,a];PKF.d1=a;PKF.d2=b;}if(PKF.st==='fgrej')PKF.st='';
   const x=$('#pkD1'),y=$('#pkD2');if(x){x.value=PKF.d1;y.value=PKF.d2;x.disabled=y.disabled=PKF.all;}PKPV=-1;pkLoad();}
 function pkDq(){const e=$('#pkDq');if(!e)return;const t=today(),cur=PKF.all?'all':(PKF.d2===t?{[t]:'0',[daysAgo(6)]:'7',[daysAgo(29)]:'30'}[PKF.d1]:'');
   const b=(k,lab,a,all)=>`<button class="${cur===k?'on':''}" onclick="pkRange('${a}','${t}',${all?1:0})">${lab}</button>`;
@@ -1455,26 +1776,383 @@ async function pkLoad(){
   SLSEL={};SLIPS=PKROWS;pkDraw();
 }
 const PKI=(d)=>`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+/* b522 — admin: delete pallet slips for good (test slips, mistakes). Not once FG has received them. */
+/* b531 — Packing page: Delete = the slip is greyed out with the reason (not counted) and can be
+   revived (same number + code) to print again. Admin keeps "delete permanently" for test slips. */
+const pkIsAdm=()=>!!(ME&&(isAdmin()||ME.role==='admin'));
+const pkCanDel=()=>can('pack')||pkIsAdm();
+function pkDelDlg(ids){
+  ids=(ids||[]).filter(Boolean);if(!ids.length){alert(L('เลือกใบพาเลทก่อน','Select slips first'));return;}
+  const rows=PKROWS.filter(s=>ids.includes(s.id)),ok=s=>s.status==='packed'||s.status==='rejected_by_fg',bad=rows.filter(s=>!ok(s));
+  dlg(`<h2 style="color:#B91C1C">🗑 ${L('ลบใบพาเลท','Delete pallet slips')} (${rows.length})</h2>
+   <p class="muted">${L('ใบที่ลบจะเป็นสีเทา พร้อมเหตุผล ไม่นับน้ำหนัก — กู้คืนได้ภายหลัง (เลขเดิม) แล้วพิมพ์ใหม่','Deleted slips turn grey with the reason and are not counted — they can be revived later (same number) and printed again')}</p>
+   <div class="card" style="max-height:200px;overflow:auto;font-size:13px">${rows.map(s=>`<div style="padding:2px 0;${ok(s)?'':'color:#94A3B8;text-decoration:line-through'}"><b class="mono">${esc(s.lot_no)} #${esc(s.pallet_no)}</b> · ${esc(s.product_code)} · ${n0(s.qty)} ${L('ถุง','bags')}${ok(s)?'':' — '+esc(L(...(STL[s.status]||[s.status,s.status])))}</div>`).join('')}</div>
+   ${bad.length?`<p style="color:#B45309;font-size:13px">${bad.length} ${L('ใบจะถูกข้าม (FG รับแล้ว หรือลบไปแล้ว)','slip(s) skipped (received by FG, or already deleted)')}</p>`:''}
+   <label class="f">${L('เหตุผล','Reason')} *<input class="in" id="pkDelWhy" value="${L('พาเลทไม่ถูกต้อง','Wrong pallet')}"></label>
+   <div id="pkDelE"></div>
+   <div class="btns" style="justify-content:flex-end;margin-top:12px"><button class="btn" onclick="closeDlg()">${L('ยกเลิก','Cancel')}</button>
+    <button class="btn" style="background:#DC2626;border-color:#DC2626;color:#fff" onclick="pkVoidGo(${JSON.stringify(ids)})">🗑 ${L('ลบ','Delete')}</button></div>`);
+}
+async function pkVoidGo(ids){
+  const why=($('#pkDelWhy').value||'').trim();if(!why){$('#pkDelE').innerHTML=err(L('ใส่เหตุผล','Give a reason'));return;}
+  let r;try{r=await post('/api/fg/slips-void',{ids,note:why});}catch(e){$('#pkDelE').innerHTML=err(e);return;}
+  closeDlg();ids.forEach(i=>{delete SLSEL[i];});
+  if(r.refused.length)alert(L('ลบไม่ได้: ','Not deleted: ')+r.refused.join(', '));
+  await pkLoad();pkLive();
+}
+async function pkRevive(id){
+  const s=PKROWS.find(x=>x.id===id);if(!s)return;
+  if(!confirm(L(`กู้คืนใบพาเลท ${s.lot_no} #${s.pallet_no}? (เลขเดิม · ต้องสแกนตรวจใหม่)`,`Revive slip ${s.lot_no} #${s.pallet_no}? (same number · needs the packing check again)`)))return;
+  let r;try{r=await post(`/api/fg/slips/${id}/revive`,{});}catch(e){alert(e.message);return;}
+  await pkLoad();
+  if(confirm(L('กู้คืนแล้ว — พิมพ์ใบนี้เลยไหม?','Revived — print it now?')))printSlips([PKROWS.find(x=>x.id===id)||r.slip]);
+}
+/* b532 — shift packing report (form F-WI07-PRD03-01) as Excel: every slip the packing checker
+   passed in that shift, one sheet per lot. Production day = 08:00 → 08:00 next morning. */
+function shNow(){const h=new Date().getHours();return h>=8&&h<16?'m':h>=16?'a':'n';}
+function shDay(){const t=new Date();if(t.getHours()<8)t.setDate(t.getDate()-1);return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');}
+function shiftDlg(){
+  const S=[['m',L('กะเช้า','Morning'),'08:00 – 16:00'],['a',L('กะบ่าย','Afternoon'),'16:00 – 00:00'],['n',L('กะดึก','Night'),'00:00 – 08:00']],cur=shNow();
+  dlg(`<h2>📄 ${L('รายงานการบรรจุ ประจำกะ','Shift packing report')}</h2>
+   <p class="muted">${L('ใบพาเลทที่ผ่าน Checker แพคกิ้ง (สแกนแล้ว) ในกะนั้น · 1 แผ่นงานต่อ 1 ล็อต · เวลาเริ่ม = พิมพ์ใบ · หยุด = สแกนตรวจ','Pallet slips passed (scanned) by the packing checker in that shift · one sheet per lot · start = slip printed · stop = checker scan')}</p>
+   <label class="f">${L('วันที่ผลิต','Production date')}<input class="in" type="date" id="shD" value="${shDay()}"></label>
+   <div style="display:grid;gap:8px;margin-top:10px">${S.map(([k,t,h])=>`<label class="card" style="display:flex;gap:10px;align-items:center;padding:10px 12px;margin:0;cursor:pointer"><input type="radio" name="shS" value="${k}" ${k===cur?'checked':''} style="width:20px;height:20px"><b style="flex:1">${t}</b><span class="mono">${h}</span></label>`).join('')}</div>
+   <p class="muted" style="font-size:12.5px;margin-top:8px">${L('กะดึก = 00:00–08:00 ของเช้าวันถัดไป','Night = 00:00–08:00 of the next morning')}</p>
+   <div id="shE"></div>
+   <div class="btns" style="justify-content:flex-end;margin-top:12px"><button class="btn" onclick="closeDlg()">${L('ปิด','Close')}</button><button class="btn" onclick="shrPreview($('#shD').value,(document.querySelector('input[name=shS]:checked')||{}).value||'m')">👁 ${L('ดูตัวอย่าง','Preview')}</button><button class="btn" onclick="shrPrint($('#shD').value,(document.querySelector('input[name=shS]:checked')||{}).value||'m')">🖨 ${L('พิมพ์','Print')}</button><button class="btn pri" id="shGo" onclick="shiftGo()">⬇ ${L('ดาวน์โหลด Excel','Download Excel')}</button></div>`);
+}
+async function shiftGo(){
+  const d=$('#shD').value,k=(document.querySelector('input[name=shS]:checked')||{}).value||'m';$('#shGo').disabled=true;
+  try{const r=await fetch(`/api/fg/shift-report?d=${d}&shift=${k}`,{credentials:'same-origin'});
+    if(!r.ok){let m='HTTP '+r.status;try{const x=await r.json();m=(x.detail&&x.detail.msg)||m;}catch(e){}throw new Error(m);}
+    const b=await r.blob(),a=document.createElement('a');a.href=URL.createObjectURL(b);
+    a.download=`packing-${ME.factory_code||''}-${d}-${{m:'morning',a:'afternoon',n:'night'}[k]}.xlsx`;document.body.appendChild(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);closeDlg();
+  }catch(e){$('#shE').innerHTML=err(e);$('#shGo').disabled=false;}
+}
+/* b534 — every shift's packing report is filed by the server at the end of the shift
+   (+10 min for late scans) and kept here; it can be made again if something was scanned late. */
+let SHF={d1:'',d2:''};
+async function pgShRep(){
+  const SN={m:[L('กะเช้า','Morning'),'08:00–16:00'],a:[L('กะบ่าย','Afternoon'),'16:00–00:00'],n:[L('กะดึก','Night'),'00:00–08:00']};
+  $('#app').innerHTML=`<div class="ph" style="max-width:none"><h1>${L('รายงานการบรรจุ ประจำกะ','Shift packing reports')}</h1>
+   <p class="sub">${L('ระบบสร้างรายงานเองทุกสิ้นกะ (08:00 · 16:00 · 00:00 + 10 นาที) จากใบพาเลทที่ผ่าน Checker แพคกิ้ง · เก็บไว้ที่นี่','Made by the system at the end of every shift (08:00 · 16:00 · 00:00 + 10 min) from slips passed by the packing checker · kept here')}</p>
+   <div class="card" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+    <label class="f">${L('จาก','From')}<input class="in" type="date" id="shr1" value="${SHF.d1}"></label><label class="f">${L('ถึง','To')}<input class="in" type="date" id="shr2" value="${SHF.d2||today()}"></label>
+    <button class="btn" onclick="SHF.d1=$('#shr1').value;SHF.d2=$('#shr2').value;shrLoad()">${L('แสดง','Show')}</button><span style="flex:1"></span>
+    <button class="btn pri" id="shNowB" onclick="shrMakeNow()">📄 ${L('สร้างตอนนี้ (กะปัจจุบัน)','Make now (current shift)')}</button></div>
+   <div id="shrL"></div></div>`;
+  shrLoad();
+}
+async function shrLoad(){
+  const SN={m:[L('กะเช้า','Morning'),'08:00–16:00'],a:[L('กะบ่าย','Afternoon'),'16:00–00:00'],n:[L('กะดึก','Night'),'00:00–08:00']};
+  let d;try{d=await api(`/api/fg/shift-reports?d1=${SHF.d1||''}&d2=${SHF.d2||''}`);}catch(e){$('#shrL').innerHTML=err(e);return;}
+  if($('#shr1')&&!SHF.d1)$('#shr1').value=d.d1;
+  $('#shrL').innerHTML=`<div class="card" style="padding:0"><div class="tw" style="border:0"><table><thead><tr><th>${L('วันที่ผลิต','Production date')}</th><th>${L('กะ','Shift')}</th><th class="r">${L('ล็อต','Lots')}</th><th class="r">${L('พาเลท','Pallets')}</th><th class="r">${L('ถุง','Bags')}</th><th class="r">kg</th><th>${L('สร้างเมื่อ','Made')}</th><th></th></tr></thead><tbody>
+   ${d.rows.map(r=>`<tr><td class="nw"><b>${fmtD(r.d)}</b></td><td class="nw">${SN[r.shift][0]} <span class="muted mono">${SN[r.shift][1]}</span></td>
+     <td class="r"><button class="btn sm" title="${L('แยกรายงานตามล็อต','Report per lot')}" onclick="shrLots(this,'${r.d}','${r.shift}')">${r.lots} ▾</button></td><td class="r"><b>${r.pallets}</b></td><td class="r">${n0(r.bags)}</td><td class="r">${n0(r.kg)}</td>
+     <td class="nw muted" style="font-size:12.5px">${esc(fmtT(r.made_at||''))} · ${r.made_by==='auto'?'🤖 '+L('อัตโนมัติ','auto'):esc(r.made_by)}</td>
+     <td class="nw r"><button class="btn sm" onclick="shrPreview('${r.d}','${r.shift}')">👁 ${L('ดูตัวอย่าง','Preview')}</button> <button class="btn sm" onclick="shrPrint('${r.d}','${r.shift}')">🖨 ${L('พิมพ์','Print')}</button> <button class="btn sm pri" onclick="shrGet(${r.id})">⬇ Excel</button> <button class="btn sm" title="${L('สร้างใหม่ (มีสแกนเพิ่มหลังปิดกะ)','Make again (scans added after the shift)')}" onclick="shrRemake('${r.d}','${r.shift}')">↻</button></td></tr>`).join('')
+     ||`<tr><td colspan="8" class="muted" style="text-align:center;padding:26px">${L('ยังไม่มีรายงาน — ระบบจะสร้างเองเมื่อจบกะ','No reports yet — the system files one at the end of each shift')}</td></tr>`}</tbody></table></div></div>`;
+}
+/* b536 — print: a separate report for EACH lot (paper form รายงานการบรรจุอาหารสัตว์). Common data once at the
+   top of each page, one pallet per row, 20 rows a page — a lot with more pallets runs onto more pages. */
+/* b541 — before printing: "enter the packaging numbers?" Yes -> type them per lot, separated by ",";
+   each number goes into column 2 (ลักษณะบรรจุภัณฑ์), one row each. Kept on this PC for a re-print. */
+const SHPK=k=>{try{return localStorage.getItem('fg_shpk_'+k)||'';}catch(e){return '';}};
+async function shrPrint(d,sh,lot){
+  let r;try{r=await api(`/api/fg/shift-report-data?d=${d}&shift=${sh}&lot=${encodeURIComponent(lot||'')}`);}catch(e){alert(e.message);return;}
+  if(!r.lots.length){shrPrintGo(r,d,sh,lot,{});return;}   // (popup opened after the fetch — fine: short)
+  const key=o=>`${d}_${sh}_${o.lot_no}`;
+  dlg(`<h2>🖨 ${L('พิมพ์รายงานการบรรจุ','Print packing report')}</h2>
+   <p style="font-size:16px;margin:6px 0 10px"><b>${L('ต้องการใส่หมายเลขบรรจุภัณฑ์ (ลักษณะบรรจุภัณฑ์) ในรายงานไหม?','Do you want to enter the packaging numbers in the report?')}</b></p>
+   <div style="display:flex;gap:10px;margin-bottom:12px">
+    <label class="card" style="margin:0;padding:10px 14px;display:flex;gap:8px;align-items:center;cursor:pointer;flex:1"><input type="radio" name="shpY" value="0" onchange="$('#shpBox').style.display='none';$('#shpSave').style.display='none'" style="width:18px;height:18px"><b>${L('ไม่ — พิมพ์เลย','No — print as is')}</b></label>
+    <label class="card" style="margin:0;padding:10px 14px;display:flex;gap:8px;align-items:center;cursor:pointer;flex:1"><input type="radio" name="shpY" value="1" checked onchange="$('#shpBox').style.display='';$('#shpSave').style.display=''" style="width:18px;height:18px"><b>${L('ใช่ — ใส่หมายเลข','Yes — enter numbers')}</b></label></div>
+   <div id="shpBox"><p class="muted" style="margin:0 0 8px">${L('1 ช่อง = 1 แถว ในคอลัมน์ “ลักษณะบรรจุภัณฑ์” · สูงสุด 10 · ใส่จากซ้ายไปขวา ทีละแถว · Enter = ช่องถัดไป · บันทึกในระบบ (ทุกเครื่อง + Excel)','1 box = 1 row in the “ลักษณะบรรจุภัณฑ์ (packaging)” column · max 10 · fill left → right, row by row · Enter = next box · saved in the system (every PC + Excel)')}</p>
+    ${r.lots.map((o,i)=>{const v=(o.packs&&o.packs.length?o.packs:String(SHPK(key(o))||((o.common||{})[0]||{}).pk||'').split(',')).map(x=>String(x).trim()).filter(Boolean);
+      return `<div class="card" style="margin:0 0 10px;padding:10px 12px"><b class="mono">${esc(o.lot_no)}</b> · ${esc(o.product_code)} <span class="muted">(${o.pallets} ${L('พาเลท','pallets')})</span>
+      <div class="shpg" id="shp${i}">${Array.from({length:SHPMAX},(_,k)=>`<label><span>${k+1}</span><input class="in mono" value="${esc(v[k]||'')}" oninput="shpCnt(${i})" onkeydown="shpKey(event,this)"></label>`).join('')}</div>
+      <small class="muted" id="shpN${i}"></small></div>`;}).join('')}</div>
+   <div class="btns" style="justify-content:flex-end;margin-top:8px"><button class="btn" onclick="closeDlg()">${L('ยกเลิก','Cancel')}</button><button class="btn" id="shpPv">👁 ${L('ดูตัวอย่าง','Preview')}</button><button class="btn" id="shpSave" style="border-color:#16A34A;color:#166534">💾 ${L('บันทึก (ไม่พิมพ์)','Save (no print)')}</button><button class="btn pri" id="shpGo">🖨 ${L('พิมพ์','Print')}</button></div>`);
+  r.lots.forEach((o,i)=>shpCnt(i));
+  /* b550: save the numbers for this report without printing — the Excel and every PC get them */
+  $('#shpSave').onclick=async()=>{const b=$('#shpSave');b.disabled=true;
+    const lots=r.lots.map((o,i)=>({lot_no:o.lot_no,product_code:o.product_code,packs:shpVals(i).join(', ')}));
+    try{await post('/api/fg/shift-packs',{d,shift:sh,lots});}catch(e){b.disabled=false;alert(L('บันทึกไม่ได้: ','Could not save: ')+e.message);return;}
+    closeDlg();const t=document.createElement('div');t.textContent='✓ '+L('บันทึกหมายเลขแล้ว','Numbers saved');
+    t.style.cssText='position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#166534;color:#fff;padding:10px 18px;border-radius:10px;font-weight:700;z-index:200;box-shadow:0 6px 20px rgba(0,0,0,.2)';
+    document.body.appendChild(t);setTimeout(()=>t.remove(),2500);};
+  $('#shpPv').onclick=()=>{const y=(document.querySelector('input[name=shpY]:checked')||{}).value==='1',packs={};
+    r.lots.forEach((o,i)=>{if(y)packs[shpK(o)]=shpVals(i);else if(o.packs&&o.packs.length)packs[shpK(o)]=o.packs;});
+    shrPrintGo(r,d,sh,lot,packs,null,true);};
+  $('#shpGo').onclick=async()=>{const y=(document.querySelector('input[name=shpY]:checked')||{}).value==='1',packs={};
+    const w=window.open('','_blank');if(!w){alert(L('อนุญาต pop-up เพื่อพิมพ์','Allow pop-ups to print'));return;}
+    w.document.write('<p style="font-family:sans-serif">Preparing…</p>');
+    if(y){const lots=r.lots.map((o,i)=>{const a=shpVals(i);packs[shpK(o)]=a;return {lot_no:o.lot_no,product_code:o.product_code,packs:a.join(', ')};});
+      try{await post('/api/fg/shift-packs',{d,shift:sh,lots});}catch(e){alert(L('บันทึกหมายเลขไม่ได้: ','Could not save the numbers: ')+e.message);}}
+    else r.lots.forEach(o=>{if(o.packs&&o.packs.length)packs[shpK(o)]=o.packs;});
+    closeDlg();
+    const mode=await rfAsk(d,sh,lot);                       // b552: already has a PDF? ask
+    if(mode===null){try{w.close();}catch(e){}return;}
+    shrPrintGo(r,d,sh,lot,packs,w);rfMake(d,sh,lot,mode);};
+}
+/* ════════ b552 — PDF files on the server + a copy in a folder on this PC ════════
+   Print makes a PDF on the server for each lot that has real packaging numbers typed (not only
+   the packaging type the form fills in). If that report already has a PDF the user chooses:
+   replace · keep both · print only. The PDF is then copied to this PC's folder (when one is
+   chosen on the Report files page — Chrome / Edge only). */
+async function rfAsk(d,sh,lot){
+  let c;try{c=await api(`/api/fg/report-files/check?d=${d}&shift=${sh}&lot=${encodeURIComponent(lot||'')}`);}catch(e){return 'keep';}
+  const ex=(c.lots||[]).filter(o=>o.real&&o.existing&&o.existing.length);
+  if(!ex.length)return 'keep';
+  return new Promise(res=>{
+    dlg(`<h2>⚠ ${L('รายงานนี้มีไฟล์ PDF แล้ว','This report already has a PDF')}</h2>
+     ${ex.map(o=>`<div style="margin:6px 0"><b class="mono">${esc(o.lot_no)}</b> · ${esc(o.product_code)}<div class="muted" style="font-size:12.5px">${L('ล่าสุด','last')} ${fmtT(o.existing[0].made_at)} · ${esc(o.existing[0].made_by)} · ${esc(o.existing[0].name)}${o.existing.length>1?` (+${o.existing.length-1})`:''}</div></div>`).join('')}
+     <div style="display:grid;gap:8px;margin:12px 0">${[['replace',L('แทนที่ไฟล์เดิม','Replace the old file'),L('เก็บเฉพาะ PDF ใหม่','keep only the new PDF')],
+       ['keep',L('เก็บทั้งสองไฟล์','Keep both'),L('ไฟล์ใหม่มีเวลาในชื่อ','the new file has the time in its name')],
+       ['none',L('พิมพ์อย่างเดียว ไม่สร้างไฟล์','Print only, no new file'),'']].map(([v,t,h],i)=>`<label class="card" style="margin:0;padding:10px 12px;display:flex;gap:10px;align-items:center;cursor:pointer"><input type="radio" name="rfM" value="${v}" ${i===0?'checked':''} style="width:18px;height:18px"><span><b>${t}</b>${h?`<br><small class="muted">${h}</small>`:''}</span></label>`).join('')}</div>
+     <div class="btns" style="justify-content:flex-end"><button class="btn" id="rfNo">${L('ยกเลิก','Cancel')}</button><button class="btn pri" id="rfOk">🖨 ${L('พิมพ์','Print')}</button></div>`);
+    $('#rfNo').onclick=()=>{closeDlg();res(null);};
+    $('#rfOk').onclick=()=>{const v=(document.querySelector('input[name=rfM]:checked')||{}).value||'keep';closeDlg();res(v);};
+  });
+}
+async function rfMake(d,sh,lot,mode){
+  if(mode==='none')return;
+  let r;try{r=await post('/api/fg/report-pdf',{d,shift:sh,lot:lot||'',mode});}catch(e){toastFG('⚠ PDF: '+e.message,1);return;}
+  const ok=(r.files||[]).filter(f=>f.id);
+  if(ok.length){toastFG('📄 '+L('บันทึก PDF ในเซิร์ฟเวอร์แล้ว','PDF saved on the server')+` (${ok.length})`);for(const f of ok)await lfWrite(f.id,f.name);}
+}
+function toastFG(msg,bad){const t=document.createElement('div');t.textContent=msg;
+  t.style.cssText=`position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:${bad?'#B91C1C':'#166534'};color:#fff;padding:10px 18px;border-radius:10px;font-weight:700;z-index:300;box-shadow:0 6px 20px rgba(0,0,0,.2)`;
+  document.body.appendChild(t);setTimeout(()=>t.remove(),3500);}
+/* this PC's folder: the handle is kept in IndexedDB (Chrome / Edge). Writing needs the browser's
+   permission — asked once with a click; after a browser restart one more click may be needed. */
+const LF={h:null,ok:false};
+function lfDb(){return new Promise((res,rej)=>{const q=indexedDB.open('fg_lf',1);q.onupgradeneeded=()=>q.result.createObjectStore('kv');q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error);});}
+async function lfKv(k,v){const db=await lfDb();return new Promise((res,rej)=>{const t=db.transaction('kv',v===undefined?'readonly':'readwrite'),st=t.objectStore('kv');
+  const q=v===undefined?st.get(k):st.put(v,k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error);});}
+async function lfLoad(){try{if(!window.showDirectoryPicker)return;LF.h=await lfKv('dir')||null;LF.ok=!!(LF.h&&await LF.h.queryPermission({mode:'readwrite'})==='granted');}catch(e){LF.h=null;LF.ok=false;}}
+async function lfPick(){try{const h=await window.showDirectoryPicker({mode:'readwrite',id:'fgreports'});await lfKv('dir',h);LF.h=h;LF.ok=true;await lfSync(true);}catch(e){}if(PAGE==='rfiles')rfLoad();}
+async function lfAllow(){try{if(LF.h&&await LF.h.requestPermission({mode:'readwrite'})==='granted'){LF.ok=true;await lfSync(true);}}catch(e){}if(PAGE==='rfiles')rfLoad();}
+async function lfWrite(id,name){
+  if(!LF.ok||!LF.h)return false;
+  try{try{await LF.h.getFileHandle(name);return true;}catch(e){}                     // already there
+    const r=await fetch('/api/fg/report-files/'+id+'?dl=1',{credentials:'same-origin'});if(!r.ok)return false;
+    const fh=await LF.h.getFileHandle(name,{create:true}),w=await fh.createWritable();await w.write(await r.blob());await w.close();return true;}
+  catch(e){return false;}}
+/* catch up: every PDF made on the server in the last 3 days (shift end, finish lot, other PCs)
+   that is not in this PC's folder yet is copied in */
+async function lfSync(say){
+  if(!LF.ok)return 0;let r;try{r=await api('/api/fg/report-files?kind=pdf&d1='+ymd(new Date(Date.now()-3*864e5)));}catch(e){return 0;}
+  let n=0;for(const f of r.rows||[]){try{await LF.h.getFileHandle(f.name);}catch(e){if(await lfWrite(f.id,f.name))n++;}}
+  if(say)toastFG(`📁 ${L('คัดลอกลงเครื่องนี้','copied to this PC')}: ${n}`);return n;}
+setTimeout(async()=>{await lfLoad();if(LF.ok)lfSync();setInterval(()=>{if(LF.ok&&!document.hidden)lfSync();},10*60*1000);},4000);
+
+/* ════════ b552 — Report files page: every PDF / Excel the server kept ════════ */
+const RFF={d1:'',d2:'',kind:'',how:'',q:''};
+async function pgRFiles(){
+  if(!RFF.d1)RFF.d1=ymd(new Date(Date.now()-7*864e5));
+  await lfLoad();
+  const ch=(k,v,t)=>`<button class="btn sm" style="${RFF[k]===v?'background:#0F172A;color:#fff;border-color:#0F172A':''}" onclick="RFF.${k}='${v}';pgRFiles()">${t}</button>`;
+  const lf=!window.showDirectoryPicker?`<span class="muted">${L('เบราว์เซอร์นี้บันทึกลงโฟลเดอร์ไม่ได้ (ใช้ Chrome / Edge)','This browser cannot save to a folder (use Chrome / Edge)')}</span>`
+    :LF.h?`📁 <b>${esc(LF.h.name)}</b> ${LF.ok?`<span class="pill" style="background:#DCFCE7;color:#166534">${L('พร้อม','ready')}</span> <button class="btn sm" onclick="lfSync(true).then(()=>rfLoad())">⟳ ${L('คัดลอกตอนนี้','Copy now')}</button>`
+      :`<button class="btn sm pri" onclick="lfAllow()">${L('อนุญาตให้บันทึก','Allow saving')}</button>`} <button class="btn sm" onclick="lfPick()">${L('เปลี่ยนโฟลเดอร์','Change folder')}</button>`
+    :`<button class="btn sm pri" onclick="lfPick()">📁 ${L('เลือกโฟลเดอร์ในเครื่องนี้','Choose a folder on this PC')}</button>`;
+  $('#app').innerHTML=`<div class="ph" style="max-width:none"><h1>${L('ไฟล์รายงาน','Report files')}</h1>
+   <p class="sub">${L('PDF / Excel ที่เซิร์ฟเวอร์เก็บไว้ — จากการพิมพ์ จบล็อต และสิ้นกะ','PDF / Excel kept on the server — from Print, Finish lot and shift end')}</p>
+   <div class="card" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+    <label class="f">${L('จาก','From')}<input class="in" type="date" id="rf1" value="${RFF.d1}" onchange="RFF.d1=this.value;rfLoad()"></label>
+    <label class="f">${L('ถึง','To')}<input class="in" type="date" id="rf2" value="${RFF.d2||today()}" onchange="RFF.d2=this.value;rfLoad()"></label>
+    <div class="f">${L('ประเภท','Type')}<div style="display:flex;gap:6px">${ch('kind','',L('ทั้งหมด','All'))}${ch('kind','pdf','PDF')}${ch('kind','xlsx','Excel')}</div></div>
+    <div class="f">${L('ทำโดย','Made by')}<div style="display:flex;gap:6px">${ch('how','',L('ทั้งหมด','All'))}${ch('how','print','🖨 '+L('พิมพ์','Print'))}${ch('how','finish','🏁 '+L('จบล็อต','Finish lot'))}${ch('how','shift','⏰ '+L('สิ้นกะ','Shift end'))}</div></div>
+    <label class="f" style="flex:1;min-width:160px">${L('ค้นหา','Search')}<input class="in" id="rfQ" value="${esc(RFF.q)}" placeholder="lot / FG code" oninput="RFF.q=this.value;clearTimeout(window._rfT);window._rfT=setTimeout(rfLoad,300)"></label></div>
+   <div class="card" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span>${L('สำเนาในเครื่องนี้','Copy on this PC')}:</span>${lf}</div>
+   <div id="rfBody">${LOADH}</div></div>`;
+  rfLoad();
+}
+async function rfLoad(){
+  const B=$('#rfBody');if(!B)return;
+  let r;try{r=await api(`/api/fg/report-files?d1=${RFF.d1}&d2=${RFF.d2||today()}&kind=${RFF.kind}&how=${RFF.how}&q=${encodeURIComponent(RFF.q)}`);}catch(e){B.innerHTML=err(e);return;}
+  const SN={m:L('เช้า','morning'),a:L('บ่าย','afternoon'),n:L('ดึก','night')},HW={print:'🖨 '+L('พิมพ์','Print'),finish:'🏁 '+L('จบล็อต','Finish lot'),shift:'⏰ '+L('สิ้นกะ','Shift end')};
+  B.innerHTML=(r.pdf_ok?'':`<div class="msg m-warn">${L('เซิร์ฟเวอร์ไม่มี Edge / Chrome — ยังสร้าง PDF ไม่ได้','No Edge / Chrome on the server PC — PDFs cannot be made yet')}</div>`)+
+   `<div class="tw"><table><thead><tr><th>${L('วันที่ผลิต / กะ','Date / shift')}</th><th>Lot No.</th><th>${L('รหัส FG','FG code')}</th><th>${L('ไฟล์','File')}</th><th>${L('ทำโดย','Made by')}</th><th>${L('เวลา','Time')}</th><th></th></tr></thead><tbody>
+   ${(r.rows||[]).map(f=>`<tr><td class="nw">${fmtD(f.d)} · ${SN[f.shift]||f.shift}</td><td class="mono nw"><b>${esc(f.lot_no)}</b></td><td class="mono">${esc(f.product_code)}</td>
+     <td><span class="pill" style="${f.kind==='pdf'?'background:#FEE2E2;color:#B91C1C':'background:#DCFCE7;color:#166534'}">${f.kind==='pdf'?'PDF':'Excel'}</span> <span class="muted" style="font-size:12px">${esc(f.name)}</span></td>
+     <td class="nw">${HW[f.how]||esc(f.how)}<div class="muted" style="font-size:12px">${esc(f.made_by)}</div></td><td class="nw">${fmtT(f.made_at)}</td>
+     <td class="nw r">${f.kind==='pdf'?`<a class="btn sm pri" href="/api/fg/report-files/${f.id}" target="_blank">👁 ${L('เปิด','Open')}</a> `:''}<a class="btn sm" href="/api/fg/report-files/${f.id}?dl=1">⬇</a></td></tr>`).join('')
+     ||`<tr><td colspan="7" class="muted" style="padding:20px;text-align:center">${L('ยังไม่มีไฟล์ในช่วงนี้','No files in this period')}</td></tr>`}</tbody></table></div>`;
+}
+
+/* b549: 10 boxes (2 × 5) instead of one comma box — box 1 → row 1 … box 10 → row 10. Kept as
+   before in the database (comma list), so the Excel and other PCs read the same numbers. */
+const SHPMAX=10;
+const shpK=o=>o.lot_no+'|'+(o.product_code||'');   // b549: one lot no. can carry 2 FG codes — each keeps its own numbers
+function shpVals(i){const g=$('#shp'+i);if(!g)return [];   // empty boxes are skipped: numbers go to rows 1, 2, 3 … in order
+  return [...g.querySelectorAll('input')].map(x=>x.value.replace(/,/g,' ').trim()).filter(Boolean);}
+function shpKey(e,el){if(e.key!=='Enter')return;e.preventDefault();const all=[...document.querySelectorAll('.shpg input')],k=all.indexOf(el);if(all[k+1])all[k+1].focus();}
+function shpCnt(i){const n=$('#shpN'+i);if(!n)return;const k=shpVals(i).length;
+  n.textContent=k?`${k} ${L('หมายเลข → แถว 1','number(s) → rows 1')}–${k}`:'';}
+/* b551: preview = the same report on screen, no print dialog. A bar on top (not printed) has
+   Print + Update now; while it stays open it updates itself every 30 minutes with the slips
+   passed so far. */
+async function shrPreview(d,sh,lot,w){
+  w=w||window.open('','_blank');if(!w){alert(L('อนุญาต pop-up เพื่อดูตัวอย่าง','Allow pop-ups to preview'));return;}
+  let r;try{r=await api(`/api/fg/shift-report-data?d=${d}&shift=${sh}&lot=${encodeURIComponent(lot||'')}`);}catch(e){w.close();alert(e.message);return;}
+  const packs={};r.lots.forEach(o=>{if(o.packs&&o.packs.length)packs[shpK(o)]=o.packs;});
+  shrPrintGo(r,d,sh,lot,packs,w,true);
+}
+function shrPrintGo(r,d,sh,lot,packs,w,pv){
+  w=w||window.open('','_blank');if(!w){alert(L('อนุญาต pop-up เพื่อพิมพ์','Allow pop-ups to print'));return;}
+  const lg={BFL:'/logo.png?v=2',FP:'/fac_fp.png?v=2',PC:'/fac_pc.png?v=2'}[r.fcode]||'/logo.png?v=2';
+  /* b538 layout = form F-WI07-PRD03-01: product / code / lot / date / shift on top; packaging, kg/bag,
+     storage, machine once on row 1; pallet no. + bags on every row; no MFG / EXP; fills A4 landscape */
+  const pg=(o,items,pno,pc)=>{let tr='';
+    const pk=packs&&packs[shpK(o)];
+    for(let i=0;i<o.rows_per_page;i++){const c=(o.common||{})[i]||{},x=items[i],no=(pno-1)*o.rows_per_page+i+1,pv=pk?(pk[no-1]||''):(c.pk||'');
+      tr+=`<tr><td>${no}</td><td class="l">${esc(pv)}</td><td class="tk">${x?'✓':''}</td><td>${c.kg?n0(c.kg):''}</td><td></td>
+       <td>${x?esc(x.pallet_no)+((x.lot_run||1)>1?' (R'+x.lot_run+')':''):''}</td><td>${x?n0(x.qty):''}</td><td>${x?esc(x.t_start||''):''}</td><td>${x?esc(x.t_stop||''):''}</td><td>${esc(c.st||'')}</td><td class="rm">${esc([c.rm,(o.notes||{})[no-1]].filter(Boolean).join(' · '))}</td></tr>`;}
+    const last=pno===pc;
+    return `<section><div class="h"><img src="${location.origin+lg}"><div class="t"><b>${esc(r.company)}</b><b>รายงานการบรรจุอาหารสัตว์</b></div>
+      <div class="hr"><div>${esc(r.form||'')}</div><div>${pc>1?`หน้า ${pno}/${pc}`:''}</div></div></div>
+     <div class="hd"><div></div><div class="mid"><div><span class="k">ชื่ออาหาร</span> <b>${esc(o.product_name||'')}</b></div><div><span class="k">รหัสสูตรอาหาร</span> <b class="code">${esc(o.product_code||'')}</b></div></div>
+      <div class="rt"><div><span class="k">Lot No.</span> <b class="lot">${esc(o.lot_no||'')}</b></div><div><span class="k">วันที่</span> <b>${r.date}</b> &nbsp; <span class="k">กะ</span> <b>${r.h1}-${r.h2}</b></div></div></div>
+     <table class="g"><colgroup><col style="width:4%"><col style="width:30%"><col style="width:8%"><col style="width:7%"><col style="width:5%"><col style="width:6%"><col style="width:7%"><col style="width:6%"><col style="width:6%"><col style="width:7%"><col></colgroup>
+      <thead><tr><th rowspan="2">ลำดับที่</th><th rowspan="2">ลักษณะบรรจุภัณฑ์</th><th rowspan="2">ตรวจสอบความสะอาด<br>ก่อนบรรจุ</th><th rowspan="2">น้ำหนัก/ถุง<br>(กิโลกรัม)</th><th rowspan="2">ถังบรรจุ</th><th rowspan="2">พาเลทที่</th><th rowspan="2">จำนวนถุง<br>/พาเลท</th><th colspan="2">เวลาบรรจุ</th><th rowspan="2">สถานที่จัดเก็บ</th><th rowspan="2">หมายเหตุ</th></tr><tr><th>เริ่ม</th><th>หยุด</th></tr></thead><tbody>${tr}</tbody></table>
+     <div class="ft"><span>หมายเหตุ : / สะอาด &nbsp; x ไม่สะอาด &nbsp; ⊗ แก้ไขแล้ว ตรวจซ้ำสะอาด</span>
+      <span class="tot"><span>จำนวนถุงรวม <b>${last?n0(o.bags||0):'ต่อหน้าถัดไป'}</b> ${last?'ถุง':''}</span><span>ยอดบรรจุรวม <b>${last?n0(o.kg):'ต่อหน้าถัดไป'}</b> ${last?'Kg.':''}</span></span></div>
+     <div class="sg"><div>(........................................)<br>หัวหน้าหน่วยงานบรรจุ</div><div>(........................................)<br>ผู้ตรวจสอบ</div></div></section>`;};
+  const empty={rows_per_page:20,common:{0:{pk:'— ไม่มีพาเลทที่ผ่าน Checker ในกะนี้ —'}},pages:[[]],kg:0,product_name:'',product_code:'',lot_no:''};
+  const body=(r.lots.length?r.lots:[empty]).map(o=>o.pages.map((it,i)=>pg(o,it,i+1,o.pages.length)).join('')).join('');
+  w.document.open();
+  const now=new Date().toTimeString().slice(0,5),args=JSON.stringify([d,sh,lot||'']);
+  const pvBar=pv?`<div class="pvb"><b>👁 ตัวอย่าง (preview)</b><span>ข้อมูลถึง (data till) ${now} · อัปเดตเองทุก 30 นาที (updates every 30 min)</span><span style="flex:1"></span>
+    <button onclick="upd()">⟳ อัปเดตตอนนี้ (update now)</button><button class="p" onclick="window.print()">🖨 พิมพ์ (print)</button></div>`:'';
+  const pvJs=pv?`function upd(){try{if(window.opener&&window.opener.shrPreview){window.opener.shrPreview.apply(null,${args}.concat([window]));return;}}catch(e){}location.reload();}
+    setTimeout(upd,30*60*1000);`:`window.onload=function(){setTimeout(function(){window.print()},300)}`;
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${pv?'Preview':'Packing report'} ${d} ${r.shift_en}${lot?' '+lot:''}</title><style>
+   @page{size:A4 landscape;margin:8mm 9mm}body{font-family:'Sarabun','Tahoma',sans-serif;margin:0;color:#000}
+   section{height:193mm;display:flex;flex-direction:column;page-break-after:always;overflow:hidden}section:last-child{page-break-after:auto}
+   .h{display:flex;align-items:center;gap:10px}.h img{height:19mm;width:46mm;object-fit:contain;object-position:left}.h .t{flex:1;text-align:center}.h .t b{display:block;font-size:15pt;line-height:1.35}
+   .h .hr{width:46mm;text-align:right;font-size:9.5pt;align-self:flex-start;display:flex;flex-direction:column;gap:4mm}
+   table{border-collapse:collapse;width:100%}
+   .hd{display:grid;grid-template-columns:27% 46% 27%;align-items:center;margin:2mm 0 1.5mm;font-size:11.5pt}.hd .mid{text-align:center;line-height:1.55}
+   .hd .rt{line-height:1.55;white-space:nowrap;text-align:right;font-size:10.5pt}.hd .rt b{font-size:11.5pt}.hd .rt .lot{font-size:13.5pt}.hd .k{font-weight:700;margin-right:2mm}.hd b{font-size:12.5pt}.hd .lot,.hd .code{font-size:14pt}.g td.tk{font-size:13pt;font-weight:700}
+   .g{table-layout:fixed}.g th,.g td{border:1px solid #000;text-align:center;font-size:11pt;line-height:1.1;padding:0 3px;white-space:nowrap;overflow:hidden}
+   .g td.l{text-align:left}.g td.rm{font-size:8pt;text-align:left;white-space:normal;line-height:1.05;color:#B91C1C}.g th{font-size:10.5pt;font-weight:700;white-space:normal;line-height:1.2;padding:1mm 2px}.g thead tr:first-child th{border-top:2px solid #000}
+   .g tbody td{height:5.3mm}
+   .ft{display:flex;gap:16px;align-items:center;justify-content:space-between;font-size:10pt;margin-top:2mm}.tot{border:2px solid #000;font-size:12pt;display:flex}.tot>span{padding:1mm 16px}.tot>span+span{border-left:2px solid #000}.tot b{margin:0 12px}
+   .sg{display:flex;justify-content:space-around;text-align:center;font-size:11pt;margin-top:auto;padding-top:5mm;line-height:1.5}
+   .pvb{position:sticky;top:0;z-index:5;display:flex;gap:12px;align-items:center;background:#1E293B;color:#fff;padding:8px 14px;font-size:13px;font-family:sans-serif}
+   .pvb button{border:0;border-radius:6px;padding:7px 14px;font-weight:700;cursor:pointer;background:#fff;color:#0F172A}.pvb .p{background:#F97316;color:#fff}
+   @media screen{body{background:#CBD5E1}section{background:#fff;width:277mm;margin:10px auto;padding:6mm;box-shadow:0 2px 10px rgba(0,0,0,.2)}}
+   @media print{.pvb{display:none}}
+  </style></head><body>${pvBar}${body}<script>${pvJs}<\/script></body></html>`);
+  w.document.close();
+}
+/* lots inside a shift — each lot is its own report (print / Excel) */
+async function shrLots(btn,d,sh){
+  const tr=btn.closest('tr'),nx=tr.nextElementSibling;
+  if(nx&&nx.classList.contains('shlots')){nx.remove();return;}
+  let r;try{r=await api(`/api/fg/shift-report-data?d=${d}&shift=${sh}`);}catch(e){alert(e.message);return;}
+  const row=document.createElement('tr');row.className='shlots';
+  row.innerHTML=`<td colspan="8" style="background:#F8FAFC;padding:6px 14px">${r.lots.map(o=>`<div style="display:flex;gap:10px;align-items:center;padding:5px 0;border-bottom:1px dashed var(--line)">
+     <b class="mono" style="min-width:130px">${esc(o.lot_no)}</b><span style="flex:1"><b>${esc(o.product_code)}</b> · ${esc(o.product_name)}</span>
+     <span class="nw">${o.pallets} ${L('พาเลท','pallets')} · ${n0(o.bags)} ${L('ถุง','bags')} · ${n0(o.kg)} kg${o.pages.length>1?` · ${o.pages.length} ${L('หน้า','pages')}`:''}</span>
+     <button class="btn sm" onclick="shrPreview('${d}','${sh}',${esc(JSON.stringify(o.lot_no))})">👁 ${L('ดูตัวอย่าง','Preview')}</button>
+     <button class="btn sm" onclick="shrPrint('${d}','${sh}',${esc(JSON.stringify(o.lot_no))})">🖨 ${L('พิมพ์','Print')}</button>
+     <button class="btn sm" onclick="shrLotX('${d}','${sh}',${esc(JSON.stringify(o.lot_no))})">⬇ Excel</button></div>`).join('')||`<span class="muted">${L('ไม่มีล็อตในกะนี้','No lots in this shift')}</span>`}</td>`;
+  tr.after(row);
+}
+async function shrLotX(d,sh,lot){
+  try{const r=await fetch(`/api/fg/shift-report?d=${d}&shift=${sh}&lot=${encodeURIComponent(lot)}`,{credentials:'same-origin'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const cd=r.headers.get('Content-Disposition')||'',fn=(cd.match(/filename="([^"]+)"/)||[])[1]||'packing.xlsx';
+    const b=await r.blob(),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=fn;document.body.appendChild(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);}catch(e){alert(e.message||e);}
+}
+async function shrGet(id){
+  try{const r=await fetch(`/api/fg/shift-reports/${id}/file`,{credentials:'same-origin'});
+    if(!r.ok){let m='HTTP '+r.status;try{const x=await r.json();m=(x.detail&&x.detail.msg)||m;}catch(e){}throw new Error(m);}
+    const cd=r.headers.get('Content-Disposition')||'',fn=(cd.match(/filename="([^"]+)"/)||[])[1]||'shift-report.xlsx';
+    const b=await r.blob(),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=fn;document.body.appendChild(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);
+  }catch(e){alert(e.message||e);}
+}
+/* b555 — "Make now": file the report of the shift running now (so far), straight into the list below.
+   The end-of-shift run still replaces it with the full shift. */
+async function shrMakeNow(){
+  const d=shDay(),sh=shNow(),N={m:L('กะเช้า','Morning'),a:L('กะบ่าย','Afternoon'),n:L('กะดึก','Night')}[sh],b=$('#shNowB');
+  if(!confirm(L(`สร้างรายงาน ${N} วันที่ผลิต ${fmtD(d)} ตอนนี้? (ข้อมูลถึงเวลานี้)`,`Make the ${N} report for production day ${fmtD(d)} now? (data up to now)`)))return;
+  if(b)b.disabled=true;
+  try{await post('/api/fg/shift-reports/remake',{d,shift:sh});}catch(e){alert(e.message);if(b)b.disabled=false;return;}
+  if(b)b.disabled=false;if(SHF.d2&&SHF.d2<d){SHF.d2=d;if($('#shr2'))$('#shr2').value=d;}await shrLoad();
+}
+async function shrRemake(d,sh){
+  if(!confirm(L('สร้างรายงานกะนี้ใหม่ ด้วยข้อมูลล่าสุด?','Make this shift report again with the latest data?')))return;
+  try{await post('/api/fg/shift-reports/remake',{d,shift:sh});}catch(e){alert(e.message);return;}shrLoad();
+}
+function pkHardDlg(ids){
+  ids=(ids||[]).filter(Boolean);if(!ids.length){alert(L('เลือกใบพาเลทก่อน','Select slips first'));return;}
+  const rows=PKROWS.filter(s=>ids.includes(s.id)),bad=rows.filter(s=>s.status==='moved_to_fg');
+  dlg(`<h2 style="color:#B91C1C">🗑 ${L('ลบใบพาเลท','Delete pallet slips')} (${rows.length})</h2>
+   <p class="muted">${L('ลบถาวร ใช้สำหรับใบทดสอบหรือทำผิด — ใบที่ FG รับแล้วลบไม่ได้ ระบบจะบันทึกว่าใครลบและเหตุผล','Permanent — for test slips or mistakes. Slips FG has received cannot be deleted. Who deleted and why is logged.')}</p>
+   <div class="card" style="max-height:200px;overflow:auto;font-size:13px">${rows.map(s=>`<div style="padding:2px 0;${s.status==='moved_to_fg'?'color:#94A3B8;text-decoration:line-through':''}"><b class="mono">${esc(s.lot_no)} #${esc(s.pallet_no)}</b> · ${esc(s.product_code)} · ${n0(s.qty)} ${L('ถุง','bags')}${s.status==='moved_to_fg'?' — '+L('FG รับแล้ว','received by FG'):''}</div>`).join('')}</div>
+   ${bad.length?`<p style="color:#B45309;font-size:13px">${bad.length} ${L('ใบที่ FG รับแล้วจะไม่ถูกลบ','received slip(s) will be skipped')}</p>`:''}
+   <label class="f">${L('เหตุผล','Reason')} *<input class="in" id="pkDelWhy" value="${L('ใบทดสอบ','Test slip')}"></label>
+   <div id="pkDelE"></div>
+   <div class="btns" style="justify-content:flex-end;margin-top:12px"><button class="btn" onclick="closeDlg()">${L('ยกเลิก','Cancel')}</button>
+    <button class="btn" style="background:#DC2626;border-color:#DC2626;color:#fff" onclick="pkDelGo(${JSON.stringify(ids)})">${L('ลบถาวร','Delete permanently')}</button></div>`);
+}
+async function pkDelGo(ids){
+  const why=($('#pkDelWhy').value||'').trim();if(!why){$('#pkDelE').innerHTML=err(L('ใส่เหตุผล','Give a reason'));return;}
+  let r;try{r=await post('/api/fg/slips-delete',{ids,note:why});}catch(e){$('#pkDelE').innerHTML=err(e);return;}
+  closeDlg();ids.forEach(i=>{delete SLSEL[i];});PKPV=-1;
+  alert(L('ลบแล้ว ','Deleted ')+r.deleted.length+L(' ใบ',' slip(s)')+(r.refused.length?'\n'+L('ลบไม่ได้: ','Not deleted: ')+r.refused.join(', '):''));
+  await pkLoad();pkLive();
+}
 function pkMenu(ev,id){
   ev.stopPropagation();const o=$('#pkM');if(o)o.remove();
   const s=PKROWS.find(x=>x.id===id);if(!s)return;
   const m=document.createElement('div');m.id='pkM';m.className='pmenu';
   m.innerHTML=`<button onclick="pkCopy(${id})">${L('คัดลอกไปทำใบใหม่','Copy to a new slip')}</button>`+(s.status==='packed'||s.status==='rejected_by_fg'?`<button onclick="slEdit(${id})">${L('แก้ไข','Edit')}</button>`:'')
-    +`<button onclick="logDlg('packing',${id},${esc(JSON.stringify(s.lot_no+' #'+s.pallet_no))})">${L('ประวัติขั้นตอน','Audit trail')}</button>`;
+    +`<button onclick="logDlg('packing',${id},${esc(JSON.stringify(s.lot_no+' #'+s.pallet_no))})">${L('ประวัติขั้นตอน','Audit trail')}</button>`
+    +(pkCanDel()&&(s.status==='packed'||s.status==='rejected_by_fg')?`<button style="color:#DC2626" onclick="pkDelDlg([${id}])">🗑 ${L('ลบใบพาเลท','Delete slip')}</button>`:'')
+    +(pkCanDel()&&s.status==='cancelled'?`<button style="color:#15803D;font-weight:700" onclick="pkRevive(${id})">↺ ${L('กู้คืน แล้วพิมพ์ใหม่','Revive & print again')}</button>`:'')
+    +(pkIsAdm()&&s.status!=='moved_to_fg'?`<button style="color:#7F1D1D" onclick="pkHardDlg([${id}])">⛔ ${L('ลบถาวร (admin)','Delete permanently (admin)')}</button>`:'');
   document.body.appendChild(m);const r=ev.currentTarget.getBoundingClientRect();m.style.top=(r.bottom+4)+'px';m.style.left=Math.max(8,r.right-180)+'px';
   setTimeout(()=>document.addEventListener('click',()=>{const x=$('#pkM');if(x)x.remove();},{once:true}),0);
 }
+/* b554: a filter chip (packing machine / status) redraws the register without moving the page —
+   the list keeps its height while it is redrawn, so a shorter list does not pull the page up */
+function pkDrawKeep(){const y=window.scrollY,el=$('#pkList'),tw=el&&el.querySelector('.tw'),ty=tw?tw.scrollTop:0;
+  if(el)el.style.minHeight=el.offsetHeight+'px';pkDraw();
+  const t2=el&&el.querySelector('.tw');if(t2)t2.scrollTop=ty;window.scrollTo(0,y);requestAnimationFrame(()=>window.scrollTo(0,y));}
 function pkDraw(){
   const stf=PKF.st,multi=stf==='fgrej'||PKF.all||PKF.d1!==PKF.d2;
-  const live=PKROWS.filter(s=>s.status!=='cancelled'),n=k=>live.filter(s=>s.status==='packed'&&s.pc_status===k).length;
-  PKVIEW=PKROWS.filter(s=>(!stf||stf==='fgrej'||(s.status==='packed'&&s.pc_status===stf)));SLIPS=PKVIEW;
+  /* b548 — packing-machine filter (Pack 1 … Pack 8, from FG › Machines & lines; there is no Pack 5).
+     It works together with the status chips below and the totals above follow it. */
+  const mcOf=s=>(s.pack_machine||'').trim(),mcOk=s=>!PKF.mc||mcOf(s)===PKF.mc;
+  const mcs=[...new Set([...(LISTS.machine||[]),...PKROWS.map(mcOf).filter(Boolean)])]
+    .sort((a,b)=>(parseInt((a.match(/\d+/)||[99])[0])-parseInt((b.match(/\d+/)||[99])[0]))||a.localeCompare(b));
+  if(PKF.mc&&!mcs.includes(PKF.mc))PKF.mc='';
+  const mrows=PKROWS.filter(s=>s.status!=='cancelled'&&!ACC(s)&&(!stf||stf==='fgrej'||(s.status==='packed'&&s.pc_status===stf)));
+  const mchip=(k,t,ttl,cnt)=>`<button class="pchip ${PKF.mc===k?'on':''}" title="${esc(ttl)}" onclick="PKF.mc=${JSON.stringify(k).replace(/"/g,'&quot;')};pkDrawKeep()">${esc(t)}${cnt!=null?` <b>${cnt}</b>`:''}</button>`;
+  const MC=$('#pkMc');if(MC)MC.innerHTML=mchip('',L('ทุกเครื่องแพค','All machines'),L('ทุกเครื่องแพค','All packing machines'),mrows.length)
+    +mcs.map(m=>mchip(m,(m.split(' - ')[0]||m).trim(),m,mrows.filter(s=>mcOf(s)===m).length)).join('');
+  const live=PKROWS.filter(s=>s.status!=='cancelled'&&!ACC(s)&&mcOk(s)),n=k=>live.filter(s=>s.status==='packed'&&s.pc_status===k).length;   // b515: Access lines not counted
+  PKVIEW=PKROWS.filter(s=>mcOk(s)&&(!stf||stf==='fgrej'||(s.status==='packed'&&s.pc_status===stf)));SLIPS=PKVIEW;
   if(PKPV>=PKVIEW.length)PKPV=-1;
   const bags=live.reduce((a,s)=>a+s.qty,0),kg=live.reduce((a,s)=>a+(s.total_weight||0),0);
   const st=(lab,val,sub,ico,col,bg,cur)=>`<div class="pks ${cur?'cur':''}"><span class="i" style="background:${bg};color:${col}"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">${ico}</svg></span><div><small>${lab}</small><b style="color:${col}">${val}</b>${sub?`<em>${sub}</em>`:''}</div></div>`;
-  $('#pkStats').innerHTML=st(L('รอตรวจ','Pending'),n('pending'),'',ICO.pend,PKC.orange,'#FFF7ED',1)+st(L('อนุมัติ','Accepted'),n('approved'),'',ICO.ok,PKC.green,'#F0FDF4')
-    +st(L('จำนวนใบ','Total slips'),live.length,n('rejected')?`${n('rejected')} ${L('ไม่ผ่าน','rejected')}`:'',ICO.doc,PKC.blue,'#E8F1FA')+st(L('จำนวนถุง','Total bags'),n0(bags),kgT(kg),ICO.bag,PKC.dblue,'#EEF2F6');
+  // b548: each status shows "of all slips" (139 / 244); the Total-slips card became Rejected
+  const of=k=>`${n(k)}<span style="font-size:15px;font-weight:500;color:#94A3B8"> / ${live.length}</span>`;
+  const XI='<circle cx="12" cy="12" r="10" fill="currentColor"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>';
+  $('#pkStats').innerHTML=st(L('รอตรวจ','Pending'),of('pending'),'',ICO.pend,PKC.orange,'#FFF7ED',1)+st(L('อนุมัติ','Accepted'),of('approved'),'',ICO.ok,PKC.green,'#F0FDF4')
+    +st(L('ไม่ผ่าน','Rejected'),of('rejected'),'',XI,PKC.red,'#FEF2F2')
+    +st(L('จำนวนถุง','Total bags'),n0(bags),kgT(kg),ICO.bag,PKC.dblue,'#EEF2F6');
   $('#pkListT').textContent=stf==='fgrej'?L('FG ไม่รับ — ต้องแก้ไข (ทุกวัน)','Rejected by FG — to fix (all dates)'):L('ทะเบียนใบพาเลท · ','Pallet slip register · ')+(PKF.all?L('ทุกวัน','all dates'):PKF.d1===PKF.d2?fmtD(PKF.d1):fmtD(PKF.d1)+' – '+fmtD(PKF.d2))+(PKF.q?` · “${PKF.q}”`:'')+(PKROWS.length>=3000?` · ${L('แสดง 3,000 ใบล่าสุด','newest 3,000 shown')}`:'');
-  const chip=(k,t,c,cnt)=>`<button class="pchip ${c||''} ${stf===k?'on':''}" onclick="PKF.st='${k}';${k==='fgrej'||stf==='fgrej'?'pkLoad()':'pkDraw()'}">${t}${cnt!=null?` <b>${cnt}</b>`:''}</button>`;
+  const chip=(k,t,c,cnt)=>`<button class="pchip ${c||''} ${stf===k?'on':''}" onclick="PKF.st='${k}';${k==='fgrej'||stf==='fgrej'?'pkLoad()':'pkDrawKeep()'}">${t}${cnt!=null?` <b>${cnt}</b>`:''}</button>`;
   $('#pkChips').innerHTML=chip('',L('ทั้งหมด','All slips'))+chip('pending',L('รอตรวจ','Pending'),'c-p')+chip('approved',L('อนุมัติ','Accepted'),'c-a')+chip('rejected',L('ไม่ผ่าน','Rejected'),'c-r')
     +chip('fgrej',L('FG ไม่รับ','Rejected by FG'),'c-r',PKCNT.fg_rejected||0);
   xTable($('#pkList'),'slips',[XC('pallet_no','#',{num:1,fmt:s=>`<b>${esc(s.pallet_no)}</b>`}),
@@ -1482,17 +2160,17 @@ function pkDraw(){
    XC('product_code',L('สินค้า','Product'),{val:pVal,fmt:s=>`<div class="nm" style="font-weight:600">${esc(s.product_code)}</div><div class="muted nm" title="${esc(s.product_name)}">${esc(s.product_name)}</div>`}),
    XC('lot_no','Lot No.',{cls:'mono nw'}),XC('qty',L('ถุง','Bags'),{r:1,num:1,fmt:s=>n0(s.qty)}),XC('total_weight','kg',{r:1,num:1,fmt:s=>n0(s.total_weight)}),
    XC('pd_line',L('ไลน์ / เครื่อง','Line / M/C'),{val:s=>(s.pd_line||'')+' · '+(s.pack_machine||''),fmt:s=>`${esc(s.pd_line)}<div class="muted">${esc(s.pack_machine)}</div>`,cls:'nw'}),
-   XC('st',L('สถานะ','Status'),{val:s=>s.status==='packed'?({pending:L('รอตรวจ','Pending check'),approved:L('อนุมัติ','Accepted'),rejected:L('ไม่ผ่าน','Rejected')}[s.pc_status]||s.pc_status):L(...(STL[s.status]||[s.status,s.status])),fmt:s=>s.status==='packed'?pcPill(s.pc_status):stPill(s.status),cls:'nw'}),
+   XC('st',L('สถานะ','Status'),{val:s=>s.status==='packed'?({pending:L('รอตรวจ','Pending check'),approved:L('อนุมัติ','Accepted'),rejected:L('ไม่ผ่าน','Rejected')}[s.pc_status]||s.pc_status):L(...(STL[s.status]||[s.status,s.status])),fmt:s=>(s.status==='packed'?pcPill(s.pc_status):s.status==='cancelled'?`<span class="pill" style="background:#E5E7EB;color:#374151">🗑 ${L('ลบแล้ว','Deleted')}</span>${s.note?`<div class="muted" style="font-size:11.5px;white-space:normal;max-width:220px">${esc(s.note.replace(/^ลบแล้ว \(Deleted\): /,''))} · ${esc(s.status_by||'')}</div>`:''}`:stPill(s.status))+(ACC(s)?'<div style="margin-top:3px">'+accTag()+'</div>':''),cls:'nw'}),
    XC('_a',L('จัดการ','Action'),{nf:1,cls:'nw',fmt:s=>`<button class="ibtn" title="${L('ดู A6','View A6')}" aria-label="View" onclick="slipPreview(${s.id})">${PKI('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>')}</button>
-     <button class="ibtn" title="${L('พิมพ์','Print')}" aria-label="Print" onclick="printSlips([PKROWS.find(x=>x.id===${s.id})])">${PKI('<path d="M6 9V3h12v6M6 18H4v-7h16v7h-2"/><rect x="6" y="14" width="12" height="7"/>')}</button>
+     ${ACC(s)?'':`<button class="ibtn" title="${L('พิมพ์','Print')}" aria-label="Print" onclick="printSlips([PKROWS.find(x=>x.id===${s.id})])">${PKI('<path d="M6 9V3h12v6M6 18H4v-7h16v7h-2"/><rect x="6" y="14" width="12" height="7"/>')}</button>`}
      <button class="ibtn" title="${L('เพิ่มเติม','More')}" aria-label="More" onclick="pkMenu(event,${s.id})">${PKI('<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>')}</button>`})],
-   PKVIEW,{select:SLSEL,pageSize:10,onRow:s=>{PKPV=PKVIEW.indexOf(s);pkPvDraw();},
+   PKVIEW,{select:SLSEL,pageSize:10,rowCls:s=>s.status==='cancelled'?'pkdel':'',onRow:s=>{PKPV=PKVIEW.indexOf(s);pkPvDraw();},
    empty:`<div style="font-weight:600;margin-bottom:4px;color:#0F172A">${L('ยังไม่มีใบพาเลท','No slips yet')}</div><div class="muted">${stf==='fgrej'?L('ไม่มีใบที่ FG ไม่รับ','Nothing rejected by FG'):L('กรอกฟอร์มด้านบนแล้วกด “บันทึกใบพาเลท”','Fill in the form above and press “Save slip”')}</div>`,
    after:()=>{const n=PKROWS.filter(s=>SLSEL[s.id]).length;$('#pkPrSel').disabled=!n;$('#pkPrSel').textContent=L('พิมพ์ที่เลือก','Print selected')+(n?` (${n})`:'');}});
   pkPvDraw();
 }
 function pkCopy(id){const s=PKROWS.find(x=>x.id===id);if(!s)return;
-  Object.assign(LAST,{doc_no:s.doc_no,product_code:s.product_code,lot_no:s.lot_no,pd_line:s.pd_line,pack_machine:s.pack_machine,qty:s.qty,bag_weight:s.bag_weight,pack_type:s.pack_type,mfg:s.mfg,exp:s.exp,staff_name:s.staff_name});pgSlip();window.scrollTo(0,0);}
+  Object.assign(LAST,{doc_no:s.doc_no,product_code:s.product_code,lot_no:s.lot_no,pd_line:s.pd_line,pack_machine:s.pack_machine,qty:s.qty,bag_weight:s.bag_weight,pack_type:s.pack_type,mfg:s.mfg,exp:s.exp,exp_sfx:s.exp_sfx||'',exp_fmt:s.exp_fmt||'',staff_name:s.staff_name});pgSlip();window.scrollTo(0,0);}
 function pkSaveDlg(){
   const v=slipVals('sf'),bad=slipCheck(v);if(bad){$('#sfMsg').innerHTML=err(bad);return;}$('#sfMsg').innerHTML='';
   dlg(`<h2>${L('ต้องการสร้างใบพาเลทกี่ใบ?','How many slips to make?')}</h2>
@@ -1513,7 +2191,9 @@ async function pkSave(){
   const pm=(PRODS||[]).find(p=>p.code===v.product_code);
   if(pm&&pm.weight&&Math.abs(bagKg(v.bag_weight)-pm.weight)>0.001&&!confirm(L(`น้ำหนักต่อถุง ${n0(bagKg(v.bag_weight))} kg ไม่ตรงกับข้อมูลสินค้า (${n0(pm.weight)} kg) — บันทึกต่อ?`,`Bag weight ${n0(bagKg(v.bag_weight))} kg differs from the product master (${n0(pm.weight)} kg) — save anyway?`)))return;
   v.copies=Math.max(1,Math.min(50,+$('#pkN').value||1));const pr=$('#pkPr').checked;$('#pkGo').disabled=true;
-  let d;try{d=await post('/api/fg/slips',v);}catch(e){$('#pkE').innerHTML=err(e);$('#pkGo').disabled=false;return;}
+  let d;try{d=await post('/api/fg/slips',v);}catch(e){
+    if(String(e.message||e).includes('lot_closed')){closeDlg();PKASKED='';pkLive();return;}
+    $('#pkE').innerHTML=err(e);$('#pkGo').disabled=false;return;}
   closeDlg();
   try{localStorage.setItem('fg_slip_last',JSON.stringify(Object.assign({},v,{qty:v.bags})));}catch(e){}
   Object.assign(LAST,v,{qty:v.bags});SLIPLAST=d.slips;
@@ -1532,36 +2212,38 @@ async function qrSvgStr(text){
   return `<svg viewBox="0 0 ${n+2*m} ${n+2*m}" shape-rendering="crispEdges" style="width:100%;height:100%;display:block"><rect width="100%" height="100%" fill="#fff"/><path d="${p}" fill="#000"/></svg>`;
 }
 const A6CSS=`@page{size:148mm 105mm;margin:0}*{box-sizing:border-box}body{margin:0;font-family:"Sarabun",Tahoma,sans-serif;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.a6{position:relative;width:148mm;height:105mm;padding:4mm 5mm;display:flex;flex-direction:column;gap:2mm;page-break-after:always;overflow:hidden;background:#fff}
+.a6{position:relative;width:148mm;height:105mm;padding:4mm 5mm 6mm;display:flex;flex-direction:column;gap:2mm;page-break-after:always;overflow:hidden;background:#fff}
 .a6:last-child{page-break-after:auto}
-.a6 .hd{display:flex;align-items:stretch;gap:3mm;border-bottom:.6mm solid #000;padding-bottom:1.5mm}
-.a6 .tt{flex:1}.a6 .tt b{font-size:15pt;display:block;line-height:1.1}.a6 .tt span{font-size:8pt}
+.a6 .hd{display:flex;align-items:center;gap:3mm;background:none;border:0;border-radius:0;margin:0;border-bottom:.6mm solid #000;padding:0 0 1.5mm}
+.a6 .lg{width:22mm;flex:none;display:flex;align-items:center}.a6 .lg img{height:15mm;width:auto;display:block}
+.a6 .tt{flex:1;text-align:center}.a6 .tt b{font-size:15pt;display:block;line-height:1.1}.a6 .tt span{font-size:8pt}
+.a6 .no{flex:none;width:30mm;box-sizing:border-box;align-self:stretch;display:flex;flex-direction:column;justify-content:center}
 .a6 .no{border:.6mm solid #000;border-radius:2mm;min-width:30mm;text-align:center;padding:0 2mm}.a6 .no small{font-size:7pt;display:block}.a6 .no b{font-size:24pt;line-height:1}
 .a6 .bd{flex:1;display:flex;gap:3mm;min-height:0}
-.a6 table{border-collapse:collapse;width:100%;height:100%;font-size:10pt}.a6 td{border:.25mm solid #000;padding:.8mm 1.8mm;vertical-align:middle}
+.a6 table{border-collapse:collapse;width:100%;height:100%;font-size:10pt;table-layout:fixed}.a6 td.v{word-break:break-word;overflow:hidden}.a6 td{border:.25mm solid #000;padding:.8mm 1.8mm;vertical-align:middle}
 .a6 td.l{width:25mm;font-size:7.5pt;line-height:1.1;background:#eee}.a6 td.v{font-weight:700}
-.a6 .big{font-size:14pt}.a6 .sm{font-size:8.5pt}.a6 .nm{font-size:10pt;line-height:1.15}
+.a6 .big{font-size:14pt}.a6 .sm{font-size:8.5pt}.a6 .nm{font-size:10pt;line-height:1.15;display:block;max-height:8.2mm;overflow:hidden}.a6 .nm.nm2{font-size:8pt;max-height:9.8mm}
 .a6 .qr{width:46mm;flex:none;display:flex;flex-direction:column;align-items:center;gap:1mm}.a6 .qr .q{width:46mm;height:46mm}
 .a6 .qr .c{font-size:9pt;font-weight:700;text-align:center;line-height:1.15}.a6 .qr .s{font-size:6.5pt;text-align:center}
-.a6 .ft{display:flex;gap:3mm;font-size:7pt}.a6 .ft div{flex:1;border-top:.25mm dotted #000;padding-top:.6mm;text-align:center}`;
+.a6 .ft{display:flex;gap:3mm;font-size:7pt}.a6 .ft div{flex:1;border-top:.25mm dotted #000;padding-top:.6mm;text-align:center}.a6 .ft .dc{flex:none;font-size:7.5pt;align-self:flex-end;white-space:nowrap}`;
 async function slipHtml(s,copy){
   const q=await qrSvgStr(s.qr);
   const dt=s.packed_at||'',row=(th,en,v,cls)=>`<tr><td class="l">${th}<br>${en}</td><td class="v ${cls||''}">${v}</td></tr>`;
-  return `<div class="a6"><div class="hd"><div class="tt"><b>ใบพาเลท · PALLET SLIP</b><span>${copy>1?`<b style="border:1.5px solid #000;padding:0 4px;margin-right:4px">REPRINT · COPY ${copy}</b>`:''}FG ${esc(ME.factory_code)} · ${esc(s.pack_type||'')} · ${fmtD(dt.slice(0,10))} ${esc(dt.slice(11,16))}</span></div>
-    <div class="no"><small>Pallet / Slip No.</small><b>${esc(s.pallet_no)}</b></div></div>
+  const lg={BFL:'/logo.png?v=2',FP:'/fac_fp.png?v=2',PC:'/fac_pc.png?v=2'}[ME.factory_code]||'/logo.png?v=2';
+  return `<div class="a6"><div class="hd"><div class="lg"><img src="${location.origin+lg}" alt="Bluefalo" style="${ME.factory_code==='PC'?'height:17mm;margin:0 0 0 -2.4mm':ME.factory_code==='FP'?'margin-left:-1mm':''}"></div><div class="tt"><b>ใบพาเลท · PALLET SLIP</b><span>${copy>1?`<b style="border:1.5px solid #000;padding:0 4px;margin-right:4px">REPRINT · COPY ${copy}</b>`:''}FG ${esc(ME.factory_code)} · ${esc(s.pack_type||'')} · ${fmtD(dt.slice(0,10))} ${esc(dt.slice(11,16))}</span></div>
+    <div class="no"><small>Pallet / Slip No.</small><b>${esc(s.pallet_no)}</b>${(s.lot_run||1)>1?`<small style="font-weight:700">รอบ RUN ${s.lot_run}</small>`:''}</div></div>
    <div class="bd"><div style="flex:1;min-width:0"><table>
     ${row('เบอร์อาหาร','Formula code',esc(s.product_code))}
-    ${row('ชื่อสินค้า','Formula name',`<span class="nm">${esc(s.product_name)}</span>`)}
+    ${row('ชื่อสินค้า','Formula name',`<span class="nm${(s.product_name||'').length>42?' nm2':''}">${esc(s.product_name)}</span>`)}
     ${row('ล็อต','Lot No.',esc(s.lot_no),'big')}
-    ${row('วันผลิต / หมดอายุ','MFG / EXP',`${fmtD(s.mfg)} → ${fmtD(s.exp)}`)}
+    ${row('วันผลิต / หมดอายุ','MFG / EXP',`${fmtD(s.mfg)} → ${esc(expTxt(s))}`)}
     ${row('จำนวนถุง','Bags × kg/bag',`${n0(s.qty)} ${esc(s.unit||'')} × ${esc(s.bag_weight||n0(s.weight_unit))} kg`)}
     ${row('น้ำหนักรวม','Total weight',`${n0(s.total_weight||s.qty*s.weight_unit)} kg`,'big')}
     ${row('เครื่องแพค / ไลน์','Pack M/c / line',`${esc(s.pack_machine||'-')} · ${esc(s.pd_line||'-')}`,'sm')}
     ${row('ผู้แพค','Staff name',esc(s.staff_name||s.operator||'-'))}
    </table></div>
-   <div class="qr"><div class="q">${q}</div><div class="c">${esc(s.lot_no)} · #${esc(s.pallet_no)}</div><div class="s">${esc(s.product_code)} · ID ${s.id}</div></div></div>
-   <div class="ft"><div>Checker แพคกิ้ง / Packing checker</div><div>ผู้รับ FG / FG receiver</div></div>
-   <div style="position:absolute;right:3mm;bottom:1mm;font-size:7.5pt;color:#000">${esc(ME.slip_form_code||'')}</div></div>`;
+   <div class="qr"><div class="q">${q}</div><div class="c">${esc(s.lot_no)} · #${esc(s.pallet_no)}${(s.lot_run||1)>1?' · R'+s.lot_run:''}</div><div class="s">${esc(s.product_code)} · <b style="font-size:8pt;letter-spacing:.3px">${esc(s.code||s.scode||'')}</b></div></div></div>
+   <div class="ft"><div>Checker แพคกิ้ง / Packing checker</div><div>ผู้รับ FG / FG receiver</div><b class="dc">${esc(ME.slip_form_code||'')}</b></div></div>`;
 }
 /* b497 — every print goes through a confirm step. A slip that was printed before is a REPRINT:
    red warning (printed N× · last by · when), a reason is required, and the copy is marked on the slip. */
@@ -1569,7 +2251,10 @@ let PRQ=null;
 const PRWHY=()=>[['jam',L('กระดาษติด / พิมพ์ไม่ออก','Printer jam / bad print')],['damaged',L('ใบพาเลทชำรุด / เปื้อน','Slip damaged / dirty')],
   ['lost',L('ใบพาเลทหาย','Slip lost')],['fixed',L('แก้ไขข้อมูลแล้ว','Data was corrected')],['other',L('อื่นๆ','Other')]];
 async function printSlips(list){
-  list=(list||[]).filter(Boolean);if(!list.length)return;
+  list=(list||[]).filter(Boolean);
+  const acc=list.filter(s=>s.src==='access');   // b515
+  if(acc.length){list=list.filter(s=>s.src!=='access');alert(L(`${acc.length} ใบมาจากข้อมูล Access (ไม่ใช่พาเลทจริง) — ไม่พิมพ์`,`${acc.length} slip(s) come from the old Access data (not real pallets) — not printed`));}
+  if(!list.length)return;
   let pr=[];
   if(can('pack')){try{pr=(await post('/api/fg/slips-print-check',{ids:list.map(s=>s.id)})).printed||[];}catch(e){}}
   const PM={};pr.forEach(p=>PM[p.id]=p);PRQ={list,PM};
@@ -1648,7 +2333,7 @@ function slEdit(id){
   const s=SLIPS.find(x=>x.id===id);
   dlg(`<h2>${L('แก้ไขใบพาเลท','Edit slip')} ${esc(s.lot_no)} #${esc(s.pallet_no)}</h2><p class="muted">${L('แก้แล้วต้องผ่าน Checker แพคกิ้งใหม่ และพิมพ์ใบใหม่ติดแทน','After editing it goes back to the packing checker — print the new slip and replace the old one')}</p>
    ${slipForm(s,'se')}<div id="seE"></div><div class="btns" style="justify-content:flex-end;margin-top:12px"><button class="btn" onclick="closeDlg()">${L('ยกเลิก','Cancel')}</button><button class="btn pri" onclick="slEditSave(${id})">${L('บันทึก + พิมพ์','Save + print')}</button></div>`);
-  ta($('#sePc'),taProd);slipTot('se');
+  ta($('#sePc'),taProd);slipTot('se');expBTag('se');
 }
 async function slEditSave(id){
   const v=slipVals('se'),bad=slipCheck(v);if(bad){$('#seE').innerHTML=err(bad);return;}
@@ -1696,73 +2381,299 @@ async function pcAct(action){
 /* ════════ b497 Packing checker: scan the printed slip → verify → approve. PC = USB scanner, phone = camera ════════ */
 let PSMODE=(()=>{try{const v=localStorage.getItem('fg_scan_mode');if(v)return v;}catch(e){}return matchMedia('(pointer:fine)').matches?'usb':'camera';})();
 let PS=null,PSLAST='';
+/* b523 — PC with several USB scanners (one per packing line) + phone camera.
+   The scan box keeps the focus all the time, every scan joins the list under it (newest on
+   top), and the checker approves from the list — one by one or all at once. The list is
+   this device's own: a phone signed in with the same login keeps its own list, and both
+   act on the same slips on the server (whoever approves first wins; the other is told). */
+/* b526 — the list comes from the SERVER (every scan is logged there), so every PC, phone and
+   admin sees the same history, for any day. PSL keeps only this device's failed scans and
+   lot-number look-ups (they are not scans of a real slip). */
+let PSL=(()=>{try{const x=JSON.parse(localStorage.getItem('fg_ps_list')||'{}');return x.d===today()?(x.rows||[]).filter(r=>!r.slip||r.look):[];}catch(e){return [];}})();
+let PSSRV=[],PSOTH=[],PSD=today(),PSTMR=null,PSLD=0,PSOOPEN=false;
+async function psLoad(flash){
+  const seq=++PSLD;let d;try{d=await api('/api/fg/scans?d='+PSD);}catch(e){return;}
+  if(seq!==PSLD)return;
+  PSSRV=(d.rows||[]).map(r=>({slip:r.slip,at:Date.parse(r.at.replace(' ','T')),n:r.n,by:r.by,users:r.users,via:r.via,srv:1}));
+  PSOTH=d.other||[];
+  psDrawList(flash);
+}
+function psTick(){clearInterval(PSTMR);PSTMR=setInterval(()=>{if(PAGE!=='pscan'){clearInterval(PSTMR);return;}
+  if(PSD===today()&&!$('#dlg')&&!document.hidden)psLoad();},20000);}   // b5xx: was 5 s — this one page was most of the Cloudflare daily quota
+// b5xx: coming back to the screen catches up at once, so the slower timer is not felt
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&typeof PAGE!=='undefined'&&PAGE==='pscan'&&PSD===today())try{psLoad();}catch(e){}});
+function psDay(v){PSD=v||today();psLoad();psFocus();}
+let PSSEL={};
+function psSave(){try{localStorage.setItem('fg_ps_list',JSON.stringify({d:today(),rows:PSL.slice(0,300)}));}catch(e){}}
+const PSPHONE=()=>!matchMedia('(pointer:fine)').matches;
 function pgPScan(){
   PS=null;
-  $('#app').innerHTML=`<div class="ph" style="max-width:820px"><h1>${L('สแกนตรวจใบพาเลท','Scan & verify pallet slip')}</h1>
-   <p class="sub">${L('สแกน QR บนใบพาเลทที่พิมพ์แล้ว ตรวจกับพาเลทจริง แล้วอนุมัติ — FG รับได้เฉพาะใบที่อนุมัติ','Scan the QR on the printed slip, check it against the real pallet, then approve — FG can only receive approved slips')}</p>
-   <div class="tabs" style="margin-bottom:6px"><button class="tab ${PSMODE==='usb'?'on':''}" onclick="psMode('usb')">⌨ ${L('เครื่องสแกน USB (PC)','USB scanner (PC)')}</button>
-    <button class="tab ${PSMODE==='camera'?'on':''}" onclick="psMode('camera')">📷 ${L('กล้อง (มือถือ)','Camera (phone)')}</button></div>
-   <div id="psIn"></div><div id="psLast">${PSLAST}</div><div id="psBody"></div></div>`;
-  psIn();
+  $('#app').innerHTML=`<div class="ph" style="max-width:1400px"><h1>${L('สแกนตรวจใบพาเลท','Scan & verify pallet slips')}</h1>
+   <p class="sub">${L('สแกน QR บนใบพาเลทที่ติดบนพาเลทแล้ว = อนุมัติทันที · สแกนซ้ำจะมีเสียงเตือนจนกว่าจะกดรับทราบ','Scanning the QR on the slip stuck to the pallet = approved at once · a slip scanned twice sounds an alarm until it is reset')}</p>
+   <div class="psbar">
+    ${PSPHONE()?'':`<div class="usbw" id="usbw" onclick="psFocus()" style="flex:1;margin:0;padding:10px 14px"><div class="st" style="margin-bottom:6px"><i></i><span id="usbst"></span></div>
+     <div class="psbox"><input id="psUsb" oninput="psTyping(this)" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${L('ยิง QR ที่นี่ หรือพิมพ์เลขล็อต แล้วกด Enter','Scan a QR here, or type a lot number + Enter')}"
+      onfocus="psSt()" onblur="psSt();setTimeout(psFocus,400)" onkeydown="if(event.key==='Enter'||event.key==='Tab'){event.preventDefault();const v=this.value;this.value='';if(v.trim()){psMsg('wait');psGot(v,'usb');}else psMsg('');}"><div class="psmsg" id="psMsg"></div></div></div>`}
+    <button class="btn pscam" onclick="openScan(L('สแกน QR ใบพาเลท','Scan pallet slip QR'),psCam)">📷<span>${L('สแกนด้วยกล้อง','Scan with camera')}</span></button>
+   </div>
+   <div id="psList"></div></div>`;
+  psSt();psFocus();psDrawList();psLoad();psTick();psQBar();if(PSQ.length)psQTry(500);
 }
-function psMode(m){PSMODE=m;try{localStorage.setItem('fg_scan_mode',m)}catch(e){}pgPScan();}
-function psIn(){
-  const B=$('#psIn');if(!B)return;
-  if(PSMODE==='camera'){B.innerHTML=scanBox(L('สแกน QR ใบพาเลท','Scan pallet slip QR'),'psCam','#B45309');return;}
-  B.innerHTML=`<div class="usbw" id="usbw" onclick="psFocus()"><div class="st"><i></i><span id="usbst"></span></div>
-    <input id="psUsb" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${L('ยิง QR ด้วยเครื่องสแกน USB ที่นี่','Scan the QR with the USB scanner here')}"
-     onfocus="psSt()" onblur="psSt();setTimeout(psFocus,400)" onkeydown="if(event.key==='Enter'||event.key==='Tab'){event.preventDefault();const v=this.value;this.value='';if(v.trim())psGot(v,'usb')}"></div>`;
-  psFocus();psSt();
-}
+function psMode(){pgPScan();}
+function psIn(){}
 function psCam(v){psGot(v,'camera');}
 function psSt(){const w=$('#usbw'),s=$('#usbst');if(!w||!s)return;const on=document.activeElement===$('#psUsb');w.classList.toggle('on',on);
-  s.textContent=on?L('พร้อม — รอสแกน','Ready — waiting for scan'):L('คลิกที่นี่ก่อนสแกน','Click here before scanning');}
-function psFocus(){if(PAGE!=='pscan'||PSMODE!=='usb'||$('#dlg'))return;const a=document.activeElement;
+  s.textContent=on?L('พร้อม — รอสแกน (เครื่องสแกนทุกเครื่องยิงเข้าช่องนี้)','Ready — waiting for scans (every scanner types into this box)'):L('คลิกที่นี่ก่อนสแกน','Click here before scanning');}
+function psFocus(){if(PAGE!=='pscan'||$('#dlg')||$('#scan'))return;const a=document.activeElement;
   if(a&&a!==document.body&&a.id!=='psUsb'&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;const i=$('#psUsb');if(i)i.focus();}
 let PSVIA='usb';
+/* b524 — scanning the slip on the pallet approves it (the paper is already stuck on). A slip
+   scanned a second time — here or on any other PC / phone — sounds an alarm that keeps going
+   until somebody presses Reset. */
 async function psGot(text,via){
-  PSVIA=via||PSMODE;
-  const B=$('#psBody');B.innerHTML=`<div class="card">${L('กำลังค้นหา…','Looking up…')}</div>`;
-  try{PS=await post('/api/fg/slips-scan',{text,via:PSVIA});}
-  catch(e){B.innerHTML=err(e);if(navigator.vibrate)try{navigator.vibrate([60,60,60])}catch(x){};psFocus();return;}
-  psDraw();psFocus();
+  PSVIA=via||'usb';const t=(text||'').trim();
+  try{
+    const d=await post('/api/fg/slips-scan',{text:t,via:PSVIA,approve:true});
+    psAdd(d.slip,(d.prints||[]).length,d.dup);
+    psMsg(d.dup?'dup':'ok',`${esc(d.slip.lot_no)} #${esc(d.slip.pallet_no)}`);
+    if(d.dup)psAlarm(d.slip);else psBeep(true);
+  }catch(e){
+    if(e.status===401)return;                 // b545: the sign-in panel is already up
+    if(psNetErr(e)&&t){psQAdd(t,PSVIA);psFocus();return;}   // b552: no connection — kept here, sent later
+    if(e.status===409&&e.detail&&e.detail.block){psBlock(e.detail.block,e.detail.slip);return;}   // b553: interlock
+    if(!t.startsWith('{')&&t.length>=4){
+      try{const r=await api(`/api/fg/slips?all=1&q=${encodeURIComponent(t)}&limit=60`);
+        const rows=(r.rows||[]).filter(s=>s.status==='packed'||s.status==='cancelled');
+        if(rows.length){rows.forEach(s=>psAdd(s,s.print_count||0,false,true));psMsg('');psBeep(true);psFocus();return;}}catch(x){}
+    }
+    let bad=false;if(t.startsWith('{')){try{JSON.parse(t);}catch(x){bad=true;}}
+    PSL.unshift({err:bad?L('อ่าน QR ไม่ครบ / สแกน 2 เครื่องพร้อมกัน — สแกนใหม่','QR not read completely (or two scanners at once) — scan again'):(e.message||L('ไม่พบ','not found')),raw:t.slice(0,80),at:Date.now()});
+    psSave();psDrawList();psBeep(false);psMsg('bad');
+  }
+  psFocus();
 }
-function psDraw(){
-  const s=PS.slip,pr=PS.prints||[],n=s.print_count||0,B=$('#psBody');
-  const can_act=s.status==='packed'&&(s.pc_status==='pending'||s.pc_status==='rejected');
-  let banner='';
-  if(s.status==='cancelled')banner=`<div class="msg m-bad">${L('ใบนี้ถูกยกเลิกแล้ว — ห้ามใช้','This slip is CANCELLED — do not use it')}</div>`;
-  else if(s.status!=='packed')banner=`<div class="msg m-info">${esc(L(...(STL[s.status]||[s.status,s.status])))} — ${L('ไม่ต้องตรวจ','nothing to check')}</div>`;
-  else if(s.pc_status==='approved')banner=`<div class="msg m-ok">✓ ${L('อนุมัติแล้วโดย','Already approved by')} ${esc(s.pc_by)} · ${fmtT(s.pc_at)}</div>`;
-  else if(s.pc_status==='rejected')banner=`<div class="msg m-warn">${L('เคยไม่อนุมัติ:','Rejected before:')} ${esc(s.pc_note||'')} (${esc(s.pc_by)})</div>`;
-  const v=(l,x,c)=>`<div class="${c||''}"><small>${l}</small><b>${x}</b></div>`;
-  const pcc={pending:'background:#FEF3C7;color:#92400E',approved:'background:#DCFCE7;color:#166534',rejected:'background:#FEE2E2;color:#991B1B'}[s.pc_status]||'background:#EEF2F6';
-  B.innerHTML=`<div class="card" style="border:2px solid ${can_act?'#F59E0B':'var(--line)'}">
-    <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap"><span class="mono" style="font-size:22px;font-weight:700">${esc(s.lot_no)} · #${esc(s.pallet_no)}</span>
-     <span class="pill" style="${pcc}">${esc(L(...(PCL[s.pc_status]||[s.pc_status,s.pc_status])))}</span></div>
-    ${banner}
-    ${n>1?`<div class="msg m-bad">⚠️ ${L('ใบนี้พิมพ์แล้ว','This slip was printed')} ${n} ${L('ครั้ง — ตรวจว่ามีใบพาเลทใบเดียวบนพาเลท','times — make sure only ONE slip is on the pallet')}
-      <div style="font-weight:400;font-size:13px;margin-top:4px">${pr.filter(p=>p.reprint).map(p=>`${L('ฉบับ','Copy')} ${p.copy_no}: ${esc(p.user_name)} · ${fmtT(p.printed_at)} · ${esc(p.reason||'')}`).join('<br>')}</div></div>`:''}
-    ${n===0&&s.status==='packed'?`<div class="msg m-warn">${L('ระบบไม่มีบันทึกการพิมพ์ใบนี้','No print recorded for this slip')}</div>`:''}
-    <div class="vgrid">
-     ${v(L('เบอร์อาหาร','Formula code'),esc(s.product_code),'big')}${v(L('ชื่อสินค้า','Formula name'),esc(s.product_name))}
-     ${v(L('จำนวนถุง','Bags'),n0(s.qty)+' '+esc(s.unit||''),'big')}${v(L('กก./ถุง · น้ำหนักรวม','kg/bag · total'),esc(s.bag_weight||n0(s.weight_unit))+' · '+n0(s.total_weight)+' kg')}
-     ${v('MFG → EXP',fmtD(s.mfg)+' → '+fmtD(s.exp))}${v(L('เครื่องแพค / ไลน์','Machine / line'),esc(s.pack_machine||'-')+' · '+esc(s.pd_line||'-'))}
-     ${v(L('ผู้แพค','Staff'),esc(s.staff_name||'-'))}${v(L('เวลาแพค / พิมพ์','Packed / printed'),fmtT(s.packed_at)+' · '+n+'×')}</div>
-    ${can_act?`<div style="display:flex;gap:10px;margin-top:6px"><button class="btn bad big" style="flex:1" onclick="psAct('reject')">${L('ไม่อนุมัติ','Reject')}</button>
-      <button class="btn ok big" style="flex:2" onclick="psAct('approve')">✓ ${L('ถูกต้อง — อนุมัติ → ส่ง FG','Correct — approve → to FG')}</button></div>`:''}
-    <details style="margin-top:10px"><summary class="muted" style="cursor:pointer">${L('ประวัติขั้นตอน','Audit trail')}</summary>${logList(PS.log)}</details></div>`;
+/* ════════ b553 — scan interlocks: refused scan pop-up + override request ════════ */
+let PSBLK=null,OVRN=0;
+function psBlock(b,s){
+  psMsg('bad');psBeep(false);setTimeout(()=>psBeep(false),250);
+  const order=b.kind==='order';let o=$('#psBlk');if(o)o.remove();
+  o=document.createElement('div');o.id='psBlk';o.className='ov';o.style.zIndex=150;
+  o.innerHTML=`<div class="modal" style="max-width:460px;border-top:8px solid ${order?'#DC2626':'#F59E0B'}">
+    <h2 style="color:${order?'#B91C1C':'#B45309'};margin:0 0 6px">${order?'⛔ '+L('ข้ามลำดับ','Out of order'):'⏳ '+L('เร็วเกินไป','Too soon')}</h2>
+    <div style="font-size:16px">Lot <b class="mono">${esc(b.lot_no)}</b> · <b>#${esc(b.pallet_no)}</b>${s?` · ${esc(s.product_code)}`:''}</div>
+    ${order?`<div style="background:#FEF2F2;border-radius:8px;padding:10px;margin:10px 0;font-size:17px;font-weight:800">${L('ต้องสแกน','Scan first')}: ${(b.missing||[]).map(x=>'#'+esc(x)).join(', ')}</div>`
+      :`<div style="font-size:40px;font-weight:800;text-align:center;color:#B45309;margin:8px 0" id="psBlkT">${Math.floor(b.wait/60)}:${String(b.wait%60).padStart(2,'0')}</div>
+        <div style="text-align:center;font-weight:700">${L('วางบนพาเลทก่อน แล้วสแกนใหม่','Place it on the pallet first, then scan again')}</div>`}
+    <div class="muted" style="margin-top:6px">${L('ใบนี้ยังไม่ถูกอนุมัติ','This slip is NOT approved')}</div>
+    <div id="psBlkR"></div>
+    <div class="btns" style="justify-content:flex-end;margin-top:12px"><button class="btn" style="border-color:#F97316;color:#C2410C" onclick="psOvrAsk()">🔓 ${L('ขอปลดล็อก','Request override')}</button><button class="btn pri" onclick="psBlkClose()">${L('ตกลง','OK')}</button></div></div>`;
+  document.body.appendChild(o);PSBLK={b,s,t:null,poll:null};
+  if(!order){let w=b.wait;PSBLK.t=setInterval(()=>{w--;const e=$('#psBlkT');if(!e||w<=0){clearInterval(PSBLK&&PSBLK.t);if(e)e.textContent='0:00';return;}e.textContent=Math.floor(w/60)+':'+String(w%60).padStart(2,'0');},1000);}
 }
-async function psAct(action){
-  const s=PS.slip;let note='';
-  if(action==='reject'){note=prompt(L('เหตุผลที่ไม่อนุมัติ','Reason for rejecting'))||'';if(!note.trim()){psFocus();return;}}
-  try{const d=await post('/api/fg/slips-check',{ids:[s.id],action,note,via:PSVIA});
-    if(!d.done)throw new Error(L('ใบนี้ถูกตรวจไปแล้ว','This slip was already checked'));}
-  catch(e){$('#psBody').insertAdjacentHTML('afterbegin',err(e));psFocus();return;}
-  PSLAST=`<div class="msg ${action==='approve'?'m-ok':'m-bad'}">${action==='approve'?'✓ '+L('อนุมัติแล้ว','Approved'):'✗ '+L('ไม่อนุมัติ','Rejected')}: ${esc(s.lot_no)} · #${esc(s.pallet_no)} · ${esc(s.product_code)} <span class="muted">${new Date().toTimeString().slice(0,5)}</span></div>`;
-  PS=null;$('#psBody').innerHTML='';$('#psLast').innerHTML=PSLAST;psFocus();
+function psBlkClose(){if(PSBLK){clearInterval(PSBLK.t);clearInterval(PSBLK.poll);}PSBLK=null;const o=$('#psBlk');if(o)o.remove();psFocus();}
+function psOvrAsk(){
+  const R=[['damaged',L('ใบพาเลทเสียหาย','Slip damaged')],['reprint',L('พิมพ์ใหม่','Reprinted')],['other',L('อื่นๆ','Other')]];
+  $('#psBlkR').innerHTML=`<div style="margin-top:10px"><b>${L('เหตุผล','Reason')}</b>${R.map(([k,t],i)=>`<label class="card" style="margin:6px 0 0;padding:9px 12px;display:flex;gap:8px;align-items:center;cursor:pointer"><input type="radio" name="ovR" value="${k}" ${i===0?'checked':''} style="width:18px;height:18px"><b>${t}</b></label>`).join('')}
+    <input class="in" id="ovN" placeholder="${L('หมายเหตุ (ถ้ามี)','Note (optional)')}" style="margin-top:6px;width:100%">
+    <button class="btn pri" style="width:100%;margin-top:8px" onclick="psOvrSend()">${L('ส่งคำขอถึงหัวหน้าแพค','Send to pack supervisor')}</button></div>`;
 }
+async function psOvrSend(){
+  if(!PSBLK)return;const b=PSBLK.b,reason=(document.querySelector('input[name=ovR]:checked')||{}).value||'other';
+  let r;try{r=await post('/api/fg/override-req',{slip_id:b.slip_id,kind:b.kind,detail:b.kind==='order'?'missing '+(b.missing||[]).join(','):'wait '+b.wait+'s',reason,note:($('#ovN')||{}).value||'',via:PSVIA});}
+  catch(e){$('#psBlkR').innerHTML=err(e);return;}
+  $('#psBlkR').innerHTML=`<div class="msg" style="margin-top:10px;font-weight:700">⏳ ${L('รอหัวหน้าแพคอนุมัติ…','Waiting for the pack supervisor…')}</div>`;
+  const id=r.id;clearInterval(PSBLK.poll);
+  PSBLK.poll=setInterval(async()=>{let x;try{x=await api('/api/fg/override-req/'+id);}catch(e){return;}
+    if(x.status==='pending')return;clearInterval(PSBLK&&PSBLK.poll);
+    if(x.status==='approved'){psBlkClose();psBeep(true);psMsg('ok',L('ปลดล็อกแล้ว','override approved'));psLoad();}
+    else{const e=$('#psBlkR');if(e)e.innerHTML=`<div class="msg m-bad" style="margin-top:10px;font-weight:700">✕ ${L('ไม่อนุมัติ','Refused')} · ${esc(x.dec_by)} ${esc(x.dec_note||'')}</div>`;psBeep(false);}},4000);
+}
+/* pack supervisor: override requests page + red badge + sound when one arrives */
+async function ovrTick(){if(!can('override'))return;let r;try{r=await api('/api/fg/overrides');}catch(e){return;}
+  const n=r.pending||0;if(n>OVRN){psBeep(false);setTimeout(()=>psBeep(false),300);setTimeout(()=>psBeep(false),600);}
+  OVRN=n;const b=$('#obdg');if(b)b.textContent=n||'';if(PAGE==='ovr')ovrDraw(r);}
+setTimeout(()=>{ovrTick();setInterval(()=>{if(!document.hidden)ovrTick();},15000);},3000);
+let OVRALL=false;
+async function pgOvr(){$('#app').innerHTML=`<div class="ph" style="max-width:none"><h1>${L('คำขอปลดล็อกการสแกน','Scan override requests')}</h1>
+   <p class="sub">${L('Checker แพคกิ้งขอให้ผ่านใบพาเลทที่ถูกล็อก (ข้ามลำดับ / เร็วเกินไป) · อนุมัติ = ใบนั้นผ่านทันที','The packing checker asks to pass a refused slip (out of order / too soon) · Approve = the slip passes now')}</p>
+   <div class="tabs"><button class="tab ${OVRALL?'':'on'}" onclick="OVRALL=false;pgOvr()">${L('รออนุมัติ','Waiting')}</button><button class="tab ${OVRALL?'on':''}" onclick="OVRALL=true;pgOvr()">${L('ทั้งหมด 3 วัน','All, 3 days')}</button></div><div id="ovB">${LOADH}</div></div>`;
+  let r;try{r=await api('/api/fg/overrides?status='+(OVRALL?'all':'pending'));}catch(e){$('#ovB').innerHTML=err(e);return;}ovrDraw(r);}
+function ovrDraw(r){const B=$('#ovB');if(!B)return;
+  const K={order:L('ข้ามลำดับ','out of order'),wait:L('เร็วเกินไป','too soon')},RS={damaged:L('ใบพาเลทเสียหาย','slip damaged'),reprint:L('พิมพ์ใหม่','reprinted'),other:L('อื่นๆ','other')};
+  B.innerHTML=`<div class="tw"><table><thead><tr><th>${L('เวลา','Time')}</th><th>${L('ผู้ขอ','From')}</th><th>Lot / ${L('ใบที่','slip')}</th><th>${L('ปัญหา','Problem')}</th><th>${L('เหตุผล','Reason')}</th><th>${L('สถานะ','Status')}</th><th></th></tr></thead><tbody>
+   ${(r.rows||[]).map(o=>`<tr><td class="nw">${fmtT(o.req_at)}</td><td>${esc(o.req_by)}</td><td class="nw"><b class="mono">${esc(o.lot_no||'')} #${esc(o.pallet_no||'')}</b><div class="muted" style="font-size:12px">${esc(o.product_code||'')} · ${esc(o.pack_machine||'')}</div></td>
+     <td><span class="pill" style="background:#FEE2E2;color:#B91C1C">${K[o.kind]||esc(o.kind)}</span><div class="muted" style="font-size:12px">${esc(o.detail)}</div></td><td>${RS[o.reason]||esc(o.reason)}${o.note?`<div class="muted" style="font-size:12px">${esc(o.note)}</div>`:''}</td>
+     <td>${o.status==='pending'?`<span class="pill" style="background:#FEF3C7;color:#92400E">${L('รอ','waiting')}</span>`:o.status==='approved'?`<span class="pill" style="background:#DCFCE7;color:#166534">${L('อนุมัติ','approved')}</span><div class="muted" style="font-size:12px">${esc(o.dec_by)} ${fmtT(o.dec_at)}</div>`:`<span class="pill" style="background:#FEE2E2;color:#B91C1C">${L('ไม่อนุมัติ','refused')}</span><div class="muted" style="font-size:12px">${esc(o.dec_by)} ${fmtT(o.dec_at)}</div>`}</td>
+     <td class="nw r">${o.status==='pending'?`<button class="btn ok" onclick="ovrDo(${o.id},'approve')">✓ ${L('อนุมัติ','Approve')}</button> <button class="btn bad" onclick="ovrDo(${o.id},'refuse')">✕ ${L('ไม่อนุมัติ','Refuse')}</button>`:''}</td></tr>`).join('')
+     ||`<tr><td colspan="7" class="muted" style="padding:20px;text-align:center">${L('ไม่มีคำขอ','No requests')}</td></tr>`}</tbody></table></div>`;}
+async function ovrDo(id,act){let note='';if(act==='refuse'){note=prompt(L('เหตุผลที่ไม่อนุมัติ','Reason for refusing'))||'';}
+  try{await post('/api/fg/overrides/'+id,{action:act,note});}catch(e){alert(e.message);}ovrTick();if(PAGE==='ovr')pgOvr();}
 
+/* ════════ b552 — offline scan queue ════════
+   No connection to the server (internet down at the plant, server off, Cloudflare error):
+   the scan is kept on THIS PC / phone (with its scan time) and sent by itself as soon as the
+   server answers again. The server then checks it like any scan; anything wrong (not found,
+   duplicate) shows in red in the list. The approval time is the time it reached the server —
+   the real scan time is written in the slip's history. Do not reload the page while offline. */
+const psNetErr=e=>!e||!e.status||[0,502,503,504,520,521,522,523,524,525,526,530].includes(e.status);
+let PSQ=(()=>{try{return JSON.parse(localStorage.getItem('fg_offq')||'[]');}catch(e){return [];}})(),PSQT=null,PSQBUSY=false;
+function psQSave(){try{localStorage.setItem('fg_offq',JSON.stringify(PSQ));}catch(e){}psQBar();}
+function psQAdd(t,via){PSQ.push({t,via,at:new Date().toISOString(),by:ME&&ME.name||''});psQSave();
+  psMsg('off',L(`เก็บไว้ในเครื่อง ${PSQ.length} รายการ`,`kept on this device: ${PSQ.length}`));psBeep(true);psQTry(15000);}
+function psQBar(){let b=$('#psQ');const host=$('#psList');
+  if(!PSQ.length){if(b)b.remove();return;}
+  if(!b&&host){b=document.createElement('div');b.id='psQ';host.parentNode.insertBefore(b,host);}
+  if(b)b.innerHTML=`<div class="card" style="background:#FFF7ED;border:2px solid #F97316;display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:10px 0">
+    <b style="font-size:17px;color:#C2410C">📴 ${L('ออฟไลน์ — ยังไม่ได้ส่งเข้าระบบ','Offline — not sent yet')}: ${PSQ.length}</b>
+    <span class="muted">${L('ส่งเองอัตโนมัติเมื่อเชื่อมต่อได้ · ห้ามรีเฟรชหน้านี้','sent by itself when the connection is back · do not reload this page')}</span><span style="flex:1"></span>
+    <button class="btn" onclick="psQTry(0)">⟳ ${L('ส่งตอนนี้','Send now')}</button></div>`;}
+function psQTry(ms){clearTimeout(PSQT);PSQT=setTimeout(psQSend,ms||0);}
+async function psQSend(){
+  if(PSQBUSY||!PSQ.length)return;PSQBUSY=true;let sent=0;
+  try{while(PSQ.length){const q=PSQ[0];
+      try{const d=await post('/api/fg/slips-scan',{text:q.t,via:q.via,approve:true,offline_at:q.at});
+        PSQ.shift();sent++;
+        if(d.dup)PSL.unshift({err:`🚨 ${L('สแกนซ้ำ (สแกนตอนออฟไลน์)','Duplicate (offline scan)')} ${new Date(q.at).toTimeString().slice(0,5)}`,raw:`${d.slip.lot_no} #${d.slip.pallet_no}`,at:Date.now()});}
+      catch(e){if(e.status===401||psNetErr(e))break;
+        PSQ.shift();PSL.unshift({err:`${L('ออฟไลน์','offline')} ${new Date(q.at).toTimeString().slice(0,5)}: ${e.message||L('ไม่พบ','not found')}`,raw:q.t.slice(0,80),at:Date.now()});}
+      psQSave();}}
+  finally{PSQBUSY=false;}
+  if(sent){psSave();if(PAGE==='pscan')psLoad();toastFG(`✅ ${L('ส่งรายการออฟไลน์แล้ว','Offline scans sent')}: ${sent}`);}
+  if(PSQ.length)psQTry(15000);
+}
+window.addEventListener('online',()=>psQTry(500));
+setTimeout(()=>{if(PSQ.length)psQTry(1000);},3000);
+
+/* b525 — the scanned text itself is never shown: while it arrives the box says "receiving",
+   then only the outcome — บันทึกข้อมูล (saved) / duplicate / error. A lot number typed by hand
+   (short, plain) stays visible so the person can see what they type. */
+let PSMT=null;
+function psTyping(i){const v=i.value,raw=v.length>20||/^[{\[ฐ]/.test(v.trim())||/^fg\d/i.test(v.trim())||/[\u0e00-\u0e7f]/.test(v);
+  i.classList.toggle('hide',raw);psMsg(raw?'recv':'');}
+function psMsg(k,txt){const m=$('#psMsg');if(!m)return;clearTimeout(PSMT);
+  const M={recv:['#1D4ED8','📥 '+L('กำลังรับข้อมูล…','Receiving…')],wait:['#1D4ED8','⏳ '+L('กำลังบันทึก…','Saving…')],
+    ok:['#15803D','✅ '+L('บันทึกข้อมูล','Saved')],off:['#C2410C','📴 '+L('ออฟไลน์ — เก็บไว้ในเครื่อง','Offline — kept on this device')],dup:['#DC2626','🚨 '+L('สแกนซ้ำ','Scanned again')],bad:['#DC2626','❌ '+L('ไม่สำเร็จ — สแกนใหม่','Failed — scan again')]}[k];
+  m.parentNode.classList.toggle('msg',!!M);if(!M){m.style.display='none';const i=$('#psUsb');if(i&&!i.value)i.classList.remove('hide');return;}
+  m.style.display='flex';m.style.color=M[0];m.innerHTML=`<b>${M[1]}</b>${txt?`<span>${txt}</span>`:''}`;
+  if(k==='ok'||k==='bad'||k==='dup'||k==='off')PSMT=setTimeout(()=>psMsg(''),k==='ok'?2500:5000);}
+let PSAC=null;
+function psAudio(){try{if(!PSAC)PSAC=new (window.AudioContext||window.webkitAudioContext)();if(PSAC.state==='suspended')PSAC.resume();}catch(e){}return PSAC;}
+document.addEventListener('pointerdown',psAudio,{once:false,passive:true});document.addEventListener('keydown',psAudio,{passive:true});
+function psBeep(ok){try{if(navigator.vibrate)navigator.vibrate(ok?60:[80,60,80]);const a=psAudio();const o=a.createOscillator(),g=a.createGain();
+  o.frequency.value=ok?1200:300;g.gain.value=.08;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+(ok?.08:.35));}catch(e){}}
+let PSALM=null;
+function psAlarm(s){
+  const why=s.status==='cancelled'?L('ใบนี้ถูกลบ/ยกเลิกแล้ว — ห้ามใช้','This slip was VOIDED — do not use it')
+    :s.status!=='packed'?L('พาเลทนี้ FG รับไปแล้ว','FG already received this pallet')
+    :L('สแกนซ้ำ — ใบนี้ถูกสแกน/อนุมัติไปแล้ว','SCANNED AGAIN — this slip was already scanned / approved');
+  let o=$('#psAlm');if(!o){o=document.createElement('div');o.id='psAlm';document.body.appendChild(o);}
+  o.innerHTML=`<div class="psalm"><div style="font-size:30px">🚨</div><div style="flex:1;min-width:0"><b style="font-size:19px">${why}</b>
+     <div style="font-size:16px;margin-top:2px"><b class="mono">${esc(s.lot_no)} #${esc(s.pallet_no)}</b> · ${esc(s.product_code)} · ${n0(s.qty)} ${L('ถุง','bags')}${s.pc_by?` · ${L('อนุมัติโดย','approved by')} ${esc(s.pc_by)} ${fmtT(s.pc_at)}`:''}</div></div>
+    <button class="btn" style="background:#fff;color:#B91C1C;font-weight:800;min-height:52px;font-size:16px" onclick="psAlarmOff()">🔕 ${L('รับทราบ / ปิดเสียง','Reset alarm')}</button></div>`;
+  if(PSALM)return;                                    // already sounding
+  const a=psAudio();if(!a)return;
+  const g=a.createGain();g.gain.value=.35;g.connect(a.destination);
+  const o2=a.createOscillator();o2.type='square';o2.connect(g);o2.start();
+  let hi=false;const t=setInterval(()=>{hi=!hi;try{o2.frequency.setValueAtTime(hi?1000:650,a.currentTime);}catch(e){}if(navigator.vibrate)try{navigator.vibrate(350)}catch(e){}},400);
+  PSALM={o2,g,t};
+}
+function psAlarmOff(){if(PSALM){clearInterval(PSALM.t);try{PSALM.o2.stop();PSALM.g.disconnect();}catch(e){}PSALM=null;}const o=$('#psAlm');if(o)o.remove();psFocus();}
+function psAdd(slip,prints,dup,quiet){
+  if(quiet){                                           // lot-number look-up: shown on this device only
+    PSL=PSL.filter(r=>!(r.slip&&r.slip.id===slip.id));PSL.unshift({slip,look:1,at:Date.now(),prints});psSave();psDrawList();return;}
+  // a real scan: show it at once, then take the server's list (all devices)
+  if(PSD!==today())PSD=today();
+  const i=PSSRV.findIndex(r=>r.slip.id===slip.id);
+  let row;if(i>=0){row=PSSRV.splice(i,1)[0];row.slip=slip;row.n=(row.n||1)+1;}else row={slip,n:dup?2:1,srv:1};
+  row.at=Date.now();row.prints=prints;row.by=ME.name;row.via=PSVIA;PSSRV.unshift(row);
+  PSL=PSL.filter(r=>!(r.slip&&r.slip.id===slip.id));psSave();psDrawList(slip.id);psLoad(slip.id);
+}
+const psLive=s=>s&&s.status!=='cancelled';
+function psDrawList(flash){
+  const B=$('#psList');if(!B)return;
+  const ids=new Set(PSSRV.map(r=>r.slip.id)),loc=PSD===today()?PSL.filter(r=>!r.slip||!ids.has(r.slip.id)):[];
+  const ALL=loc.filter(r=>!r.slip).concat(PSSRV,loc.filter(r=>r.slip));
+  SLIPS=ALL.filter(r=>r.slip).map(r=>r.slip);
+  const hm=t=>{const d=new Date(t);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');};
+  // lots in the order they were last scanned, inside a lot the slip numbers high → low
+  const errs=ALL.filter(r=>!r.slip),ok=ALL.filter(r=>r.slip&&!r.look),looks=ALL.filter(r=>r.look),last={};
+  ok.forEach(r=>{const k=r.slip.product_code+'|'+r.slip.lot_no;last[k]=Math.max(last[k]||0,r.at);});
+  ok.sort((a,b)=>{const ka=a.slip.product_code+'|'+a.slip.lot_no,kb=b.slip.product_code+'|'+b.slip.lot_no;
+    return ka===kb?(+b.slip.pallet_no||0)-(+a.slip.pallet_no||0):last[kb]-last[ka];});
+  const live=ok.filter(r=>psLive(r.slip)),tb=live.reduce((a,r)=>a+(+r.slip.qty||0),0),tk=live.reduce((a,r)=>a+(+r.slip.total_weight||0),0);
+  const pcc={pending:'background:#FEF3C7;color:#92400E',approved:'background:#DCFCE7;color:#166534',rejected:'background:#FEE2E2;color:#991B1B'};
+  const stH=s=>s.status==='cancelled'?`<span class="pill" style="background:#E5E7EB;color:#374151">${L('ลบแล้ว','Voided')}</span>`
+    :s.status!=='packed'?stPill(s.status):`<span class="pill" style="${pcc[s.pc_status]||''}">${esc(L(...(PCL[s.pc_status]||[s.pc_status,s.pc_status])))}</span>`;
+  const canVoid=s=>s.status==='packed';
+  const row=r=>{
+    if(!r.slip)return `<tr class="pserr"><td class="nw">${hm(r.at)}</td><td colspan="8"><b>✗ ${esc(r.err)}</b> <span class="muted mono">${esc(r.raw)}</span></td>
+      <td class="nw r"><button class="ibtn" title="${L('ลบออกจากรายการ','Remove from list')}" onclick="psRm(${r.at})">✕</button></td></tr>`;
+    const s=r.slip,pr=r.prints||s.print_count||0,vd=s.status==='cancelled';
+    return `<tr class="${flash===s.id?'psnew':''} ${vd?'psvoid':''}">
+      <td class="nw">${r.look?`<span class="pill" style="background:#E0F2FE;color:#075985">${L('ค้นหา','look-up')}</span>`:`${hm(r.at)}<div class="muted" style="font-size:11.5px">${r.via==='camera'?'📷':'⌨'} ${esc(r.by||'')}</div>`}${r.n>1?`<div style="font-size:11px;color:#DC2626;font-weight:700">🚨 ${L('สแกนซ้ำ','scanned')} ${r.n}×</div>`:''}</td>
+      <td class="r"><b style="font-size:18px">${esc(s.pallet_no)}</b>${(s.lot_run||1)>1?`<div style="font-size:11px;color:#5B21B6;font-weight:700">${L('รอบ','Run')} ${s.lot_run}</div>`:''}</td>
+      <td class="nw"><b class="mono" style="font-size:14px">${esc(s.lot_no)}</b></td>
+      <td><b>${esc(s.product_code)}</b><div class="muted" style="font-size:12px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.product_name||'')}</div></td>
+      <td class="r nw"><b style="font-size:15px">${n0(s.qty)}</b> ${esc(s.unit||L('ถุง','bags'))}<div class="muted" style="font-size:12px">${esc(s.bag_weight||n0(s.weight_unit))} kg · ${n0(s.total_weight)} kg</div></td>
+      <td class="nw" style="font-size:12.5px">${fmtD(s.mfg)}<div class="muted">${esc(expTxt(s))}</div></td>
+      <td style="font-size:12.5px">${esc(s.pack_machine||'-')}<div class="muted">${esc(s.pd_line||'')}</div></td>
+      <td class="nw">${pr>1?`<b style="color:#B91C1C">⚠ ${pr}×</b>`:pr+'×'}</td>
+      <td>${stH(s)}${s.pc_by&&!vd?`<div class="muted" style="font-size:11.5px">${esc(s.pc_by)}</div>`:''}${vd&&s.note?`<div class="muted" style="font-size:11.5px">${esc(s.note)}</div>`:''}</td>
+      <td class="nw r"><button class="ibtn" title="A6" onclick="slipPreview(${s.id})">▤</button></td></tr>`;};
+  B.innerHTML=`<div class="card" style="padding:0;margin-top:12px">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--line)">
+     <b>${L('ประวัติการสแกน (ทุกเครื่อง)','Scan history (all devices)')}</b>
+     <input class="in" type="date" value="${PSD}" max="${today()}" onchange="psDay(this.value)" style="width:auto;min-height:34px;padding:4px 8px">
+     ${PSD!==today()?`<button class="btn sm" onclick="psDay()">${L('วันนี้','Today')}</button>`:`<span class="muted" style="font-size:12px">⟳ ${L('อัปเดตอัตโนมัติ','auto-refresh')}</span>`}
+     <span class="pill" style="background:#DCFCE7;color:#166534;font-size:13px">${live.length} ${L('พาเลท','pallets')} · ${n0(tb)} ${L('ถุง','bags')} · ${n0(tk)} kg</span>
+     ${ok.length>live.length?`<span class="muted" style="font-size:12.5px">${L('ลบแล้ว','voided')} ${ok.length-live.length} (${L('ไม่นับ','not counted')})</span>`:''}
+     <span style="flex:1"></span>
+     <button class="btn" onclick="shiftDlg()">📄 ${L('รายงานประจำกะ','Shift report')}</button>
+     ${(()=>{const w=ok.filter(r=>!r.look&&r.slip.status==='packed'&&r.slip.pc_status!=='approved');return w.length&&can('packcheck')?`<button class="btn pri" onclick="psApproveAll()">✅ ${L('อนุมัติที่สแกนแล้ว','Approve scanned')} (${w.length})</button>`:'';})()}
+     ${loc.length?`<button class="btn" onclick="PSL=[];psSave();psDrawList();psFocus();">${L('ล้างรายการผิดพลาด / ค้นหา','Clear errors / look-ups')}</button>`:''}</div>
+    ${PSPHONE()?`<div>${errs.concat(ok,looks).map(psCard).join('')||`<p class="muted" style="text-align:center;padding:22px">${L('ยังไม่มีการสแกน — กดสแกนด้วยกล้อง','Nothing scanned yet — tap Scan with camera')}</p>`}</div>`
+    :`<div class="tw" style="border:0;border-radius:0"><table class="pstab"><thead><tr><th>${L('เวลาสแกน','Scanned')}</th><th class="r">${L('ใบที่','Slip No.')}</th><th>Lot</th><th>${L('สินค้า','Product')}</th><th class="r">${L('ถุง · น้ำหนัก','Bags · weight')}</th><th>MFG / EXP</th><th>${L('เครื่อง / ไลน์','Machine / line')}</th><th>${L('พิมพ์','Printed')}</th><th>${L('สถานะ','Status')}</th><th></th></tr></thead>
+     <tbody>${errs.concat(ok,looks).map(row).join('')||`<tr><td colspan="10" class="muted" style="text-align:center;padding:26px">${L('ยังไม่มีการสแกน — ยิง QR ใบพาเลทได้เลย','Nothing scanned yet — scan a pallet slip QR')}</td></tr>`}</tbody></table></div>`}</div>${psOthHtml()}`;
+}
+async function psApproveAll(){
+  const ids=PSSRV.filter(r=>r.slip.status==='packed'&&r.slip.pc_status!=='approved').map(r=>r.slip.id);if(!ids.length)return;
+  if(!confirm(L(`อนุมัติ ${ids.length} ใบที่สแกนแล้วแต่ยังรอตรวจ?`,`Approve the ${ids.length} scanned slip(s) still waiting?`))){psFocus();return;}
+  try{const d=await post('/api/fg/scans-approve',{ids});psMsg('ok',`${d.approved} ${L('ใบ','slips')}`);}catch(e){alert(e.message);}
+  psLoad();psFocus();
+}
+/* b527 — failed scans + typed look-ups are kept on the server too (history, all devices) */
+function psOthHtml(){
+  if(!PSOTH.length)return '';
+  const nf=PSOTH.filter(e=>e.kind==='failed').length,nl=PSOTH.length-nf;
+  const why=e=>e.kind==='lookup'?`<span class="pill" style="background:#E0F2FE;color:#075985">🔎 ${L('ค้นหา','Look-up')}</span>`
+    :`<span class="pill" style="background:#FEE2E2;color:#991B1B">✗ ${e.why==='incomplete'?L('อ่าน QR ไม่ครบ','QR read incomplete'):L('ไม่พบใบพาเลท','Slip not found')}</span>`;
+  return `<details class="card" style="padding:0;margin-top:12px" ${PSOOPEN?'open':''} ontoggle="PSOOPEN=this.open">
+   <summary style="padding:10px 14px;cursor:pointer;font-weight:700">${L('สแกนไม่สำเร็จ / ค้นหา','Failed scans / look-ups')}
+    <span class="pill" style="background:#FEE2E2;color:#991B1B;margin-left:6px">✗ ${nf}</span> <span class="pill" style="background:#E0F2FE;color:#075985">🔎 ${nl}</span></summary>
+   <div class="tw" style="border:0;border-radius:0"><table><thead><tr><th>${L('เวลา','Time')}</th><th>${L('ผู้สแกน','By')}</th><th>${L('ผล','Result')}</th><th>${L('ข้อความที่อ่านได้','Text read')}</th></tr></thead><tbody>
+   ${PSOTH.map(e=>`<tr><td class="nw">${esc((e.at||'').slice(11,19))}</td><td class="nw">${e.via==='camera'?'📷':'⌨'} ${esc(e.by||'')}</td><td class="nw">${why(e)}</td>
+     <td><span class="muted mono" style="font-size:11.5px;word-break:break-all">${esc((e.text||'').slice(0,120))}</span></td></tr>`).join('')}</tbody></table></div></details>`;
+}
+function psCard(r){
+  const hm=t=>{const d=new Date(t);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');};
+  if(!r.slip)return `<div class="pscard pserr"><b>✗ ${esc(r.err)}</b><div class="muted mono" style="font-size:11px">${esc(r.raw)}</div><button class="ibtn" onclick="psRm(${r.at})">✕</button></div>`;
+  const s=r.slip,pr=r.prints||s.print_count||0,vd=s.status==='cancelled';
+  return `<div class="pscard ${vd?'psvoid':''}">
+    <div style="display:flex;justify-content:space-between;gap:6px;align-items:flex-start"><span><span style="font-size:22px;font-weight:800">#${esc(s.pallet_no)}</span>${(s.lot_run||1)>1?` <small style="color:#5B21B6;font-weight:700">${L('รอบ','Run')} ${s.lot_run}</small>`:''} <b class="mono" style="font-size:14px">${esc(s.lot_no)}</b></span>
+     ${vd?`<span class="pill" style="background:#E5E7EB;color:#374151">${L('ลบแล้ว','Voided')}</span>`:s.status!=='packed'?stPill(s.status):`<span class="pill" style="background:#DCFCE7;color:#166534">${esc(L(...(PCL[s.pc_status]||[s.pc_status,s.pc_status])))}</span>`}</div>
+    <div class="psx" style="font-size:13.5px;margin-top:2px"><b>${esc(s.product_code)}</b> · ${esc(s.product_name||'')}</div>
+    <div class="muted psx" style="font-size:12.5px;margin-top:2px">${n0(s.qty)} ${esc(s.unit||L('ถุง','bags'))} × ${esc(s.bag_weight||n0(s.weight_unit))} kg = ${n0(s.total_weight)} kg · ${esc(s.pack_machine||'')}${pr>1?` · <b style="color:#B91C1C">⚠ ${L('พิมพ์','printed')} ${pr}×</b>`:''} · ${r.look?L('ค้นหา','look-up'):hm(r.at)+(r.by?' · '+(r.via==='camera'?'📷 ':'⌨ ')+esc(r.by):'')}${r.n>1?` · <b style="color:#DC2626">🚨 ${L('สแกน','scanned')} ${r.n}×</b>`:''}</div>
+  </div>`;
+}
+function psRm(at){PSL=PSL.filter(r=>r.at!==at);psSave();psDrawList();psFocus();}
+/* delete = VOID: the slip stays, crossed out, out of every total; its number is never reused */
+async function psVoid(id){
+  const r=PSSRV.concat(PSL).find(x=>x.slip&&x.slip.id===id);if(!r)return;const s=r.slip;
+  const why=prompt(L(`ลบใบพาเลท ${s.lot_no} #${s.pallet_no}? — ใส่เหตุผล`,`Delete slip ${s.lot_no} #${s.pallet_no}? — give a reason`),L('ลบ — พาเลทไม่ถูกต้อง','Deleted — wrong pallet'));
+  if(!why||!why.trim()){psFocus();return;}
+  try{await post(`/api/fg/slips/${id}/cancel`,{note:why.trim()});}catch(e){alert(e.message);psFocus();return;}
+  s.status='cancelled';s.note=why.trim();psSave();psDrawList();psLoad();psFocus();
+}
 /* checked list — what the packing checker approved / rejected, by check date */
 let PAF={d1:today(),d2:today(),pc:'approved',me:0,q:''};
 async function pgPApproved(){
@@ -1969,19 +2880,20 @@ async function pgUsers(){
     <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;font-weight:500;color:#475569">${L('งาน','Functions')}</span><div style="display:flex;flex-wrap:wrap;gap:6px">${FNR.map(r=>`<label style="display:flex;gap:6px;align-items:center;border:1px solid #CBD5E1;border-radius:8px;height:40px;padding:0 10px;font-size:13.5px;cursor:pointer"><input type="checkbox" class="nuR" value="${r}" style="width:16px;height:16px"> ${esc(rl(r))}</label>`).join('')}</div></div>
     <button class="btn pri" onclick="nuAdd()">${L('เพิ่ม','Add')}</button></div><div id="nuE"></div></div>
    <p class="muted" style="margin:0 0 8px">${L('ติ๊กได้หลายงาน · ★ = เปิดก่อนหลังล็อกอิน · คนที่มีมากกว่า 1 งานสลับงานได้ที่ปุ่ม แอป (▦)','Tick several functions · ★ = opens first after login · people with 2+ functions switch with the Apps (▦) button')}</p>
-   <div class="tw"><table><thead><tr><th>Username</th><th>${L('ชื่อ','Name')}</th><th>${L('สิทธิ์ CMMS','CMMS role')}</th>${FNR.map(r=>`<th style="text-align:center">${esc(rl(r))}</th>`).join('')}<th>${L('เปิดก่อน ★','Opens first ★')}</th><th style="text-align:center">${L('เฉพาะ FG','FG only')}</th></tr></thead><tbody>
+   <div class="tw"><table><thead><tr><th>Username</th><th>${L('ชื่อ','Name')}</th><th>${L('สิทธิ์ CMMS','CMMS role')}</th>${FNR.map(r=>`<th style="text-align:center">${esc(rl(r))}</th>`).join('')}<th>${L('เปิดก่อน ★','Opens first ★')}</th><th style="text-align:center" title="${L('อนุมัติปลดล็อกการสแกน','approves scan overrides')}">${L('หัวหน้าแพค','Pack supervisor')}</th><th style="text-align:center">${L('เฉพาะ FG','FG only')}</th></tr></thead><tbody>
    ${d.users.map(u=>{const rs=(u.fg_roles||u.fg_role||'').split(',').filter(Boolean);
-     if(u.role==='admin')return `<tr><td class="mono">${esc(u.username)}</td><td>${esc(u.name)}</td><td class="muted">admin</td><td colspan="${FNR.length+2}"><b>${L('ผู้ดูแล — ทุกงาน','Admin — every function')}</b></td></tr>`;
+     if(u.role==='admin')return `<tr><td class="mono">${esc(u.username)}</td><td>${esc(u.name)}</td><td class="muted">admin</td><td colspan="${FNR.length+3}"><b>${L('ผู้ดูแล — ทุกงาน','Admin — every function')}</b></td></tr>`;
      const opts=(u.fg_only?[]:['cmms']).concat(rs);
      return `<tr id="ur-${u.id}"><td class="mono">${esc(u.username)}</td><td>${esc(u.name)}</td><td class="muted">${esc(u.role)}</td>
       ${FNR.map(r=>`<td style="text-align:center"><input type="checkbox" class="ufr" value="${r}" ${rs.includes(r)?'checked':''} onchange="usSave(${u.id})" aria-label="${esc(r)}" style="width:17px;height:17px"></td>`).join('')}
       <td><select class="in sm ufd" style="width:150px" onchange="usSave(${u.id})">${opts.map(o=>`<option value="${o}" ${(u.fg_default||'cmms')===o?'selected':''}>${o==='cmms'?'CMMS':esc(rl(o))}</option>`).join('')}</select></td>
+      <td style="text-align:center"><input type="checkbox" class="ufs" ${u.fg_packsup?'checked':''} onchange="usSave(${u.id})" aria-label="Pack supervisor" style="width:17px;height:17px"></td>
       <td style="text-align:center"><input type="checkbox" class="ufo" ${u.fg_only?'checked':''} onchange="usSave(${u.id})" aria-label="FG only" style="width:17px;height:17px"></td></tr>`;}).join('')}</tbody></table></div>`;
 }
 const FNR=['packing','packcheck','receiver','issuer','checker'];
 async function usSave(id){
   const tr=$('#ur-'+id),rs=[...tr.querySelectorAll('.ufr:checked')].map(x=>x.value);
-  try{await post('/api/fg/users/'+id,{fg_roles:rs,fg_default:tr.querySelector('.ufd').value,fg_only:tr.querySelector('.ufo').checked});pgUsers();}catch(e){alert(e.message);}
+  try{await post('/api/fg/users/'+id,{fg_roles:rs,fg_default:tr.querySelector('.ufd').value,fg_only:tr.querySelector('.ufo').checked,packsup:tr.querySelector('.ufs').checked});pgUsers();}catch(e){alert(e.message);}
 }
 async function nuAdd(){
   const rs=[...document.querySelectorAll('.nuR:checked')].map(x=>x.value);
@@ -2007,7 +2919,8 @@ async function start(){
   await refreshCounts();hdr();buildNav();
   const start=(location.hash||'').slice(1)||fnStart();
   go(start,true);
-  setInterval(()=>{if(PAGE==='queue'&&!Object.values(QSEL).some(Boolean)&&!$('#dlg'))qLoad();else refreshCounts();},30000);
+  setInterval(()=>{if(document.hidden)return;   // b5xx: hidden tab — nothing to refresh
+    if(PAGE==='queue'&&!Object.values(QSEL).some(Boolean)&&!$('#dlg'))qLoad();else refreshCounts();},60000);   // b5xx: was 30 s
 }
 function fnStart(){return FN==='checker'?(isAdmin()?'home':'queue'):(fnPages()[0]||'home');}
 function switchFn(f){

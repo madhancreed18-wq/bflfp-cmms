@@ -24,6 +24,16 @@ if engine.dialect.name == "sqlite":
             dbapi_conn.execute("PRAGMA foreign_keys=ON")
         except Exception:
             pass
+        # b543 speed: WAL lets screens keep reading while something is being saved (the
+        # default mode locks everyone out during every write); a writer waits up to 5 s for
+        # its turn instead of failing with "database is locked"; NORMAL sync is safe with WAL
+        # and much faster; a bigger page cache + temp tables in memory cut disk reads.
+        for p in ("PRAGMA journal_mode=WAL", "PRAGMA busy_timeout=5000", "PRAGMA synchronous=NORMAL",
+                  "PRAGMA cache_size=-32000", "PRAGMA temp_store=MEMORY"):
+            try:
+                dbapi_conn.execute(p)
+            except Exception:
+                pass
 
 metadata = MetaData()
 

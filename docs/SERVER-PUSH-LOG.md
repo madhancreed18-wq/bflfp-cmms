@@ -18,6 +18,18 @@ the footer.) The service worker carries the matching `bflfp-vNNN` at `/sw.js`.
 
 ---
 
+> **b548 (4 Nov) — `_to_server\bflfp-cmms-b548.zip` (replaces the b547 zip, includes everything in it).** FG → Pallet slips (QR) → register: packing-machine filter chips beside the title (All machines + Pack 1 … Pack 8 from FG › Machines & lines — there is no Pack 5) with a count each; they work together with the status chips (All / Pending / Accepted / Rejected / Rejected by FG) and the cards follow the machine chosen. Cards: Pending, Accepted, Rejected each as "x / total" (e.g. 139 / 244); the Total-slips card is replaced by Rejected. File: `static/fg.html`. Install: `install_b548.ps1` (same checks / backup / restore as b547).
+
+> **b547 (4 Nov) — `_to_server\bflfp-cmms-b547.zip` = b544 + b545 + b546 + b547. Server change: stop the app, run `install_b547.ps1` (checks app stopped + live file versions, backs up to `_backup_b547_<time>\` with `restore.ps1`, copies, verifies).** b547: `sessions.db` stores only a SHA-256 of each sign-in key (a copied file cannot be used to sign in); Manage → Users: "ออกจากระบบทุกคน / Sign everyone out" (admin, asks twice, keeps the admin signed in) and "ออกจากระบบ / Sign out" on each account. UI build b547 / sw bflfp-v547. Tested: keys hashed in the file, all sign-ins still work after a restart, Sign out one ended 1, Sign everyone out kept only the admin, a non-admin is refused; install script tested on a copy: update, re-run (already new), restore, and stop on a changed live file.
+
+> **b546 (3 Nov) — a switched-off account stops working on every screen. Server change: stop and restart.** Before, a phone already signed in kept receiving jobs and pressing Start/Stop after the account was switched off (only the CMMS app-open check looked; FG / Warehouse never did, and a sign-in lived until restart). Now every sign-in re-reads its account at most once a minute: switched off or deleted = signed out on the next request (CMMS, FG, Warehouse); name / role / team / can-report changes apply without signing out. Manage: switching an account off, deleting it, or moving it to another plant signs it out on every device at once. Files: `server/auth.py`, `server/admin.py` (includes b545). Tested: account active 200 → switched off in the database → 401 "this account has been disabled" within 61 s, its saved sign-in removed, other users unaffected.
+
+> **b545 (3 Nov) — sign-ins survive a restart; FG stops polling when signed out. Server change: stop and restart the app.** Sessions were only in memory, so every restart signed everyone out and every open screen kept polling with a dead cookie (the stream of 401 in the server window). Now each sign-in is also saved in `data\sessions.db` (own file, password hash never written; expired rows removed). After a restart the open screens carry on. FG page: a 401 stops ALL polling, shows a red "เข้าสู่ระบบหมดอายุ — กรุณาเข้าสู่ระบบใหม่" panel, and on the scan page an alarm sounds; scans after that are not sent. The restart that INSTALLS b545 still signs everyone out once (old build had nothing saved). Files: `server/auth.py`, `server/admin.py`, `static/fg.html`. Tested: 4 sessions saved, all 200 after a restart, logout removes, bogus cookie 401; FG scan page after sign-out: red panel, 0 requests in the next 12 s.
+
+> **b544 (3 Nov) — FG checker (PC) gets the master pages. Server change: stop and restart the app.** The FG role `checker` now also sees Slip print & check audit, Packing records, Machines & lines, Products, Customers, Checkers & leaders, and can save on them (new permission `master`). Still admin-only: Users & roles, Import Access, Old Access data. Files: `server/fg.py`, `static/fg.html`. Tested as checkerpc: 14 menu items, the 6 master pages open with no error; users / access-archive answer 403.
+
+> **b543 (3 Nov) — cmms.db 456 MB → small again. Server change: stop and restart the app.** The raw copy of the old Access FG database (`fg_access_raw`, 403,894 rows, ~300 MB) moves out of `cmms.db` into its own file `data\fg_access_archive.db`. At the first start the app moves the rows by itself (copy in batches, check the count, then drop the table in cmms.db). FG pages are unchanged; Access archive viewer reads the new file; a later Access upload writes its raw rows there. Then run `python shrink_db.py` ONCE with the app stopped (backs up cmms.db to `data\backups\`, moves the rows if not done, VACUUM). Back up BOTH files from now on. Files: `server/fg.py`, `shrink_db.py`. Tested on a copy with 60,000 raw rows: moved 60,000, archive viewer lists + searches them, re-import adds only new rows, cmms.db 190 → 132 MB.
+
 > **Live server = b475 (CMMS only, built on server b464)** — confirmed 30 Oct 2026 (server\audit.py present).
 > 30 Oct: raja's b489 static\index.html + sw.js were copied to live by mistake (live has no fnbar.js / FG server) → login failed "Not Found".
 > Fixed by copying `_to_server\RESTORE-live-b475\static\` (index.html + sw.js) back to live. Never copy raja's static files straight to live.
@@ -47,9 +59,68 @@ the footer.) The service worker carries the matching `bflfp-vNNN` at `/sw.js`.
 
 > **READY 30 Oct: `_to_server\bflfp-cmms-b503.zip`** = b502 + fixed pallet-slip document no. Use this instead of b502 (if b502 is not on yet). Server files — stop the app.
 
+> **READY 30 Oct: `_to_server\bflfp-cmms-b505.zip`** = compact Users matrix (web files only — app can keep running). Put b504 on first.
+
+> **READY 30 Oct: `_to_server\bflfp-cmms-b506.zip`** = FG history/queue/dashboard additions + PDF. Server file — stop the app. Put b505 on first.
+
+> **READY 30 Oct: `_to_server\bflfp-cmms-b507.zip`** = header badge fix (web files only — app can keep running). Put b506 on first.
+
+> **READY 30 Oct: `_to_server\bflfp-cmms-b513.zip`** = completion chart labels, no Daily (web files only — app can keep running). Put b512 on first.
+
+> **READY 30 Oct: `_to_server\bflfp-cmms-b514.zip`** = PM-vs-CM charts at real size (web files only — app can keep running). Put b513 on first.
+
+> **READY 30 Oct: `_to_server\bflfp-cmms-b515.zip`** = Access-made slips labelled / not counted / not printable. Server file — stop the app. Put b514 on first.
+
 > **READY 30 Oct: `_to_server\bflfp-cmms-b504.zip`** = b503 slip doc no. + b504 real QR for Access slips (server files — stop the app). Needs b502.
 
 ## WAITING — not yet on live
+
+### b515 — Pallet slips made from Access history: labelled, not counted, not printable (30 Oct 2026)
+`static/fg.html`, `server/fg.py`, `static/index.html` (b515), `static/sw.js` (v515). **Restart.** Put b514 on first.
+- Found: slip 261028160-PC #2 = 2,530 bags / 17,710 kg. b488 made one "pallet slip" per Access receive line, but an Access line is often a whole lot (14,901 of 28,456 lines on raja are > 200 bags).
+- Decision (user): keep them, but tag "From Access — not a real pallet" in the register and the preview, leave them out of Pending / Accepted / Total slips / Total bags, hide their Print buttons; server refuses to log a print for them.
+- Receive history, stock and the Access archive are unchanged.
+
+### b514 — PM done vs CM+BD: charts no longer zoomed — text the same size as the Completion % chart (30 Oct 2026)
+`static/index.html` (b514), `static/sw.js` (v514). No restart. Put b513 on first.
+- The two week panels and the 12-week trend were drawn on a fixed small canvas and stretched ~2× to the page width, so their numbers and day names came out twice the size of the chart above. They are now drawn at their real width.
+
+### b513 — Completion chart: % written at each dot; Daily button removed (30 Oct 2026)
+`static/index.html` (b513), `static/sw.js` (v513). No restart. Put b512 on first.
+- PM % above each blue dot, CM % below each orange dot; thinned when points are many; latest always labelled.
+- Daily view removed (Weekly / Monthly stay); a saved 'Daily' choice opens as Weekly.
+
+### b511 — Completion chart: last vs this week / month compare; PM-vs-CM panel back (30 Oct 2026)
+`static/index.html` (b511), `static/sw.js` (v511). Needs b510's server/kpi.py — the b511 zip carries it, so it goes straight on top of live b506.
+- Over the completion chart: last period → this period for PM done (should go up), PM on time %, CM + BD raised (should go down), CM closed in period %; green / red arrows by whether the change is good. Follows Daily / Weekly / Monthly.
+- "PM done vs corrective work (CM + BD)" panel restored under the chart (last week / this week side by side, Weekly / Monthly, class A/B/C, 12-week trend).
+
+### b510 — Completion chart: Daily / Weekly / Monthly switch; old "PM done vs corrective work" panel removed (30 Oct 2026)
+`server/kpi.py` (/api/kpi/weekly?bucket=day|week|month), `static/index.html` (b510), `static/sw.js` (v510). **Restart.** Includes b507–b509 — goes straight on top of live b506.
+- b509: Dashboard's "PM done vs corrective work (CM + BD)" last-week / this-week panel replaced by the completion % chart.
+- b510: chart has Daily · Weekly · Monthly buttons (choice remembered per browser). Same rules per period: PM % = on time ÷ due; CM % = CM+BD raised in the period and finished within it ÷ raised. Excel export follows the chosen view.
+
+### b508 — Dashboard: weekly PM % and CM % line chart since the system started (30 Oct 2026)
+`server/kpi.py` (new GET /api/kpi/weekly), `static/index.html` (b508), `static/sw.js` (v508). **Restart.** Needs b507.
+- Dashboard, under the rings: one chart, two lines, one point per Monday–Sunday week from the plant's first week of jobs to this week. Follows the plant you are in.
+- PM % = PMs done on time ÷ PMs due that week (same rule as the PM compliance ring). CM % = CM+BD raised that week and finished by its Sunday ÷ all raised that week. This week = hollow dot (still running). Dashed line = PM target 90%.
+- Hover a week for the counts; Excel button downloads the weekly table (incl. closed-by-now).
+- Test data (dev copy): BFL 8 weeks, BFLFP 10 weeks, BFLPC 8 weeks.
+
+### b507 — Header plant badge (BFLPC / BFLFP / BFL) no longer cut off (30 Oct 2026)
+`static/index.html` (b507), `static/sw.js` (v507). No restart. Put b506 on first.
+
+### b506 — FG: time range, product / lot search, PDF, Location + Remark, 1-day dashboard (30 Oct 2026)
+`server/fg.py`, `static/fg.html`, `static/index.html` (b506), `static/sw.js` (v506). **Restart.** Includes b502–b505 FG files.
+- Receive / release history: time from–to (night range like 20:00–06:00 wraps), separate Product and Lot search boxes, Location + Remark columns (screen, A4, CSV), new PDF button.
+- Checker queue: date + time from–to — filters the waiting list (blank date = all, nothing hidden) and sets the period of the printed form; new PDF button.
+- Dashboard: 1-day option.
+- New endpoint POST /api/fg/pdf: any FG table → real PDF (A4 landscape, Sarabun).
+- Tested on a scratch DB with the 27-Oct Access export: filters, 1-day dashboard, PDF with Thai text.
+
+### b505 — Manage → Users matrix made compact (30 Oct 2026)
+`static/index.html` (b505), `static/sw.js` (v505). No restart. Put b504 on first.
+- Matrix boxes 42 → 26 px high, tighter spacing and smaller badges, so all 16 departments fit on a 14" / 15.6" laptop screen without scrolling.
 
 ### b504 — Real QR on pallet slips made from the Access history (30 Oct 2026)
 `server/fg.py`, `static/index.html` (b504), `static/sw.js` (v504). **Restart.** Includes b503 (zip also carries b503's fg.html + config.py).
@@ -563,3 +634,5 @@ Item 100 adds `jobs.asset_text` the same way, so that restart covers it too.
 ---
 
 *Kept by Claude. Ask "what is waiting for the server?" any time and this is the answer.*
+
+- b512 (2026-10-30): login flash fix - renderApps fetches plants under the loader before dropping the login background; afterLogin clears the leftover login form. index.html + sw.js only (on top of b511).

@@ -432,6 +432,23 @@ def _swap_id_in_list(val, old, new):
     return ",".join(out)
 
 
+@router.post("/users/{uid}/signout")
+async def signout_user(uid: int, req: Request):
+    """b547 — end every sign-in of one account (lost phone, shared phone, left the company)."""
+    u = require_role(req, "admin")
+    from .auth import SESSIONS
+    n = SESSIONS.drop_user(uid, keep=req.cookies.get("bflfp") if uid == u["id"] else None)
+    return {"ok": True, "ended": n}
+
+
+@router.post("/sessions/signout-all")
+async def signout_all(req: Request):
+    """b547 — sign everybody out except the admin pressing the button."""
+    require_role(req, "admin")
+    from .auth import SESSIONS
+    return {"ok": True, "ended": SESSIONS.drop_all(keep=req.cookies.get("bflfp"))}
+
+
 @router.delete("/users/{uid}")
 async def delete_user(uid: int, req: Request, reassign_to: int = 0):
     """Remove a person or a login account, handing their work to somebody else.
@@ -520,6 +537,11 @@ async def delete_user(uid: int, req: Request, reassign_to: int = 0):
             pass
         c.execute("DELETE FROM users WHERE id=?", (uid,))
         c.commit()
+    try:                                   # b546: a deleted account is signed out everywhere, now
+        from .auth import SESSIONS
+        SESSIONS.drop_user(uid)
+    except Exception:
+        pass
     return {"ok": True, "name": row["name"], "username": row["username"],
             "moved_to": tgt["name"], "moved": moved}
 
@@ -542,9 +564,10 @@ async def edit_user(uid: int, req: Request):
             sets["can_report"] = 1 if sets["can_report"] else 0
             try:                          # a signed-in phone picks it up without logging out
                 from .auth import SESSIONS
-                for _s in SESSIONS.values():
+                for _t, _s in list(SESSIONS.items()):
                     if _s.get("id") == uid:
                         _s["can_report"] = sets["can_report"]
+                        SESSIONS.save(_t)
             except Exception:
                 pass
         # "all plants" is only for the roles that answer for all of them — checked here
@@ -560,6 +583,13 @@ async def edit_user(uid: int, req: Request):
             c.execute(f"UPDATE users SET {','.join(k+'=?' for k in sets)} WHERE id=?",
                       (*sets.values(), uid))
         c.commit()
+    # b546: switched off, or moved to another plant -> signed out on every device at once
+    if ("active" in sets and not sets["active"]) or "factory_id" in sets:
+        try:
+            from .auth import SESSIONS
+            SESSIONS.drop_user(uid)
+        except Exception:
+            pass
     return {"ok": True}
 
 

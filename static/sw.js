@@ -1,6 +1,6 @@
-const CACHE = "bflfp-v504";
+const CACHE = "bflfp-v554";
 const SHELL = ["/", "/manifest.json", "/logo.png",
-  "/Logo192.png", "/Logo512.png", "/Logo180.png", "/helpbot.png", "/helpbot-icon.png", "/vendor/jsqr.js", "/vendor/qrcode.js", "/vendor/pdf.min.js", "/vendor/pdf.worker.min.js"];
+  "/Logo192.png", "/Logo512.png", "/Logo180.png", "/helpbot.png", "/helpbot-icon.png", "/vendor/jsqr.js", "/vendor/qrcode.js", "/vendor/pdf.min.js", "/vendor/pdf.worker.min.js", "/fg.html"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)));
   self.skipWaiting();
