@@ -105,7 +105,12 @@ def ensure(c):
                      ("print_count", "INTEGER DEFAULT 0"), ("printed_at", "TEXT DEFAULT ''"),
                      ("fg_reject_at", "TEXT DEFAULT ''"), ("fixed_at", "TEXT DEFAULT ''"),
                      ("lot_run", "INTEGER DEFAULT 1"), ("scode", "TEXT DEFAULT ''"),
-                     ("exp_sfx", "TEXT DEFAULT ''"), ("exp_fmt", "TEXT DEFAULT ''")):
+                     ("exp_sfx", "TEXT DEFAULT ''"), ("exp_fmt", "TEXT DEFAULT ''"),
+                     # b564: part-pallet issue -> the bags left get a NEW slip (src='split'), linked to the
+                     # slip it came from (parent_id), the first slip of the pallet (root_id) and the release (split_rel)
+                     ("parent_id", "INTEGER DEFAULT 0"), ("root_id", "INTEGER DEFAULT 0"), ("split_rel", "INTEGER DEFAULT 0"),
+                     ("split_printed_at", "TEXT DEFAULT ''"), ("split_print_count", "INTEGER DEFAULT 0"),
+                     ("pkg_code", "TEXT DEFAULT ''")):   # b567: packaging code(s) from Master Data, "PK…, PK…"
         if col not in pcols:
             c.execute(f"ALTER TABLE fg_packing ADD COLUMN {col} {typ}")
     c.execute("CREATE INDEX IF NOT EXISTS ix_fg_pack_lot ON fg_packing(factory_id, product_code, lot_no)")
@@ -173,7 +178,9 @@ def ensure(c):
         note TEXT DEFAULT '', log TEXT DEFAULT '')""")
     rcols = _table_cols(c, "fg_release")
     for col, typ in (("issue_mode", "TEXT DEFAULT ''"), ("pallet_bags", "REAL DEFAULT 0"),
-                     ("photo", "TEXT DEFAULT ''"), ("photo_at", "TEXT DEFAULT ''"), ("photo_saved_at", "TEXT DEFAULT ''")):
+                     ("photo", "TEXT DEFAULT ''"), ("photo_at", "TEXT DEFAULT ''"), ("photo_saved_at", "TEXT DEFAULT ''"),
+                     ("pallet_no", "TEXT DEFAULT ''"),    # b565: the slip scanned (e.g. "37-1" after a split)
+                     ("slip_code", "TEXT DEFAULT ''")):   # b566: QR code of the slip scanned (the "old" code)
         if col not in rcols:
             c.execute(f"ALTER TABLE fg_release ADD COLUMN {col} {typ}")
     c.execute("CREATE INDEX IF NOT EXISTS ix_fg_rel_st ON fg_release(factory_id, status)")
@@ -252,6 +259,16 @@ def ensure(c):
             c.execute("UPDATE fg_packing SET raw_qr=? WHERE id=?", (slip_qr(dict(r)), r["id"]))
     except Exception:
         pass
+    try:
+        _nice_names(c)        # b567
+    except Exception as e:
+        print(f"[fg] name case fix skipped: {e}")
+    try:
+        n = _fill_pkg(c)      # b569
+        if n:
+            print(f"[fg] PKG code filled on {n} older slip(s) from Master Data")
+    except Exception as e:
+        print(f"[fg] PKG code fill skipped: {e}")
 
 
 _READY = False
@@ -413,6 +430,19 @@ def caps_of(u, rs=None):
     return out
 
 
+def can_loc(u, rs=None):
+    """b564: who may set the warehouse storage location on received pallets (Checker queue):
+    admin, the FG checker role, or a warehouse manager (department WRH / FGS, CMMS role manager)."""
+    if u.get("role") == "admin" or "check" in caps_of(u, rs):
+        return True
+    try:
+        with closing(conn()) as c:
+            r = c.execute("SELECT COALESCE(department,'') d, COALESCE(role,'') r FROM users WHERE id=?", (u["id"],)).fetchone()
+        return bool(r and r["d"].upper() in ("WRH", "FGS") and r["r"] == "manager")
+    except Exception:
+        return False
+
+
 def ctx(req: Request, need="view"):
     u = user_from(req)
     fac = u.get("active_factory") or u.get("factory_id")
@@ -436,6 +466,83 @@ def _who(u):
 def _log(c, fac, kind, ref, action, note, who):
     c.execute("INSERT INTO fg_log(factory_id,kind,ref_id,action,note,user_name,created_at) VALUES(?,?,?,?,?,?,?)",
               (fac, kind, ref, action, (note or "")[:500], who, now()))
+
+
+_UNIT = re.compile(r"^(\(?)(\d+(?:\.\d+)?)?(KGS?|G|GM)(\.?)(\)?[.,]?)$")
+_CODE = re.compile(r"^\(?[A-Z]{0,4}\d+[A-Z]{0,2}\)?[.,]?$")
+_PACK = re.compile(r"^[\(\d\.X\*KGM\)]+[.,]?$")          # (1KG*20) · 40X400G · (0.08KGX150) · (8X1.2KG)
+
+
+def nice_name(name):
+    """b567: an ALL-CAPS product name -> the same style as the rest ("Cat26% Sunny Cat (20 kg)").
+    Names that already have small letters are left exactly as they are."""
+    t = re.sub(r"\s+", " ", (name or "").strip())
+    if not t or re.search(r"[a-z฀-๿]", t) or not re.search(r"[A-Z]", t):
+        return t
+    out = []
+    for w in t.split(" "):
+        prev = out[-1] if out else ""
+        m = _UNIT.match(w)
+        if m and (m.group(2) or re.search(r"\d\)?$", prev)):
+            out.append(f"{m.group(1)}{m.group(2) or ''}{m.group(3).lower()}{m.group(4)}{m.group(5)}")
+        elif re.search(r"\d", w) and _PACK.match(w) and re.search(r"[KG]", w):
+            out.append(w.lower())                                   # pack sizes: 1kg*20, 40x400g
+        elif re.search(r"\d", w) and _CODE.match(w) and "%" not in w:
+            out.append(w)                                           # FT15, QP10, (8806L) — codes stay
+        elif "/" in w and re.search(r"\d", w) and "%" not in w:
+            out.append(w)                                           # FT19/FT29/FT39
+        elif (prev == "-" or w.startswith("-")) and 2 <= len(re.sub(r"[^A-Z]", "", w)) <= 4:
+            out.append(w)                                           # "- PTA", "-POG": customer / market codes
+        elif (lambda core: core and len(core) <= 3 and not re.search(r"[AEIOU]", core))(re.sub(r"[^A-Z]", "", w)):
+            out.append(w)                                           # SB, BBQ … no vowel = an abbreviation
+        else:
+            out.append(_cap(w))
+    return " ".join(out)
+
+
+def _cap(w):
+    """Cat26% · Chicken&Rice · Puppy-Chicken · K-Kat · (Seafood · Tony's"""
+    return re.sub(r"(^|[\s&\-/(+])([a-z])", lambda x: x.group(1) + x.group(2).upper(), w.lower())
+
+
+def _nice_names(c):
+    """b567: product names typed ALL IN CAPITALS (old Access list / Excel) are shown like the others —
+    "CAT30% ALLEY OCEAN FLAVOUR (8 KG)" -> "Cat30% Alley Ocean Flavour (8 kg)". Only the case changes.
+    FG products and the app's own slips / receive / issue rows; Access history and Master Data stay as they are."""
+    n = 0
+    for tbl, col, where in (("fg_products", "name", "1=1"), ("fg_packing", "product_name", "src IN ('slip','split','qr')"),
+                            ("fg_receive", "product_name", "src='app'"), ("fg_release", "product_name", "src='app'")):
+        for r in c.execute(f"SELECT id,{col} v FROM {tbl} WHERE {where} AND {col}=UPPER({col}) AND {col} GLOB '*[A-Z]*'").fetchall():
+            v = nice_name(r["v"])
+            if v != r["v"]:
+                c.execute(f"UPDATE {tbl} SET {col}=? WHERE id=?", (v, r["id"]))
+                n += 1
+    return n
+
+
+def _fill_pkg(c):
+    """b569: slips made before b567 have no PKG code — copy it from Master Data (product_master.pkg_code,
+    codes separated by ",") by FG code, Active rows first. Only slips with an EMPTY pkg_code are touched,
+    so it is safe at every start-up and a code typed on a slip is never replaced."""
+    if not c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='product_master'").fetchone():
+        return 0
+    pm = {}
+    for r in c.execute("""SELECT factory_id, fg_code, pkg_code FROM product_master WHERE COALESCE(fg_code,'')<>'' AND COALESCE(pkg_code,'')<>''
+                          ORDER BY CASE status WHEN 'Active' THEN 0 ELSE 1 END, id"""):
+        k = (r["factory_id"], str(r["fg_code"]).strip())
+        a = pm.setdefault(k, [])
+        for x in str(r["pkg_code"]).replace(";", ",").split(","):
+            x = x.strip()
+            if x.strip("-–— ") and x not in a:
+                a.append(x)
+    n = 0
+    for r in c.execute("""SELECT id, factory_id, product_code FROM fg_packing WHERE COALESCE(pkg_code,'')=''
+                          AND src IN ('slip','split','qr')""").fetchall():
+        a = pm.get((r["factory_id"], (r["product_code"] or "").strip()))
+        if a:
+            c.execute("UPDATE fg_packing SET pkg_code=? WHERE id=?", (", ".join(a[:10]), r["id"]))
+            n += 1
+    return n
 
 
 def _num(v, default=0.0):
@@ -649,7 +756,7 @@ def packing_mark(c, fac, pid, status, who, note=""):
 
 # ---------------------------------------------------------------- checklists
 def recv_items(pk):
-    tot = _num(pk["qty"]) * _num(pk["weight_unit"])
+    # b564: "Total weight" and "Packed by" (machine / line / staff) removed from the receiver's checklist
     me = (_fmt_d(pk.get("mfg")) or "-") + " → " + (_fmt_d(pk.get("exp")) or "-")
     return [
         {"id": "type", "th": "ประเภท", "en": "Type", "value": "FG"},
@@ -659,9 +766,7 @@ def recv_items(pk):
         {"id": "pack", "th": "บรรจุภัณฑ์", "en": "Packaging", "value": pk.get("packaging") or "-"},
         {"id": "qty", "th": "จำนวน/พาเลท", "en": "Qty / pallet", "value": f'{_n(pk["qty"])} {pk.get("unit") or ""}'},
         {"id": "wt", "th": "น้ำหนัก/หน่วย", "en": "Weight / unit", "value": f'{_n(pk["weight_unit"])} kg'},
-        {"id": "total", "th": "รวมน้ำหนัก", "en": "Total weight", "value": f'{_n(tot)} kg'},
         {"id": "mfgexp", "th": "วันผลิต/หมดอายุ บนถุง", "en": "MFG / EXP on bag", "value": me},
-        {"id": "op", "th": "ผู้ดำเนินการ", "en": "Packed by", "value": " · ".join(x for x in (pk.get("pd_line"), pk.get("station"), pk.get("operator")) if x) or "-"},
         {"id": "loc", "th": "แหล่งจัดเก็บ", "en": "Store to", "value": "คลังสินค้า (Warehouse)"},
     ]
 
@@ -768,7 +873,7 @@ async def me(req: Request):
             "fg_roles": rs, "fg_default": fg_default(u), "cmms_role": u.get("role"),
             "slip_form_code": _slip_form_code(), "can": sorted(caps_of(u, rs)), "packsup": is_sup(u), "role_can": {r: sorted(CAN.get(r, set())) for r in FG_ROLES}, "factory_id": fac,
             "factory_code": f["code"] if f else "", "factory_name": f["name"] if f else "",
-            "fg_only": fg_only(u), "checkers": checkers, "release_types": RELEASE_TYPES}
+            "fg_only": fg_only(u), "checkers": checkers, "release_types": RELEASE_TYPES, "can_loc": can_loc(u, rs)}
 
 
 @router.get("/summary")
@@ -932,6 +1037,55 @@ def _stock_hit(c, fac, rec):
     return lot_left, older[:3]
 
 
+def _split_live_child(c, fac, pid):
+    """b564: the newest split slip made from this slip that is not cancelled (or None)."""
+    return c.execute("""SELECT * FROM fg_packing WHERE factory_id=? AND parent_id=? AND src='split' AND status<>'cancelled'
+                        ORDER BY id DESC LIMIT 1""", (fac, pid)).fetchone()
+
+
+def _split_root(c, fac, pk):
+    """b564: the first slip of a pallet (a split slip points back to it through root_id)."""
+    rid = (pk.get("root_id") or 0) if pk else 0
+    if rid:
+        r = c.execute("SELECT * FROM fg_packing WHERE id=? AND factory_id=?", (rid, fac)).fetchone()
+        if r:
+            return dict(r)
+    return pk
+
+
+def _split_make(c, fac, sp, left, wt, iid, who):
+    """b564: part of a pallet was issued -> a new slip for the bags left on it. Same product / lot /
+    MFG / EXP; pallet no. = first slip's no. + "-1", "-2" …; QR is new. The stock stays on the first
+    slip's receive row, so the stock card and lot balance do not change."""
+    root = _split_root(c, fac, sp)
+    k = c.execute("SELECT COUNT(*) FROM fg_packing WHERE factory_id=? AND root_id=?", (fac, root["id"])).fetchone()[0] + 1
+    pal = f'{root["pallet_no"]}-{k}'
+    while c.execute("SELECT 1 FROM fg_packing WHERE factory_id=? AND pkey=?",
+                    (fac, pkey_of(sp["product_code"], sp["lot_no"], pal, sp.get("lot_run") or 1))).fetchone():
+        k += 1
+        pal = f'{root["pallet_no"]}-{k}'
+    t = now()
+    cols = ("lot_no", "product_code", "product_name", "packaging", "unit", "weight_unit", "mfg", "exp", "station",
+            "operator", "slip_no", "doc_no", "pack_machine", "pd_line", "pack_type", "bag_weight", "staff_name",
+            "pc_status", "pc_by", "lot_run", "exp_sfx", "exp_fmt", "legacy_code")
+    vals = {k2: sp.get(k2) for k2 in cols}
+    vals["legacy_code"] = ""
+    vals.update({"factory_id": fac, "pkey": pkey_of(sp["product_code"], sp["lot_no"], pal, sp.get("lot_run") or 1),
+                 "pallet_no": pal, "qty": left, "total_weight": left * wt, "packed_at": t, "src": "split",
+                 "status": "moved_to_fg", "status_at": t, "status_by": who, "pc_at": "", "created_by": who,
+                 "note": f'แบ่งจากพาเลท #{sp["pallet_no"]} (split from #{sp["pallet_no"]}) · release #{iid}',
+                 "parent_id": sp["id"], "root_id": root["id"], "split_rel": iid, "raw_qr": ""})
+    ks = list(vals)
+    cid = c.insert_id(f"INSERT INTO fg_packing({','.join(ks)}) VALUES({','.join('?' * len(ks))})", tuple(vals[x] for x in ks))
+    ch = dict(c.execute("SELECT * FROM fg_packing WHERE id=?", (cid,)).fetchone())
+    c.execute("UPDATE fg_packing SET raw_qr=? WHERE id=?", (slip_qr(ch), cid))
+    _assign_codes(c, [cid])
+    _log(c, fac, "packing", cid, "split_child",
+         f'{_n(left)} bags left from #{sp["pallet_no"]} (release #{iid}) → new slip #{pal}', who)
+    _log(c, fac, "packing", sp["id"], "split_child", f'new slip #{pal} for the {_n(left)} bags left (release #{iid})', who)
+    return cid, pal
+
+
 def _flow_id():
     import random
     return int(time.time() * 1000) * 10 + random.randint(0, 9)
@@ -953,15 +1107,31 @@ async def scan_issue(req: Request):
             if pk:
                 slip = {"pkey": pk["pkey"], "product_code": pk["product_code"], "lot_no": pk["lot_no"],
                         "pallet_no": pk["pallet_no"], "qty": _num(pk["qty"])}
+        spk = None
         if slip:
+            # b564: a split slip -> its stock is on the first slip's receive row; an old slip that was
+            # split must not be used any more (the new slip is on the pallet)
+            spk = c.execute("SELECT * FROM fg_packing WHERE factory_id=? AND pkey=?", (fac, slip["pkey"])).fetchone()
+            spk = dict(spk) if spk else None
+            if spk:
+                if spk["status"] == "cancelled":
+                    raise HTTPException(409, {"msg": "ใบพาเลทนี้ถูกยกเลิกแล้ว (this slip was cancelled)"})
+                live = _split_live_child(c, fac, spk["id"])
+                if live:
+                    raise HTTPException(409, {"msg": f'พาเลทนี้ถูกแบ่งแล้ว — สแกนใบพาเลทใหม่ #{live["pallet_no"]} '
+                                                     f'(this pallet was split — scan the new slip #{live["pallet_no"]})'})
+            rkey = _split_root(c, fac, spk)["pkey"] if spk and spk.get("src") == "split" else slip["pkey"]
             r = c.execute("""SELECT * FROM fg_receive WHERE factory_id=? AND pkey=? AND status='confirmed'
-                             ORDER BY id DESC""", (fac, slip["pkey"])).fetchone()
+                             ORDER BY id DESC""", (fac, rkey)).fetchone()
             if r:
                 rec = dict(r)
                 left = pallet_left(c, rec["id"], rec["qty"])
                 if left <= 0:
                     raise HTTPException(409, {"msg": "พาเลทนี้จ่ายออกหมดแล้ว (pallet already fully issued)"})
-                pallet = {"receive_id": rec["id"], "pallet_left": left, "src": "app"}
+                pallet = {"receive_id": rec["id"], "pallet_left": left, "src": "app",
+                          "packing_id": spk["id"] if spk else 0}
+                if spk and spk.get("src") == "split":
+                    rec["pallet_no"] = spk["pallet_no"]
             else:
                 w = c.execute("SELECT status FROM fg_receive WHERE factory_id=? AND pkey=? ORDER BY id DESC",
                               (fac, slip["pkey"])).fetchone()
@@ -1094,10 +1264,22 @@ async def issue(req: Request):
              (b.get("memo") or "").strip()[:200], (b.get("plate") or "").strip()[:30],
              json.dumps(stored, ensure_ascii=False), who, t, (b.get("memo") or "").strip()[:200], t))
         photo = ""
+        child = None
         if mode == "part":
             photo = _save_photo(b["photo"], fac, iid)
-        c.execute("UPDATE fg_release SET issue_mode=?, pallet_bags=?, photo=?, photo_at=?, photo_saved_at=? WHERE id=?",
-                  (mode, avail, photo, (b.get("photo_at") or "")[:19] if photo else "", t if photo else "", iid))
+            # b564: the bags left get a new slip (printed on A4 by the checker PC)
+            pid = int(s.get("packing_id") or 0)
+            sp = c.execute("SELECT * FROM fg_packing WHERE id=? AND factory_id=?", (pid, fac)).fetchone() if pid and rid else None
+            if sp:
+                sp = dict(sp)
+                if _split_live_child(c, fac, sp["id"]):
+                    raise HTTPException(409, {"msg": "พาเลทนี้ถูกแบ่งแล้ว — สแกนใบพาเลทใหม่ (this pallet was split — scan the new slip)"})
+                child = _split_make(c, fac, sp, avail - qty, wt, iid, who)
+        scan_pid = int(s.get("packing_id") or 0)
+        sc = c.execute("SELECT scode FROM fg_packing WHERE id=? AND factory_id=?", (scan_pid, fac)).fetchone() if scan_pid else None
+        c.execute("UPDATE fg_release SET issue_mode=?, pallet_bags=?, photo=?, photo_at=?, photo_saved_at=?, pallet_no=?, slip_code=? WHERE id=?",
+                  (mode, avail, photo, (b.get("photo_at") or "")[:19] if photo else "", t if photo else "",
+                   str(s.get("pallet_no") or "")[:20], (sc["scode"] if sc else "") or "", iid))
         flow = int(b.get("flow") or 0)
         if flow:   # the steps before saving (scan, correct?, full/part, photo) become this release's audit trail
             c.execute("""INSERT INTO fg_log(factory_id,kind,ref_id,action,note,user_name,created_at)
@@ -1107,7 +1289,8 @@ async def issue(req: Request):
              f"{mode} {_n(qty)} of {_n(avail)} · {b.get('customer_id')} · {b.get('release_type')}"
              + (f" · plate {b.get('plate')}" if b.get("plate") else ""), who)
         c.commit()
-    return {"ok": True, "id": iid, "status": "waiting", "qty": qty, "mode": mode}
+    return {"ok": True, "id": iid, "status": "waiting", "qty": qty, "mode": mode,
+            "new_slip": {"id": child[0], "pallet_no": child[1], "qty": avail - qty} if child else None}
 
 
 def _save_photo(data_url, fac, iid):
@@ -1207,15 +1390,228 @@ async def queue(req: Request, kind: str = "recv"):
             rows = c.execute("SELECT * FROM fg_release WHERE factory_id=? AND status='waiting' ORDER BY id DESC", (fac,)).fetchall()
             cust = {r["code"]: r["name"] for r in c.execute("SELECT code,name FROM fg_customers WHERE factory_id=?", (fac,))}
             out = []
+            kids = {r["split_rel"]: dict(r) for r in c.execute(
+                """SELECT id,split_rel,pallet_no,qty,split_printed_at,split_print_count FROM fg_packing
+                   WHERE factory_id=? AND src='split' AND status<>'cancelled' AND split_rel>0""", (fac,))}
             for r in rows:
                 d = _recv_row(r, prods)
                 d["customer_name"] = cust.get(d["customer_id"], "")
-                d["pallet_no"] = (d.get("pkey") or "||").split("|")[2] if (d.get("pkey") or "").count("|") >= 2 else ""
+                d["new_slip"] = kids.get(d["id"])     # b564: part issue -> new slip for the bags left
+                d["pallet_no"] = d.get("pallet_no") or ((d.get("pkey") or "||").split("|")[2] if (d.get("pkey") or "").count("|") >= 2 else "")
                 out.append(d)
         else:
             out = [_recv_row(r, prods) for r in c.execute(
                 "SELECT * FROM fg_receive WHERE factory_id=? AND status='waiting' ORDER BY id DESC", (fac,))]
     return {"rows": out}
+
+
+@router.post("/receive-location")
+async def receive_location(req: Request):
+    """b564: Checker queue — set the warehouse storage location on many received pallets at once
+    (the rows the checker filtered). Only rows still waiting in the queue; every change is logged."""
+    u, fac, _ = ctx(req, "view")
+    if not can_loc(u):
+        raise HTTPException(403, {"msg": "ไม่มีสิทธิ์แก้ไขแหล่งจัดเก็บ (no permission to edit the location)"})
+    b = await req.json()
+    loc = (b.get("location") or "").strip()[:60]
+    ids = [int(x) for x in (b.get("ids") or []) if str(x).isdigit()][:3000]
+    if not loc:
+        raise HTTPException(400, {"msg": "ใส่แหล่งจัดเก็บ (enter a location)"})
+    if not ids:
+        raise HTTPException(400, {"msg": "ไม่มีรายการ (no rows)"})
+    who = _who(u)
+    n = 0
+    with closing(conn()) as c:
+        for i in range(0, len(ids), 500):
+            part = ids[i:i + 500]
+            rows = c.execute(f"SELECT id, location FROM fg_receive WHERE factory_id=? AND status='waiting' AND id IN ({','.join('?' * len(part))})",
+                             (fac, *part)).fetchall()
+            for r in rows:
+                if (r["location"] or "") == loc:
+                    continue
+                c.execute("UPDATE fg_receive SET location=? WHERE id=?", (loc, r["id"]))
+                _log(c, fac, "receive", r["id"], "location_set", f'{r["location"] or "-"} → {loc}', who)
+                n += 1
+        c.commit()
+    return {"ok": True, "updated": n, "location": loc}
+
+
+def _rel_codes(c, fac, rows):
+    """b566: old QR (the slip scanned) and new QR (the slip made for the bags left) on each release row,
+    so a pallet can be traced from either code."""
+    ids = [r["id"] for r in rows if r.get("src") == "app"]
+    kids = {}
+    for i in range(0, len(ids), 500):
+        part = ids[i:i + 500]
+        for k in c.execute(f"""SELECT k.id,k.split_rel,k.pallet_no,k.qty,k.status,k.scode,k.split_printed_at,k.split_print_count,
+                                      p.scode parent_code, p.pallet_no parent_no
+                               FROM fg_packing k LEFT JOIN fg_packing p ON p.id=k.parent_id
+                               WHERE k.factory_id=? AND k.src='split' AND k.split_rel IN ({','.join('?' * len(part))})""", (fac, *part)):
+            kids[k["split_rel"]] = dict(k)
+    for r in rows:
+        k = kids.get(r["id"])
+        r["new_slip"] = k
+        r["old_code"] = r.get("slip_code") or (k["parent_code"] if k else "")
+        r["new_code"] = k["scode"] if k else ""
+    return rows
+
+
+def _code_releases(c, fac, code):
+    """b566: every app release of the pallet that carried this QR code (old or new), all dates."""
+    i = short_id(code) or (code or "").strip().upper()
+    pk = c.execute("SELECT * FROM fg_packing WHERE factory_id=? AND scode=?", (fac, i)).fetchone()
+    if not pk:
+        return None, []
+    root = _split_root(c, fac, dict(pk))
+    rec = c.execute("SELECT id FROM fg_receive WHERE factory_id=? AND pkey=? AND status IN ('confirmed','waiting') ORDER BY id DESC",
+                    (fac, root["pkey"])).fetchone()
+    rows = c.execute("""SELECT * FROM fg_release WHERE factory_id=? AND src='app' AND (receive_id=? OR slip_code=?)
+                        ORDER BY issue_at DESC, id DESC""", (fac, rec["id"] if rec else -1, i)).fetchall()
+    chain = [dict(x) for x in c.execute("""SELECT id,pallet_no,scode,qty,status,src,parent_id,packed_at FROM fg_packing
+                                         WHERE factory_id=? AND (id=? OR root_id=?) ORDER BY id""", (fac, root["id"], root["id"]))]
+    return chain, rows
+
+
+@router.get("/trace")
+async def trace(req: Request, code: str = "", lot: str = ""):
+    """b566: traceability. code = any pallet-slip QR (old or new, short code or full JSON) -> the pallet:
+    every slip it has had (first → in use), packing / packing-check, FG receive (location), every issue
+    with old → new QR, and what is still on it. lot = every pallet of that lot with its state."""
+    u, fac, _ = ctx(req, "check")
+    with closing(conn()) as c:
+        if lot.strip() and not code.strip():
+            lt = lot.strip()
+            pals = []
+            for p in c.execute("""SELECT * FROM fg_packing WHERE factory_id=? AND lot_no=? AND src NOT IN ('split','access')
+                                  AND status<>'cancelled' ORDER BY product_code, COALESCE(lot_run,1), CAST(pallet_no AS INTEGER), id""", (fac, lt)):
+                p = dict(p)
+                rec = c.execute("SELECT id,qty,status,location,recv_at FROM fg_receive WHERE factory_id=? AND pkey=? ORDER BY id DESC",
+                                (fac, p["pkey"])).fetchone()
+                left = pallet_left(c, rec["id"], rec["qty"]) if rec and rec["status"] == "confirmed" else None
+                cur = c.execute("""SELECT pallet_no,scode,qty FROM fg_packing WHERE factory_id=? AND root_id=? AND src='split'
+                                   AND status<>'cancelled' ORDER BY id DESC LIMIT 1""", (fac, p["id"])).fetchone()
+                st = ("issued" if left is not None and left <= 0 else "in_stock" if left is not None
+                      else (rec["status"] if rec else ("packing" if p["status"] == "packed" else p["status"])))
+                pals.append({"id": p["id"], "product_code": p["product_code"], "product_name": p["product_name"],
+                             "pallet_no": p["pallet_no"], "code": p["scode"], "qty": p["qty"], "lot_run": p.get("lot_run") or 1,
+                             "packed_at": p["packed_at"], "state": st, "left": left, "location": rec["location"] if rec else "",
+                             "received_at": rec["recv_at"] if rec else "",
+                             "cur_pallet": cur["pallet_no"] if cur else p["pallet_no"], "cur_code": cur["scode"] if cur else p["scode"]})
+            acc = [dict(x) for x in lot_balances(c, fac, lot=lt)]
+            return {"mode": "lot", "lot": lt, "pallets": pals, "balance": acc}
+        text = qr_text(c, fac, code.strip())
+        slip = parse_qr(text)
+        pk = None
+        if slip:
+            pk = c.execute("SELECT * FROM fg_packing WHERE factory_id=? AND pkey=?", (fac, slip["pkey"])).fetchone()
+        if not pk:
+            i = short_id(code) or code.strip().upper()
+            pk = c.execute("SELECT * FROM fg_packing WHERE factory_id=? AND scode=?", (fac, i)).fetchone()
+        if not pk:
+            raise HTTPException(404, {"msg": "ไม่พบรหัส QR นี้ (QR code not found)"})
+        pk = dict(pk)
+        root = _split_root(c, fac, pk)
+        chain = [dict(x) for x in c.execute("""SELECT id,pallet_no,scode,qty,status,src,parent_id,split_rel,packed_at,
+                                                     split_printed_at,split_print_count FROM fg_packing
+                                              WHERE factory_id=? AND (id=? OR root_id=?) ORDER BY id""", (fac, root["id"], root["id"]))]
+        rec = c.execute("SELECT * FROM fg_receive WHERE factory_id=? AND pkey=? ORDER BY id DESC", (fac, root["pkey"])).fetchone()
+        rec = dict(rec) if rec else None
+        if rec:
+            rec.pop("checklist", None)
+            rec.pop("log", None)
+        rels = [dict(x) for x in c.execute("""SELECT * FROM fg_release WHERE factory_id=? AND src='app' AND receive_id=?
+                                             ORDER BY issue_at, id""", (fac, rec["id"] if rec else -1))]
+        for r in rels:
+            r.pop("checklist", None)
+            r.pop("log", None)
+        _rel_codes(c, fac, rels)
+        left = pallet_left(c, rec["id"], rec["qty"]) if rec and rec["status"] == "confirmed" else None
+        ids = [x["id"] for x in chain]
+        events = [dict(x) for x in c.execute(
+            f"""SELECT kind,ref_id,action,note,user_name,created_at FROM fg_log WHERE factory_id=? AND kind='packing'
+                AND ref_id IN ({','.join('?' * len(ids))}) ORDER BY created_at, id""", (fac, *ids))]
+        if rec:
+            events += [dict(x) for x in c.execute("""SELECT kind,ref_id,action,note,user_name,created_at FROM fg_log
+                                                     WHERE factory_id=? AND kind='receive' AND ref_id=?""", (fac, rec["id"]))]
+        for r in rels:
+            events += [dict(x) for x in c.execute("""SELECT kind,ref_id,action,note,user_name,created_at FROM fg_log
+                                                     WHERE factory_id=? AND kind='release' AND ref_id=? AND action IN
+                                                     ('issued_on_phone','confirmed','sentback')""", (fac, r["id"]))]
+        events.sort(key=lambda e: (e["created_at"] or "", e["kind"]))
+        live = [x for x in chain if x["status"] != "cancelled"]
+        state = ("issued" if left is not None and left <= 0 else "in_stock" if left is not None
+                 else (rec["status"] if rec else ("packing" if root["status"] == "packed" else root["status"])))
+        root_out = {k: root.get(k) for k in ("id", "product_code", "product_name", "lot_no", "pallet_no", "scode", "qty", "unit",
+                                             "weight_unit", "mfg", "exp", "pack_machine", "pd_line", "staff_name", "packed_at",
+                                             "pc_status", "pc_by", "pc_at", "lot_run", "status")}
+        return {"mode": "code", "code": code.strip(), "scanned": {"id": pk["id"], "pallet_no": pk["pallet_no"], "code": pk["scode"],
+                                                                  "status": pk["status"], "src": pk["src"]},
+                "root": root_out, "chain": chain, "current": live[-1] if live else None, "receive": rec,
+                "releases": rels, "left": left, "state": state, "events": events}
+
+
+@router.get("/issue-report")
+async def issue_report(req: Request, d1: str = "", d2: str = "", code: str = ""):
+    """b565: FG Issuer report — every issue saved on the phones (src='app') between d1 and d2 (issue
+    date), with customer, full / part, photo, checker status and the new slip made for a part pallet."""
+    u, fac, _ = ctx(req, "check")
+    d2 = (d2 or _today())[:10]
+    d1 = (d1 or d2)[:10]
+    with closing(conn()) as c:
+        prods = _prods(c, fac)
+        cust = {r["code"]: r["name"] for r in c.execute("SELECT code,name FROM fg_customers WHERE factory_id=?", (fac,))}
+        rows, chain = [], None
+        if code.strip():
+            chain, src_rows = _code_releases(c, fac, code)
+        else:
+            src_rows = c.execute("""SELECT * FROM fg_release WHERE factory_id=? AND src='app' AND issue_at>=? AND issue_at<=?
+                                    ORDER BY issue_at DESC, id DESC LIMIT 5000""", (fac, d1, d2 + " 23:59:59")).fetchall()
+        for r in src_rows:
+            d = _recv_row(r, prods)
+            d.pop("checklist", None)
+            d.pop("log", None)
+            d["customer_name"] = cust.get(d.get("customer_id"), "")
+            pk = d.get("pkey") or ""
+            d["pallet_no"] = d.get("pallet_no") or (pk.split("|")[2] if pk.count("|") >= 2 else "")
+            rows.append(d)
+        _rel_codes(c, fac, rows)
+    return {"rows": rows, "d1": d1, "d2": d2, "code": code.strip(), "chain": chain}
+
+
+@router.get("/split-slips")
+async def split_slips(req: Request, ids: str = "", rel: str = ""):
+    """b564: the new slips made for part pallets (by slip id or by release id) — for printing on A4."""
+    u, fac, _ = ctx(req, "view")
+    if not ({"check", "issue"} & can_set(roles_of(u))):
+        raise HTTPException(403, {"msg": "ไม่มีสิทธิ์ (no permission)"})
+    col, vals = ("id", ids) if ids else ("split_rel", rel)
+    idl = [int(x) for x in (vals or "").split(",") if x.strip().isdigit()][:200]
+    if not idl:
+        return {"rows": []}
+    with closing(conn()) as c:
+        rows = []
+        for r in c.execute(f"SELECT * FROM fg_packing WHERE factory_id=? AND src='split' AND {col} IN ({','.join('?' * len(idl))})", (fac, *idl)):
+            d = _slip_out(r)
+            p = c.execute("SELECT pallet_no FROM fg_packing WHERE id=?", (d["parent_id"],)).fetchone()
+            rl = c.execute("SELECT qty,customer_id,release_no FROM fg_release WHERE id=?", (d["split_rel"],)).fetchone()
+            d["parent_no"] = p["pallet_no"] if p else ""
+            d["rel_qty"], d["rel_cust"] = (rl["qty"], rl["customer_id"]) if rl else (0, "")
+            rows.append(d)
+    return {"rows": rows}
+
+
+@router.post("/split-printed")
+async def split_printed(req: Request):
+    u, fac, _ = ctx(req, "check")
+    b = await req.json()
+    idl = [int(x) for x in (b.get("ids") or []) if str(x).isdigit()][:200]
+    with closing(conn()) as c:
+        for i in idl:
+            c.execute("UPDATE fg_packing SET split_printed_at=?, split_print_count=COALESCE(split_print_count,0)+1 WHERE id=? AND factory_id=? AND src='split'",
+                      (now(), i, fac))
+            _log(c, fac, "packing", i, "child_printed", "A4", _who(u))
+        c.commit()
+    return {"ok": True}
 
 
 @router.post("/confirm")
@@ -1242,6 +1638,14 @@ async def confirm(req: Request):
                       (st, checker, _who(u), now(), note, note, i))
             if kind == "recv" and st == "sentback" and r["packing_id"]:
                 packing_mark(c, fac, r["packing_id"], "packed", _who(u), "sent back by checker: " + note)
+            if kind == "issue" and st == "sentback":
+                # b564: the issue did not happen -> the new slip made for the bags left is void, the old slip is used again
+                for ch in c.execute("SELECT id FROM fg_packing WHERE factory_id=? AND split_rel=? AND src='split' AND status<>'cancelled'",
+                                    (fac, i)).fetchall():
+                    if _split_live_child(c, fac, ch["id"]):
+                        raise HTTPException(409, {"msg": f"ส่งกลับไม่ได้: ใบพาเลทใหม่ของรายการ #{i} ถูกแบ่งต่อแล้ว "
+                                                         f"(cannot send back #{i}: its new slip was split again — send that one back first)"})
+                    packing_mark(c, fac, ch["id"], "cancelled", _who(u), "issue sent back by checker: " + note)
             _log(c, fac, "receive" if kind == "recv" else "release", i, st, note, _who(u))
             done += 1
         c.commit()
@@ -1305,6 +1709,8 @@ async def history(req: Request, kind: str = "recv", d1: str = "", d2: str = "", 
         for r in rows:
             r.pop("checklist", None)
             r.pop("log", None)
+        if kind != "recv":
+            _rel_codes(c, fac, rows)     # b566: old / new QR on release history
         n = c.execute(f"SELECT COUNT(*) FROM {tbl} WHERE {' AND '.join(conds)}", tuple(args)).fetchone()[0]
     return {"rows": rows, "total": n}
 
@@ -1323,6 +1729,8 @@ async def table_pdf(req: Request):
     title, sub, foot = str(b.get("title") or "FG report")[:200], str(b.get("sub") or "")[:300], str(b.get("foot") or "")[:300]
     fname = re.sub(r"[^A-Za-z0-9_.-]+", "-", str(b.get("file") or "fg-report"))[:80] + ".pdf"
     who = _who(u)
+    with closing(conn()) as c:   # b556: factory logo on the left of every report
+        fcode = (c.execute("SELECT code FROM factories WHERE id=?", (fac,)).fetchone() or {"code": ""})["code"]
 
     def build():
         from reportlab.lib.pagesizes import A4, landscape
@@ -1355,7 +1763,21 @@ async def table_pdf(req: Request):
                                ("BOTTOMPADDING", (0, 0), (-1, -1), 1.2), ("LEFTPADDING", (0, 0), (-1, -1), 2.5), ("RIGHTPADDING", (0, 0), (-1, -1), 2.5)]))
         ts = ParagraphStyle("t", fontName="APPB", fontSize=11 * k, leading=13 * k)
         ss = ParagraphStyle("s", fontName="APP", fontSize=7.5 * k, leading=9 * k)
-        story = [P(title, ts), P(f"{sub} · printed by {who} {now()[:16]}", ss), Spacer(1, 3 * mm), t]
+        head_p = [P(title, ts), P(f"{sub} · printed by {who} {now()[:16]}", ss)]
+        story = head_p
+        try:
+            from reportlab.platypus import Image as RImg
+            from reportlab.lib.utils import ImageReader
+            from .config import STATIC
+            lp = os.path.join(STATIC, {"PC": "fac_pc.png", "FP": "fac_fp.png"}.get(fcode, "logo.png"))
+            iw, ih = ImageReader(lp).getSize()
+            lh = 13 * mm
+            hb = Table([[RImg(lp, width=lh * iw / ih, height=lh), head_p]], colWidths=[lh * iw / ih + 4 * mm, None])
+            hb.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("LEFTPADDING", (0, 0), (-1, -1), 0)]))
+            story = [hb]
+        except Exception:
+            pass
+        story = story + [Spacer(1, 3 * mm), t]
         end = []
         if foot:
             end.append(Spacer(1, 2 * mm))
@@ -1375,6 +1797,20 @@ async def table_pdf(req: Request):
         return buf.getvalue()
     pdf = await asyncio.to_thread(build)
     return Response(pdf, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+
+
+# ════════ b559 — Master Data on the packing PC ════════
+# One list only: the CMMS "Production › Master Data" table (product_master, server/master.py),
+# kept by the Production team. The packing PC reads the same rows — nothing is copied or uploaded here.
+@router.get("/prod-master")
+async def prod_master(req: Request):
+    from . import master as _md
+    u, fac, _ = ctx(req, "view")
+    with closing(conn()) as c:
+        _md.ensure(c)
+        rows = [dict(r) for r in c.execute("SELECT * FROM product_master WHERE factory_id=? ORDER BY no, id", (fac,))]
+    return {"items": rows, "cols": [{"k": k, "h": h} for k, h in _md.COLS],
+            "can_edit": _md.can_edit(u)}   # b561: Production manager (dept PRD) or admin — same rule as the CMMS page
 
 
 @router.get("/stock")
@@ -1573,6 +2009,12 @@ def _slip_fields(c, fac, b):
     lot = (b.get("lot_no") or "").strip().upper()
     p = _product(c, fac, code)
     if not p:
+        # b567: a code that is only in Master Data (product_master, the Production team's Excel list)
+        m = c.execute("""SELECT product_name FROM product_master WHERE factory_id=? AND fg_code=? AND COALESCE(product_name,'')<>''
+                         ORDER BY CASE status WHEN 'Active' THEN 0 ELSE 1 END, id LIMIT 1""", (fac, code)).fetchone() if code else None
+        if m:
+            p = {"name": nice_name(m["product_name"]), "packaging": "", "weight": 0, "shelf_life_days": 0}
+    if not p:
         raise HTTPException(400, {"msg": "ไม่พบรหัสสินค้า (unknown product code) — add it in Products first"})
     if not lot:
         raise HTTPException(400, {"msg": "ใส่เลขล็อต (lot number required)"})
@@ -1594,7 +2036,7 @@ def _slip_fields(c, fac, b):
     if not exp:
         raise HTTPException(400, {"msg": "ใส่วันหมดอายุ (expiry date required — no shelf life set for this product)"})
     pt = b.get("pack_type") or PACK_TYPES[0]
-    return {"product_code": code, "product_name": p["name"], "packaging": p.get("packaging", ""), "lot_no": lot,
+    return {"product_code": code, "product_name": nice_name(p["name"]), "packaging": p.get("packaging", ""), "lot_no": lot,
             "qty": bags, "unit": "กระสอบ", "weight_unit": wu, "bag_weight": bw, "total_weight": wu * bags,
             "mfg": mfg, "exp": exp, "exp_sfx": "B." if (b.get("exp_sfx") or "").strip().upper() in ("B", "B.") else "",
             "exp_fmt": b.get("exp_fmt") if b.get("exp_fmt") in ("dd/mm/yy", "dd/mm/yyyy", "yy/mm/dd", "mm/yyyy", "yyyy/mm/dd", "dd mm yyyy") else "",
@@ -1654,6 +2096,7 @@ async def slip_new(req: Request):
     with closing(conn()) as c:
         f = _slip_fields(c, fac, b)
         f["staff_name"] = f["staff_name"] or who
+        pkg = _pkg_list(b.get("pkg_code"))
         st = _lot_run(c, fac, f["product_code"], f["lot_no"])
         run = st["run"]
         if st["status"] == "closed":
@@ -1675,7 +2118,8 @@ async def slip_new(req: Request):
                  f["product_name"], f["packaging"], f["qty"], f["unit"], f["weight_unit"], f["bag_weight"],
                  f["total_weight"], f["mfg"], f["exp"], f["doc_no"], f["pack_machine"], f["pd_line"], f["pack_type"],
                  f["pack_machine"], f["staff_name"], f["staff_name"], t, t, who, run))
-            c.execute("UPDATE fg_packing SET exp_sfx=?,exp_fmt=? WHERE id=?", (f["exp_sfx"], f["exp_fmt"], pid))   # b538/b539: "B." + date format
+            c.execute("UPDATE fg_packing SET exp_sfx=?,exp_fmt=?,pkg_code=? WHERE id=?",
+                      (f["exp_sfx"], f["exp_fmt"], pkg, pid))   # b538/b539: "B." + date format · b567: PKG code(s)
             r = c.execute("SELECT * FROM fg_packing WHERE id=?", (pid,)).fetchone()
             c.execute("UPDATE fg_packing SET raw_qr=? WHERE id=?", (slip_qr(dict(r)), pid))
             _assign_codes(c)
@@ -1780,6 +2224,8 @@ async def slip_list(req: Request, d1: str = "", d2: str = "", q: str = "", pc: s
     if not ({"pack", "check", "packcheck"} & can_set(roles_of(u))):
         raise HTTPException(403, {"msg": "ไม่มีสิทธิ์ (no permission)"})
     conds, args = ["factory_id=?"], [fac]
+    if not ids:
+        conds.append("src<>'split'")    # b564: new slips made by the warehouse for part pallets are not packing's slips
     if ids:
         idl = [int(x) for x in ids.split(",") if x.strip().isdigit()][:200]
         conds.append("id IN (" + ",".join("?" * len(idl)) + ")")
@@ -2187,9 +2633,12 @@ async def slip_revive(req: Request, sid: int):
         raise HTTPException(403, {"msg": "ไม่มีสิทธิ์ (no permission)"})
     with closing(conn()) as c:
         r = c.execute("SELECT * FROM fg_packing WHERE id=? AND factory_id=?", (sid, fac)).fetchone()
-        if not r or r["status"] != "cancelled":
-            raise HTTPException(409, {"msg": "ใบนี้ไม่ได้ถูกลบ (this slip is not deleted)"})
-        if _interlock_on(c, fac):          # b553: a later slip of the lot already passed -> stays deleted
+        # b5xx: a slip FG rejected can be revived too (rejected by mistake) — back to Packed,
+        # same number and code, waiting for the packing check again
+        if not r or r["status"] not in ("cancelled", "rejected_by_fg"):
+            raise HTTPException(409, {"msg": "ใบนี้ไม่ได้ถูกลบหรือถูก FG ไม่รับ (this slip is not deleted or rejected by FG)"})
+        was_fg_reject = r["status"] == "rejected_by_fg"
+        if not was_fg_reject and _interlock_on(c, fac):          # b553: a later slip of the lot already passed -> stays deleted
             later = c.execute("""SELECT pallet_no FROM fg_packing WHERE factory_id=? AND product_code=? AND lot_no=?
                 AND COALESCE(lot_run,1)=? AND COALESCE(pack_machine,'')=? AND pc_status='approved' AND status<>'cancelled'
                 AND CAST(pallet_no AS INTEGER)>? ORDER BY CAST(pallet_no AS INTEGER) LIMIT 1""",
@@ -2198,7 +2647,8 @@ async def slip_revive(req: Request, sid: int):
                 raise HTTPException(409, {"msg": f"กู้คืนไม่ได้ — สแกน #{later['pallet_no']} ไปแล้ว (cannot revive: #{later['pallet_no']} was already scanned)"})
         c.execute("UPDATE fg_packing SET status='packed',status_at=?,status_by=?,note='',pc_status='pending',pc_by='',pc_at='',pc_note='' WHERE id=?",
                   (now(), _who(u), sid))
-        _log(c, fac, "packing", sid, "revived", "กู้คืน (revived)", _who(u))
+        _log(c, fac, "packing", sid, "revived",
+             "กู้คืนจาก FG ไม่รับ (revived after FG reject)" if was_fg_reject else "กู้คืน (revived)", _who(u))
         c.commit()
         return {"ok": True, "slip": _slip_out(c.execute("SELECT * FROM fg_packing WHERE id=?", (sid,)).fetchone())}
 
@@ -2353,7 +2803,7 @@ async def product_save(req: Request):
     if not code:
         raise HTTPException(400, {"msg": "code required"})
     with closing(conn()) as c:
-        vals = ((b.get("name") or "").strip(), (b.get("type_id") or "").strip(), (b.get("packaging") or "").strip(),
+        vals = (nice_name(b.get("name") or ""), (b.get("type_id") or "").strip(), (b.get("packaging") or "").strip(),
                 _num(b.get("weight")), int(_num(b.get("shelf_life_days"))), (b.get("owner") or "").strip(),
                 1 if b.get("active", True) else 0, now())
         if c.execute("SELECT 1 FROM fg_products WHERE factory_id=? AND code=?", (fac, code)).fetchone():
@@ -2923,6 +3373,11 @@ async def suggest(req: Request, q: str = "", kind: str = "all", product: str = "
             for r in c.execute(f"""SELECT lot_no, MAX(product_name) n, MAX(receive_date) d FROM fg_receive WHERE factory_id=? AND lot_no LIKE ?{pc}
                                    GROUP BY lot_no ORDER BY MAX(receive_date) DESC LIMIT ?""", tuple(args + [per])):
                 lots.append({"v": r["lot_no"], "t": r["lot_no"], "s": "Lot · " + (r["n"] or "") + (" · " + r["d"][:10] if r["d"] else ""), "k": "lot"})
+        if kind == "packlot":      # b568: lots that have pallet slips (Lot dashboard)
+            for r in c.execute("""SELECT lot_no, MAX(product_name) n, MAX(packed_at) d, COUNT(*) k FROM fg_packing WHERE factory_id=?
+                                   AND src='slip' AND status<>'cancelled' AND lot_no LIKE ? GROUP BY lot_no ORDER BY MAX(packed_at) DESC LIMIT 14""",
+                               (fac, like)):
+                lots.append({"v": r["lot_no"], "t": r["lot_no"], "s": f'{r["n"] or ""} · {r["k"]} slips · {(r["d"] or "")[:10]}', "k": "lot"})
     # a lot number starts with digits (YYMMDD…) — show lots first when the typing looks like one
     return {"items": lots + out if q[:1].isdigit() else out + lots}
 
@@ -3082,6 +3537,22 @@ def _shift_rows(fac, d, sh, lot=""):
     return (f["code"] if f else ""), start, rows, groups
 
 
+def _pkg_list(v):
+    """b567: "PK090300010,PK090300011" / "a, b" -> "PK090300010, PK090300011" (max 10 codes)."""
+    return ", ".join([x.strip() for x in str(v or "").replace(";", ",").split(",") if x.strip().strip("-–— ")][:10])[:400]
+
+
+def _lot_pkg(items):
+    """b567: the packaging codes saved on the lot's slips (from Master Data when the slip was made)."""
+    seen = []
+    for s in items:
+        for x in str(s.get("pkg_code") or "").split(","):
+            x = x.strip()
+            if x.strip("-–— ") and x not in seen:
+                seen.append(x)
+    return seen[:10]
+
+
 def _shift_packs(fac, d, sh):
     """b542: packaging numbers typed for each lot of a shift (column 2, one per row)."""
     with closing(conn()) as c:
@@ -3156,7 +3627,7 @@ def _shift_build(fac, d, sh, lot=""):
             vals[0] = first_no + i
             for k, v in common.get(i, {}).items():
                 vals[KEY[k]] = v
-            pk = PK.get(f'{p0.get("lot_no") or ""}|{p0.get("product_code") or ""}') or PK.get(p0.get("lot_no") or "")
+            pk = PK.get(f'{p0.get("lot_no") or ""}|{p0.get("product_code") or ""}') or PK.get(p0.get("lot_no") or "") or _lot_pkg(lot_items)
             if pk:
                 vals[1] = pk[first_no - 1 + i] if first_no - 1 + i < len(pk) else ""
             nt = (notes or {}).get(first_no - 1 + i)        # b553: deleted slip -> remark
@@ -3359,7 +3830,7 @@ def _report_data(fac, d, sh, lot=""):
     lots = []
     for (lot_no, pc), items in groups.items():
         pages, common = _lot_pages(items)
-        lots.append({"lot_no": lot_no, "product_code": pc, "packs": PK.get(f"{lot_no}|{pc}") or PK.get(lot_no, []), "product_name": items[0].get("product_name") or "",
+        lots.append({"lot_no": lot_no, "product_code": pc, "packs": PK.get(f"{lot_no}|{pc}") or PK.get(lot_no, []) or _lot_pkg(items), "product_name": items[0].get("product_name") or "",
                      "common": common, "rows_per_page": ROWS_PER_PAGE,
                      "pages": [[{"pallet_no": s["pallet_no"], "lot_run": s.get("lot_run") or 1, "qty": _num(s["qty"]),
                                 "t_start": s.get("t_start") or "", "t_stop": s.get("t_stop") or ""} for s in pg] for pg in pages],
@@ -3421,6 +3892,111 @@ async def shift_reports(req: Request, d1: str = "", d2: str = ""):
             """SELECT id,d,shift,lots,pallets,bags,kg,made_at,made_by FROM fg_shift_reports WHERE factory_id=? AND d>=? AND d<=?
                ORDER BY d DESC, CASE shift WHEN 'n' THEN 3 WHEN 'a' THEN 2 ELSE 1 END DESC""", (fac, d1, d2))]
     return {"rows": rows, "d1": d1, "d2": d2}
+
+
+# ════════ b562 — Packing dashboard (pallet slips passed by the packing checker) ════════
+# Production day d = 08:00 d -> 08:00 d+1, shifts as SHIFTS / _shift_window (same as the shift report):
+# a pallet counts in the shift when the packing checker passed it (pc_at), status not cancelled.
+def _pd_prod_day(t=None):
+    t = t or datetime.datetime.now()
+    return (t.date() - datetime.timedelta(days=1) if t.hour < 8 else t.date()).isoformat()
+
+
+def _pd_shift(c, fac, d, sh, mc, nowt):
+    t1, t2, _s = _shift_window(d, sh)
+    state = "future" if nowt < t1 else ("running" if nowt < t2 else "done")
+    mq, ma = (" AND pack_machine=?", (mc,)) if mc else ("", ())
+    rows = [dict(r) for r in c.execute(
+        """SELECT product_code, lot_no, product_name, weight_unit, qty, total_weight, pack_machine, pc_at
+           FROM fg_packing WHERE factory_id=? AND src<>'access' AND pc_status='approved' AND status<>'cancelled'
+           AND pc_at>=? AND pc_at<?""" + mq, (fac, t1, t2) + ma)]
+    lots = {}
+    for r in rows:
+        g = lots.setdefault((r["product_code"], r["lot_no"]), {
+            "code": r["product_code"], "lot": r["lot_no"], "name": r["product_name"], "kgb": _num(r["weight_unit"]),
+            "pallets": 0, "bags": 0.0, "kg": 0.0, "mc": [], "first": r["pc_at"], "last": r["pc_at"]})
+        g["pallets"] += 1
+        g["bags"] += _num(r["qty"])
+        g["kg"] += _num(r["total_weight"])
+        if r["pack_machine"] and r["pack_machine"] not in g["mc"]:
+            g["mc"].append(r["pack_machine"])
+        g["first"], g["last"] = min(g["first"], r["pc_at"]), max(g["last"], r["pc_at"])
+    waiting = c.execute("""SELECT COUNT(*) FROM fg_packing WHERE factory_id=? AND src<>'access' AND status<>'cancelled' AND pc_status='pending'
+                           AND packed_at>=? AND packed_at<?""" + mq, (fac, t1, t2) + ma).fetchone()[0]
+    rejected = c.execute("""SELECT COUNT(*) FROM fg_packing WHERE factory_id=? AND fg_reject_at>=? AND fg_reject_at<?""" + mq,
+                         (fac, t1, t2) + ma).fetchone()[0]
+    blocked = c.execute("""SELECT COUNT(*) FROM fg_log l LEFT JOIN fg_packing p ON p.id=l.ref_id
+                           WHERE l.factory_id=? AND l.kind='packing' AND l.action='checker_blocked'
+                           AND l.created_at>=? AND l.created_at<?""" + (" AND p.pack_machine=?" if mc else ""),
+                        (fac, t1, t2) + ma).fetchone()[0]
+    return {"state": state, "from": t1[:16], "to": t2[:16], "pallets": len(rows),
+            "bags": sum(g["bags"] for g in lots.values()), "kg": round(sum(g["kg"] for g in lots.values()), 2),
+            "lots": sorted(lots.values(), key=lambda g: g["first"]), "waiting": waiting, "rejected": rejected, "blocked": blocked}
+
+
+def _pd_first(t, today):
+    try:
+        return _pd_prod_day(datetime.datetime.strptime((t or "")[:16], "%Y-%m-%d %H:%M"))
+    except ValueError:
+        return today
+
+
+@router.get("/lot-dash")
+async def lot_dash(req: Request, lot: str = ""):
+    """b568: Lot dashboard — every pallet slip of one lot (cancelled left out): totals, bags per packing
+    machine, per product × machine, pack check / FG state. Without a lot: the recent lots to pick from."""
+    u, fac, _ = ctx(req, "view")
+    lt = (lot or "").strip().upper()
+    with closing(conn()) as c:
+        recent = [dict(r) for r in c.execute(
+            """SELECT lot_no, MAX(packed_at) last, COUNT(*) n FROM fg_packing WHERE factory_id=? AND src='slip' AND status<>'cancelled'
+               GROUP BY lot_no ORDER BY last DESC LIMIT 12""", (fac,))]
+        rows = []
+        if lt:
+            rows = [dict(r) for r in c.execute(
+                """SELECT id,lot_no,product_code,product_name,pallet_no,lot_run,qty,total_weight,weight_unit,pack_machine,pd_line,
+                          staff_name,pc_status,pc_at,status,packed_at,pkg_code FROM fg_packing
+                   WHERE factory_id=? AND lot_no=? AND src='slip' AND status<>'cancelled'
+                   ORDER BY product_code, COALESCE(lot_run,1), slip_no, id""", (fac, lt))]
+    return {"lot": lt, "rows": rows, "recent": recent}
+
+
+@router.get("/pack-dash")
+async def pack_dash(req: Request, d: str = "", mc: str = ""):
+    """Packing dashboard: the 3 shifts of one production day (lots, pallets, bags, kg, waiting for the
+    packing checker, rejected by FG, checker blocks) + kg per shift for the 5 days up to d."""
+    u, fac, _ = ctx(req, "view")
+    nowdt = datetime.datetime.now()
+    nowt = nowdt.strftime("%Y-%m-%d %H:%M:%S")
+    today = _pd_prod_day(nowdt)
+    try:
+        d = datetime.date.fromisoformat((d or today)[:10]).isoformat()
+    except ValueError:
+        d = today
+    d = min(d, today)
+    mc = (mc or "").strip()
+
+    def _work():
+        with closing(conn()) as c:
+            first = c.execute("SELECT MIN(pc_at) FROM fg_packing WHERE factory_id=? AND src<>'access' AND pc_at<>''", (fac,)).fetchone()[0]
+            machines = [r[0] for r in c.execute(
+                "SELECT DISTINCT pack_machine FROM fg_packing WHERE factory_id=? AND src NOT IN ('access','split') AND pack_machine<>'' ORDER BY 1", (fac,))]
+            shifts = {sh: _pd_shift(c, fac, d, sh, mc, nowt) for sh in ("m", "a", "n")}
+            trend = []
+            day = datetime.date.fromisoformat(d)
+            mq, ma = (" AND pack_machine=?", (mc,)) if mc else ("", ())
+            for i in range(4, -1, -1):
+                dd = (day - datetime.timedelta(days=i)).isoformat()
+                row = {"d": dd}
+                for sh in ("m", "a", "n"):
+                    t1, t2, _s = _shift_window(dd, sh)
+                    row[sh] = None if nowt < t1 else round(c.execute(
+                        """SELECT COALESCE(SUM(total_weight),0) FROM fg_packing WHERE factory_id=? AND src<>'access' AND pc_status='approved'
+                           AND status<>'cancelled' AND pc_at>=? AND pc_at<?""" + mq, (fac, t1, t2) + ma).fetchone()[0], 2)
+                trend.append(row)
+        return {"d": d, "today": today, "now": nowt[:16], "first": _pd_first(first, today),
+                "machines": machines, "mc": mc, "shifts": shifts, "trend": trend}
+    return await asyncio.to_thread(_work)
 
 
 @router.get("/shift-reports/{rid}/file")
@@ -3585,6 +4161,56 @@ def _html_to_pdf(html_text, out_path):
             raise RuntimeError("PDF was not made")
         os.makedirs(os.path.dirname(out_path), exist_ok=True)
         _shutil.move(tmp_pdf, out_path)
+
+
+_SAFE_IMG = re.compile(r'src="/([A-Za-z0-9_.-]+\.png)(?:\?[^"]*)?"')
+
+
+def _html_clean(h):
+    """b556: the browser page sent for a PDF — no scripts / frames / outside links; the app's own
+    PNG logos are put in as data so nothing is fetched while the PDF is drawn."""
+    from .config import STATIC
+    h = re.sub(r"(?is)<(script|iframe|object|embed|frameset|svg|noscript|template)\b.*?</\1\s*>", "", h)
+    h = re.sub(r"(?is)</?(script|iframe|object|embed|frame|frameset|link|base|meta|svg|noscript|template)\b[^>]*>", "", h)
+    h = re.sub(r"(?i)\son[a-z]+\s*=", " data-x=", h)
+
+    def img(m):
+        f = os.path.join(STATIC, m.group(1))
+        try:
+            with open(f, "rb") as fh:
+                return 'src="data:image/png;base64,' + _b64.b64encode(fh.read()).decode() + '"'
+        except Exception:
+            return 'src=""'
+    h = _SAFE_IMG.sub(img, h)
+    h = re.sub(r'(?i)(src|href|action|formaction|poster|background)\s*=\s*"(?!data:image/png;base64,)[^"]*"', r'\1=""', h)
+    h = re.sub(r"(?i)url\s*\(", "x(", h)
+    h = re.sub(r"(?i)@import", "", h)
+    return h
+
+
+@router.post("/html-pdf")
+async def html_pdf(req: Request):
+    """b556: a printed form (e.g. F-WI04-WHD01-04) as a real PDF file — the same page the Print button prints."""
+    from fastapi import Response
+    u, fac, _ = ctx(req, "view")
+    b = await req.json()
+    h = str(b.get("html") or "")
+    if not h or len(h) > 3_000_000:
+        raise HTTPException(400, {"msg": "ไม่มีข้อมูล (nothing to print)"})
+    fname = re.sub(r"[^A-Za-z0-9_.-]+", "-", str(b.get("file") or "fg-form"))[:80] + ".pdf"
+    h = _html_clean(h)
+
+    def build():
+        with _tmp.TemporaryDirectory(prefix="fghp") as td:
+            out = os.path.join(td, "o.pdf")
+            _html_to_pdf(h, out)
+            with open(out, "rb") as fh:
+                return fh.read()
+    try:
+        pdf = await asyncio.to_thread(build)
+    except Exception as e:
+        raise HTTPException(500, {"msg": f"สร้าง PDF ไม่ได้ (could not make the PDF): {e}"})
+    return Response(pdf, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 
 
 def _files_dir(fcode, d):

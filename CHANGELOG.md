@@ -1,6 +1,159 @@
 # Changelog — BFLFP CMMS
 All notable changes. Format: version · date · changes. Newest on top.
 
+## FG Stock b569 — 2026-11-12 (PKG code on older slips)
+- Slips made before b567 get their PKG code from Master Data (by FG code, Active rows first, codes joined
+  with ", "). Runs at start-up and only fills slips whose PKG code is EMPTY — a code already on a slip is never
+  changed; a product added to Master Data later is picked up at the next start. On the live export: 2,409 of
+  2,497 slips filled; 4 products have no PKG code in Master Data.
+- Packing reports and the Lot dashboard show these codes for older lots too (numbers typed in a report still win).
+
+## FG Stock b568 — 2026-11-12 (Lot dashboard)
+- New page แดชบอร์ดล็อต / Lot dashboard on the packing and packing-check PCs (built from the approved preview).
+  Type a lot (drop-down of lots that have slips) or click a recent lot. Tiles: products, pallets, bags packed,
+  total kg, passed pack check (+ waiting), accepted by FG. Lot info: product(s), first – last slip, machines /
+  lines, PKG code. Bags packed by each machine (bars with bags · pallets · %), machine detail (pallets, bags,
+  kg, first–last, lines, staff), bags per product × machine (when a lot has several products), and every slip
+  of the lot (filterable). Cancelled slips are left out.
+- New GET /api/fg/lot-dash?lot=; /api/fg/suggest?kind=packlot.
+
+## FG Stock b567 — 2026-11-12 (PKG code from Master Data · product name style)
+- Pallet slip form (packing PC): typing a product NAME now searches Master Data (CMMS › Production ›
+  Master Data, the Excel list) first, then the FG product list. Picking one fills the FG code AND the new
+  field "Packaging code(s) (PKG)" from the Master Data PKG code column (codes separated by ","). Typing an FG
+  code fills the PKG codes too. The field can be changed by hand.
+- The PKG codes are saved on every slip when it is saved / printed (fg_packing.pkg_code). The shift packing
+  report ("enter the packaging numbers?" boxes, preview, print and the auto-filed Excel) uses them for the
+  lot when nothing was typed for that report; numbers typed there still win.
+- An FG code that is only in Master Data (not in FG › Products) can now be used on a slip (name from Master Data).
+- Product names typed ALL IN CAPITALS are shown like the others ("CAT30% ALLEY OCEAN FLAVOUR (8 KG)" →
+  "Cat30% Alley Ocean Flavour (8 kg)"): FG products and the app's own slips / receive / issue rows are fixed
+  once at start-up and new names are stored that way. Codes (FT15, PTA, SB …) and pack sizes (1kg*20) are kept.
+  Access history and Master Data are not changed.
+- Preview only (not built yet): previews/lot-dashboard-preview.html — Lot dashboard.
+
+## FG Stock b566 — 2026-11-12 (traceability: old QR → new QR, pallet trace)
+- Every issue saved on the phone keeps the QR code of the slip scanned (fg_release.slip_code, the "old" code).
+  Release history and FG Issuer report show "QR scanned (old)" and "New QR" (with pallet no.), also in CSV,
+  so a pallet split by a few-bags issue can be traced back from either code.
+- FG Issuer report: "Trace by QR code (old or new)" — all dates: the chain of slips (first → in use,
+  cancelled ones marked) and every issue of that pallet.
+- New page ติดตามพาเลท (Traceability) / Pallet trace (Warehouse menu): scan or type any QR code (old or new)
+  or a lot number. Pallet: product / lot / MFG / EXP, state (in stock with bags left and location · fully
+  issued · waiting receive · at packing), slips first → in use (old slips "not valid", warning when an old
+  code is scanned, 🖨 A4 for new slips), packing + packing check, FG receive (receiver, checker, location),
+  every issue with old → new QR and photo, and a time line of every step. Lot: every pallet of the lot with
+  the slip in use, state, bags left, location, received time, and Trace per pallet.
+- "Trace" buttons on Stock balance (by lot), Release history and FG Issuer report rows.
+- New GET /api/fg/trace?code= | lot=; /api/fg/issue-report?code=.
+
+## FG Stock b565 — 2026-11-12 (Warehouse menu: FG Issuer report)
+- Warehouse (checker PC) menu: "Packing dashboard" and "Shift packing reports" removed — they stay on the
+  packing and packing-check PCs only.
+- New page รายงาน FG Issuer (จ่ายออก) / FG Issuer report (checker PC): every issue saved on the issuer phones,
+  From / To + Today · 7 days · 30 days. Tiles: issued (lines, bags, kg) · whole pallet · few bags (+ new
+  slips) · new slips not printed · waiting checker / sent back. Table with column filters: date / time,
+  issuer, pallet, product, lot, whole / few (bags of pallet), qty, kg, customer / type, plate, checker status,
+  photo, new slip (QR) with "🖨 A4" (print count) and log. Tick rows → "Print selected new slips (A4)". CSV.
+- New GET /api/fg/issue-report?d1=&d2=. fg_release gets pallet_no (the slip actually scanned, e.g. "37-1").
+- Also in this build (outside the app): run.py refuses a second copy before it opens a tunnel; start_tunnel.py
+  never takes api.trycloudflare.com as the tunnel address.
+
+## FG Stock b564 — 2026-11-12 (location bulk edit · receiver checklist · part-pallet issue with new slip)
+- Checker queue › Receive: "📍 Set location (N)" in the footer. Enabled once the list is filtered (column
+  filter or date / time); the location typed is saved on the filtered rows only (rows still waiting).
+  Admin, FG checker role, or a warehouse manager (department WRH / FGS, role manager). Each change is
+  logged (location_set). New POST /api/fg/receive-location; /me returns can_loc.
+- FG receiver checklist: "Total weight" and "Packed by" (machine / line / staff) removed.
+- FG issuer (phone): pallet details → Issue / Cancel at the bottom ("Not the right pallet?" kept) → popup
+  Whole pallet / Only a few bags (bags + photo, as before) → customer, type, plate → save.
+- Few bags: the bags left get a NEW pallet slip (src='split', pallet no. "37-1", "37-2" …, new QR), linked
+  to the slip it came from (parent_id), the first slip (root_id) and the release (split_rel). Stock stays on
+  the first slip's receive row, so stock / stock card / lot balance are unchanged by the split. The old slip
+  can no longer be scanned for issue ("scan the new slip #37-1"). If the checker sends the release back,
+  the new slip is cancelled and the old slip works again (blocked if the new slip was split again).
+- Checker queue › Issue: part rows show "New slip #37-1 · bags" + "🖨 A4" — prints the slip on the top half
+  of an A4 sheet (marked "SPLIT FROM #37"); print count kept. New GET /api/fg/split-slips, POST /api/fg/split-printed.
+- Split slips are not counted as packing slips (Pallet slips page, Packing dashboard, shift report).
+- New fg_packing columns: parent_id, root_id, split_rel, split_printed_at, split_print_count (added at start-up).
+
+## FG Stock ui b563 — 2026-11-11 (Pallet slips: status boxes follow the whole flow)
+- Pallet slips (QR) boxes: Pending pack check (รอ Checker แพค — incl. slips sent back by the pack
+  checker) · Waiting FG check (รอ FG ตรวจ — passed the pack checker, FG not yet scanned) · Accepted by FG
+  (FG รับแล้ว — moved to FG) · Rejected by FG (FG ไม่รับ) · Total bags. The 4 status boxes now add up to
+  the total ("/ 186"); before, slips already received by FG were in no box, so "Accepted" (pack checker)
+  looked like the only pallets sent to FG.
+- Status chips match the boxes; "FG rejected — to fix (all dates)" chip kept.
+
+## FG Stock ui b562 — 2026-11-11 (Packing dashboard)
+- New page แดชบอร์ดการบรรจุ / Packing dashboard on the packing PC, packing-check PC and Warehouse
+  (checker) menus: production date (‹ › to change day), shift chips (all day / morning / afternoon / night),
+  packing machine filter; 6 tiles (lots, pallets confirmed, bags, total kg, waiting for the packing
+  checker, rejected by FG + checker blocks); the day's 3 shift cards (click = its lots); kg per shift for
+  the last 5 days; lots table (FG code, product, kg/bag, pallets, bags, kg, share, machine, first–last scan).
+- Same rule as the shift packing report: production day 08:00 → 08:00, a pallet counts in the shift its
+  pc_at (packing-checker pass) falls in, cancelled slips excluded; old Access rows (src='access') left out.
+  Refreshes every minute while today is shown.
+- New GET /api/fg/pack-dash?d=&mc= (needs "view").
+
+## ui b561 — 2026-11-11 (Master Data: pages + Production manager on the packing PC)
+- Master Data (CMMS and packing PC): rows per page 100 / 200 / 300 / 400 / 500 / 600 (kept on that
+  PC, default 100) and page numbers under the table ("201–300 of 1162"). Search, filter, tab or
+  sort goes back to page 1. Replaces b559's "draw every row".
+- Packing PC Master Data: a Production manager (department PRD, role manager) or admin gets
+  Import Excel, Add product and the edit form (with history) — the same /api/master calls and
+  the same rule as the CMMS page, so both screens change the one list. Others read only.
+  GET /api/fg/prod-master now also returns can_edit.
+
+## FG Stock ui b560 — 2026-11-11
+- Pallet slips: From / To dates moved under the page title (left), with Today · 7 days · 30 days ·
+  All dates beside them (40 px / 14 px like other filter rows). "Pallet slip management" caption
+  removed; Shift report (Excel) stays top-right. Default is still Today.
+- Form F-WI04-WHD01-04: product name (เบอร์อาหาร) wraps onto two lines (9 pt) instead of being cut.
+  Page number moved to the bottom-right of every sheet; "continued" text removed.
+
+## ui b559 — 2026-11-11 (Master Data: one list, one screen)
+- FG Stock (packing PC) › Master Data now reads the SAME list as CMMS › Production › Master Data
+  (table product_master). b557's separate copy (fg_prod_master, its own Excel upload and the
+  auto-load from "Production Data") is removed — the Production team keeps one list in the CMMS.
+  The old fg_prod_master table is left in the database unused (nothing deleted).
+- The packing-PC page is the CMMS screen: Active / Disable / All tabs, search, column filters,
+  sort, export. Read-only there (add / edit / import stay in the CMMS).
+- CMMS Master Data: every row is drawn — it stopped at 600 ("showing 600"), so 1,162 Active
+  looked like ~600 by the No. column. Header tabs and buttons now the same height (36 px).
+- GET /api/fg/prod-master returns product_master rows; POST /api/fg/prod-master/upload removed.
+
+## FG Stock ui b558 — 2026-11-11 (filter rows: one control size)
+- Every control in a filter row is now 40 px high with 14 px text: inputs, selects, buttons,
+  tabs and filter chips (44 px on a phone). New class .chips for filter-button groups.
+- Fixed where they did not match: Master production data (line chips were 30 px), Shift summary
+  (tabs 42 px), Report files (type / made-by chips 30 px, captions now the same as other field
+  labels), Pallet slips (date boxes 34 px, register chips 30 px / 12.5 px text, search 38 px,
+  shift-report button 34 px). Inputs text 14.5 -> 14 px to match the buttons.
+- Small buttons inside table rows (View, Edit, A6, Excel) stay small on purpose.
+
+## FG Stock ui b557 — 2026-11-11 (master production data on the packing PC)
+- New page "Master production data" (ข้อมูลหลักการผลิต) in the Packing menu, after Report files:
+  the R&D / Odoo "LIST OF MASTER FORMULA" (F-SP-RDP01-06) — FG code, product, packing line,
+  pack size, PKG codes, colours, group, kibble mix, customer, order detail, registration no.
+  Search box, Active / Disable filter, packing-line chips, column filters, Excel (CSV).
+- Read-only. First open in a plant loads the newest "...Master...<plant>...xlsx" from the
+  "Production Data" folder (PC -> "Odoo-Product Master List BFLPC (29-09-2026) 00.xlsx",
+  1,234 products). An FG admin / master user can load a newer workbook from the page.
+- New tables fg_prod_master + fg_prod_master_info; GET /api/fg/prod-master, POST /api/fg/prod-master/upload.
+
+## FG Stock ui b556 — 2026-11-11 (warehouse corrections, round 2)
+- Checker queue › new "Form PDF" button: the F-WI04-WHD01-04 form as a real PDF file, drawn by
+  the server PC's Edge from the same page as Print (POST /api/fg/html-pdf — scripts, frames and
+  outside links are stripped; only the app's own PNG logos are put in). Old "PDF" renamed
+  "PDF per pallet".
+- The printed form fills the A4 sheet: 5 products × 3 lines, every row 8.6 mm, empty blocks drawn.
+- Print form now prints from a hidden frame — no extra Chrome window.
+- Factory logo (Petcare for PC) at the top-left of the form, every Print A4 report (history,
+  stock, daily), the stock card and every table PDF (server, reportlab).
+- Time boxes (checker queue, receive / release history) are 24-hour HH:MM text boxes; the
+  browser's own time box showed AM/PM on an English Windows. Typing 830 → 08:30.
+
 ## FG Stock ui b555 — 2026-11-11 (warehouse corrections)
 - Checker queue › Print form (F-WI04-WHD01-04) is now summarised per product + lot, like the
   paper form: pallets first ↓ last, FG code, MFG / EXP, and the bag count as

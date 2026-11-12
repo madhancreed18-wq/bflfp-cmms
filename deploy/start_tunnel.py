@@ -69,7 +69,11 @@ CONFIG = {
     "PROTOCOL":        os.environ.get("CF_PROTOCOL") or "http2",
 }
 
-URL_RE = re.compile(r"https://[a-z0-9-]+\.trycloudflare\.com")
+# The tunnel's own address is words-with-hyphens.trycloudflare.com. cloudflared also prints
+# https://api.trycloudflare.com (the service that hands out tunnels) in its error lines, e.g. when
+# a quick tunnel cannot be created; pointing the Worker there gives every phone a Cloudflare
+# "Method Not Allowed" JSON page. So api.* is never taken as the tunnel address.
+URL_RE = re.compile(r"https://(?!api\.)[a-z0-9]+(?:-[a-z0-9]+)+\.trycloudflare\.com")
 
 
 def set_kv(url, tries=4):

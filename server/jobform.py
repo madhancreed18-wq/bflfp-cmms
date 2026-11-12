@@ -422,6 +422,7 @@ def file_job_form(jid, user=None):
         return build_job_form(jid, os.path.join(_outdir(dt, j.get("factory_id")),
                                                 ascii_filename(j["jobid"])))
     fn = build_job_form(jid, archive_job_path(j))
+    _fp_write(fn, _fp(j))                     # b5xx: keep the cache in step with what was just drawn
     # the earlier route filed under repairform_dd-mm-yyyy_<jobid>.pdf — fold it away
     old = os.path.join(os.path.dirname(fn),
                        f"repairform_{datetime.strptime(_job_day(j), '%Y-%m-%d').strftime('%d-%m-%Y')}_{j['jobid']}.pdf")
@@ -455,6 +456,63 @@ def file_job_form(jid, user=None):
         # The shelf is a convenience; the archived PDF is the record.
         _log.warning("[jobform] could not file on the shelf: %s", e)
     return fn
+
+
+# ── b5xx: a filed form is reused while nothing on it has changed ─────────────────
+# Opening 126 repair forms used to redraw all 126. Each form now has a fingerprint of
+# everything printed on it (the _collect() data) plus this file's own version; while
+# the fingerprint matches, the PDF on disk is the form and is handed out as it is.
+# Fingerprints live in DATA/_formcache, NOT beside the PDFs, so the archive folders
+# hold only the documents.
+import hashlib as _hl
+import json as _json
+
+
+def _fp_dir():
+    d = os.path.join(DATA, "_formcache")
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def _fp_file(path):
+    return os.path.join(_fp_dir(), _hl.sha1(os.path.abspath(path).encode("utf-8")).hexdigest() + ".fp")
+
+
+def _fp(j):
+    try:
+        ver = str(os.path.getmtime(__file__))          # new form code -> every form redrawn once
+    except OSError:
+        ver = ""
+    return _hl.sha1((_json.dumps(j, sort_keys=True, default=str) + ver).encode("utf-8")).hexdigest()
+
+
+def _fp_write(path, fp):
+    try:
+        with open(_fp_file(path), "w") as fh:
+            fh.write(fp)
+    except OSError as e:
+        _log.warning("[jobform] fingerprint not saved: %s", e)
+
+
+def form_is_fresh(path, fp):
+    try:
+        return os.path.isfile(path) and open(_fp_file(path)).read() == fp
+    except OSError:
+        return False
+
+
+def ensure_job_form(jid, force=False):
+    """The archived form for job jid, redrawn only when something on it changed.
+    Returns (path, rebuilt). Writes NO database rows: viewing is not issuing — the shelf
+    row keeps its own 'Issued' time and 'By'."""
+    j = _collect(jid)
+    path = archive_job_path(j)
+    fp = _fp(j)
+    if not force and form_is_fresh(path, fp):
+        return path, False
+    fn = build_job_form(jid, path)
+    _fp_write(fn, fp)
+    return fn, True
 
 
 _KICKED = False

@@ -1401,8 +1401,9 @@ dialog:has(.mxnew){width:min(460px,94vw);padding:0}
 .mdwrap .card{margin:0}
 .mdhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 14px}
 .mdtitle b{display:block;font-size:15px;color:#1F2937}.mdtitle span{font-size:11.5px;color:#64748B}
-.mdseg{display:inline-flex;background:#F1F5F9;border-radius:8px;padding:2px}
-.mdseg button{border:0;background:none;padding:5px 11px;border-radius:6px;color:#64748B;font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer}
+.mdseg{display:inline-flex;background:#F1F5F9;border-radius:8px;padding:2px;height:36px}
+.mdseg button{border:0;background:none;padding:0 11px;border-radius:6px;color:#64748B;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;display:inline-flex;align-items:center}
+.mdhead .btn{min-height:36px;height:36px;font-size:13px;padding:0 12px}
 .mdseg button.on{background:#fff;color:#1F2937;box-shadow:0 1px 3px rgba(0,0,0,.1)}.mdseg i{font-style:normal;opacity:.6;margin-left:3px}
 .mdbar{display:flex;align-items:center;gap:12px;padding:8px 12px}
 .mdsearch{flex:1;display:flex;align-items:center;gap:5px;min-height:36px;border:1px solid var(--bd);border-radius:9px;background:#fff;padding-left:10px;overflow:hidden;flex-wrap:wrap}
@@ -3724,6 +3725,24 @@ function toastMsg(t){
     document.body.appendChild(el);}
   el.textContent=t;el.style.display='block';clearTimeout(el._t);el._t=setTimeout(()=>{el.style.display='none';},3200);
 }
+/* b5xx: Print from the document preview — every report (daily report, plan, repair form, PM sheets)
+   opens in this one viewer. The real PDF is printed (not the on-screen pictures), so it comes out sharp
+   and at the form's own page size. A computer prints from a hidden frame; a phone opens the PDF in its
+   own tab, where the phone's Print / Share menu is. */
+async function pdfPrint(u,btn){
+  const TH=LANG==='TH';if(btn)btn.disabled=true;
+  try{
+    const r=await fetch(u,{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);
+    const src=URL.createObjectURL(new Blob([await r.blob()],{type:'application/pdf'}));
+    if(IS_MOBILE()){window.open(src,'_blank');return;}
+    let f=document.getElementById('pdfPrintF');if(f)f.remove();
+    f=document.createElement('iframe');f.id='pdfPrintF';
+    f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+    f.onload=()=>setTimeout(()=>{try{f.contentWindow.focus();f.contentWindow.print();}catch(e){window.open(src,'_blank');}},300);
+    f.src=src;document.body.appendChild(f);
+  }catch(e){alert((TH?'พิมพ์ไม่สำเร็จ: ':'Print failed: ')+String((e&&e.message)||e));}
+  finally{if(btn)setTimeout(()=>{btn.disabled=false;},1500);}
+}
 function pdfDl(u,name,mode){dlFile(u,name||'',mode==='share'?null:()=>setTimeout(pdfClose,900),mode);}
 /* b494: the preview was drawn at screen size (max 900px), so small print on the daily
    form came out soft and could not be zoomed. Pages now fill the window, are drawn at
@@ -3767,6 +3786,7 @@ async function pdfView(url,dl,dlname,foot){
       <div style="flex:1;color:#E2E8F0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${TH?'ตัวอย่างเอกสาร':'Document preview'}</div>
       ${dl?`<button class="btn" style="background:#1B75BC;border:none;color:#fff" onclick="pdfDl('${dl}','${esc(dlname||'')}')">⬇ ${TH?'ดาวน์โหลด':'Download'}</button>`:''}
       ${dl&&CAN_SHARE_FILES()?`<button class="btn" style="background:#16A34A;border:none;color:#fff" onclick="pdfDl('${dl}','${esc(dlname||'')}','share')">↗ ${TH?'แชร์':'Share'}</button>`:''}
+      ${url?`<button class="btn" style="background:#475569;border:none;color:#fff" onclick="pdfPrint(${esc(JSON.stringify(url))},this)">🖨 ${TH?'พิมพ์':'Print'}</button>`:''}
       <span style="display:inline-flex;align-items:center;gap:4px;background:#334155;border-radius:8px;padding:2px">
         <button class="btn" style="background:none;border:none;color:#fff;padding:6px 11px;font-size:16px" onclick="pvZoom(-1)" title="${TH?'ย่อ (zoom out)':'Zoom out'}">−</button>
         <button id="pvPct" class="btn" style="background:none;border:none;color:#fff;padding:6px 8px;min-width:58px;font-size:13px" onclick="pvZoom(0)" title="${TH?'พอดีหน้าจอ (fit)':'Fit to screen'}">100%</button>
@@ -14490,7 +14510,7 @@ function mdDraw(){
     return `<span class="mdtok"><b>${esc(lb)}</b> ${[...MD.f[k]].map(v=>esc(v||'(blank)')).join(', ')}<button onclick="mdDropF('${k}')">×</button></span>`;}).join('');
   const nf=Object.keys(MD.f).length;
   const th=MD.cols.map(c=>`<th onclick="mdSort('${c.k}')" class="${MD.sort===c.k?'on':''}">${esc(c.h)}${MD.sort===c.k?(MD.dir>0?' ▲':' ▼'):''}</th>`).join('');
-  const LIM=600, show=rows.slice(0,MD.lim||LIM);
+  const show=rows;   // b559: every row is drawn — the 600-row cut made 1,162 Active look like ~600
   const tb=show.map(r=>`<tr class="${r.status==='Disable'?'dis':''}" ondblclick="mdOpen(${r.id})" onclick="mdSel(this)">${MD.cols.map(c=>{
       const v=String(r[c.k]??'');
       if(c.k==='status')return `<td><span class="mdst ${v==='Active'?'a':'d'}">${esc(v)}</span></td>`;
@@ -14519,7 +14539,7 @@ function mdDraw(){
    <div class="card mdtbl"><div class="mdscroll"><table><thead><tr>${th}</tr></thead><tbody>${tb||`<tr><td colspan="${MD.cols.length||1}" class="mdempty">${
      MD.items.length?(TH?'ไม่มีรายการที่ตรงกับตัวกรอง':'Nothing matches the search / filters')
        :(TH?'ยังไม่มีข้อมูล — กด นำเข้า Excel เพื่อโหลดรายการจาก R&D':'No list yet — press Import Excel to load the R&D list')}</td></tr>`}</tbody></table>
-     ${rows.length>show.length?`<div style="text-align:center;padding:10px"><button class="btn sm" onclick="MD.lim=${rows.length};mdDraw()">${TH?'แสดงทั้งหมด':'Show all'} (${rows.length})</button></div>`:''}</div></div>
+</div></div>
   </div>`;
 }
 function mdSel(tr){document.querySelectorAll('.mdtbl tr.sel').forEach(x=>x.classList.remove('sel'));tr.classList.add('sel');}
@@ -16985,7 +17005,7 @@ window.addEventListener('appinstalled',()=>{deferredPrompt=null;
    Every plan that has been issued, kept as it was issued. The list is the index; the
    file behind each row is the document. Nothing here regenerates anything — that is
    the whole point of filing it in the first place. */
-let RPT={list:null,month:'all',q:'',kind:'done',sel:[]};
+let RPT={list:null,month:'all',q:'',kind:'done',sel:[],pg:0,ps:(()=>{try{return +localStorage.getItem('cmms_rpt_ps')||50}catch(e){return 50}})()};
 let RPTAUTO=null;
 /* The live figures for the days now on screen — counted from the JOBS, once each, not
    added up from the reports. Kept beside RPT rather than inside it because it is
@@ -17016,6 +17036,7 @@ async function renderReports(){
 function rptSet(k,v){
   RPT[k]=v;
   RPT.sel=[];                                   // a filter change starts a fresh selection
+  RPT.pg=0;                                     // b5xx: and goes back to page 1
   // A month or a person chosen on one shelf may not exist on the next — leaving them
   // set is how a planner lands on "nothing matches this filter" and thinks the
   // documents are gone. Changing the document type starts clean.
@@ -17227,7 +17248,14 @@ function rptTick(id,on){
   RPT.sel=on?[...new Set([...(RPT.sel||[]),id])]:(RPT.sel||[]).filter(x=>x!==id);
   drawReports();
 }
-function rptAll(el){RPT.sel=el.checked?RPTROWS.map(r=>r.id):[];drawReports();}
+/* b5xx: the header box ticks only the rows on THIS page (50 / 100 / … as chosen below);
+   rows ticked on other pages stay ticked */
+function rptAll(el){const ids=rptPageRows().map(r=>r.id);
+  RPT.sel=el.checked?[...new Set([...(RPT.sel||[]),...ids])]:(RPT.sel||[]).filter(x=>!ids.includes(x));drawReports();}
+function rptPageRows(){const ps=RPT.ps||50,n=Math.max(1,Math.ceil(RPTROWS.length/ps));RPT.pg=Math.min(Math.max(0,RPT.pg||0),n-1);
+  return RPTROWS.slice(RPT.pg*ps,RPT.pg*ps+ps);}
+function rptPage(p){RPT.pg=p;drawReports();}
+function rptPs(v){RPT.ps=+v||50;RPT.pg=0;try{localStorage.setItem('cmms_rpt_ps',RPT.ps)}catch(e){}drawReports();}
 /* Several documents, one file — the PM checklist shelf's "Open N", for the other three
    shelves. Kept in the order they are listed, which is the order they were filed. */
 function rptOpenSel(){
@@ -17235,6 +17263,9 @@ function rptOpenSel(){
   const ids=RPTROWS.filter(r=>(RPT.sel||[]).includes(r.id)).map(r=>r.id);
   if(!ids.length)return;
   if(ids.length===1){const i=RPTROWS.findIndex(r=>r.id===ids[0]);return rptRowOpen(i);}
+  /* b5xx: one file holds at most 300 documents (server limit) — say so instead of a 400 error */
+  if(ids.length>300){alert(TH?`เลือกได้สูงสุด 300 ฉบับต่อหนึ่งไฟล์ (เลือกไว้ ${ids.length}) — กรองตามเดือนแล้วเปิดทีละชุด`
+                             :`At most 300 documents in one file (${ids.length} selected) — filter by month and open them in batches`);return;}
   const kind=(RPTROWS.find(r=>r.id===ids[0])||{}).kind||'plan';
   const u=`/api/reports/bundle?ids=${ids.join(',')}`;
   if(kind==='plan'){window.open(u,'_blank');return;}
@@ -17242,8 +17273,75 @@ function rptOpenSel(){
   const days=RPTROWS.filter(r=>ids.includes(r.id)).map(r=>String(r.plan_date||'').slice(0,10)).filter(Boolean).sort();
   const name=kind==='done'?`${facPrefix(ME&&ME.factory_id)}_DR_${days[0]}_${days[days.length-1]}.pdf`
                           :`${facPrefix(ME&&ME.factory_id)}_RF_${ids.length}.pdf`;
-  pdfView(u+'&inline=1',u,name);
+  if(ids.length<=5){pdfView(u+'&inline=1',u,name);return;}
+  rptBundleJob(ids,name);
 }
+/* b5xx: a big selection is built as a background job, with a progress bar —
+   "Building 37 / 126 · 1 min 10 s · about 2 min left" — instead of a bare "Loading…" */
+let _RBJ=null;
+/* b5xx: the build runs on the server in the background, and this card sits in the corner
+   WITHOUT blocking the page — keep working anywhere in the app (other pages too) while it
+   builds. When the file is ready the card turns green with an Open button. The job is
+   remembered in this browser, so a page refresh picks the card up again. */
+async function rptBundleJob(ids,name){
+  if(_RBJ&&!_RBJ.stop&&!_RBJ.ready){alert(LANG==='TH'?'มีไฟล์กำลังสร้างอยู่ — รอให้เสร็จหรือกดยกเลิกก่อน (a file is already being built)':'A file is already being built — wait for it or cancel it first');return;}
+  let j;try{j=await post('/api/reports/bundle/start',{ids});}catch(e){alert(e.message||e);return;}
+  try{localStorage.setItem('cmms_rbj',JSON.stringify({id:j.job,name}));}catch(e){}
+  rbjWatch(j.job,name);
+}
+function rbjCard(){
+  const TH=LANG==='TH';let w=document.getElementById('rbjWrap');if(w)return w;
+  w=document.createElement('div');w.id='rbjWrap';
+  w.style.cssText='position:fixed;right:16px;bottom:16px;z-index:9998;width:min(340px,calc(100vw - 32px));background:#fff;border:1px solid #CBD5E1;border-radius:12px;box-shadow:0 12px 32px rgba(15,23,42,.22);padding:12px 14px;font-size:13px';
+  w.innerHTML=`<div style="display:flex;align-items:center;gap:8px"><b id="rbjT" style="flex:1;font-size:13.5px">📄 ${TH?'กำลังสร้างไฟล์ (Building the file)':'Building the file'}</b>
+     <button id="rbjMin" class="btn sm" title="${TH?'ย่อ (minimise)':'Minimise'}" onclick="rbjMin()">–</button></div>
+   <div id="rbjBody"><div id="rbjTxt" style="color:#475569;margin:6px 0">${TH?'เริ่ม…':'Starting…'}</div>
+    <div style="height:8px;background:#E2E8F0;border-radius:6px;overflow:hidden"><div id="rbjBar" style="height:100%;width:0;background:#2563EB;transition:width .4s"></div></div>
+    <div id="rbjEta" class="muted" style="font-size:11.5px;margin-top:6px">${TH?'ใช้งานส่วนอื่นของแอปต่อได้เลย (keep using the app)':'You can keep using the app meanwhile'}</div>
+    <div id="rbjBtns" style="display:flex;gap:6px;justify-content:flex-end;margin-top:10px"><button class="btn sm" onclick="rptBundleStop()">${TH?'ยกเลิก (Cancel)':'Cancel'}</button></div></div>`;
+  document.body.appendChild(w);return w;
+}
+function rbjMin(){const b=document.getElementById('rbjBody');if(b)b.style.display=b.style.display==='none'?'':'none';}
+async function rbjWatch(id,name){
+  const TH=LANG==='TH';
+  if(_RBJ)_RBJ.stop=true;
+  const me=_RBJ={id,name,stop:false,ready:false};
+  rbjCard();
+  const tm=s=>s>=60?`${Math.floor(s/60)} ${TH?'นาที':'min'} ${s%60} ${TH?'วิ':'s'}`:`${s} ${TH?'วิ':'s'}`;
+  const $i=x=>document.getElementById(x);
+  let fails=0;
+  while(!me.stop){
+    await new Promise(r=>setTimeout(r,1500));if(me.stop)break;
+    let s;try{s=await api('/api/reports/bundle/status?job='+me.id);fails=0;}
+    catch(e){if(/not found|404/i.test(String(e&&e.message||e))||++fails>20){rptBundleEnd();if(fails<=20)alert(e.message||e);return;}continue;}
+    if(!$i('rbjWrap'))rbjCard();
+    const pc=s.total?Math.round(s.done/s.total*100):0,bar=$i('rbjBar'),tx=$i('rbjTxt'),et=$i('rbjEta');
+    if(bar)bar.style.width=(s.state==='merging'||s.state==='ready'?100:pc)+'%';
+    if(s.state==='queued'){if(tx)tx.innerHTML=TH?`รอคิว — มีอีก ${s.ahead||1} งานกำลังสร้างอยู่ (waiting in queue)`:`Waiting in queue — ${s.ahead||1} other file being built for this plant`;
+      if(et)et.textContent=TH?'เริ่มให้อัตโนมัติเมื่อถึงคิว (starts by itself)':'It starts by itself when its turn comes';continue;}
+    if(s.state==='ready'){
+      me.ready=true;me.stop=true;
+      const t=$i('rbjT');if(t)t.innerHTML=`✅ ${TH?'ไฟล์พร้อมแล้ว (file ready)':'File ready'}`;
+      if(bar)bar.style.background='#16A34A';
+      const b=$i('rbjBody');if(b)b.style.display='';
+      if(tx)tx.innerHTML=`<b>${s.done-s.missing}</b> ${TH?'ฉบับ (documents)':'documents'}${s.missing?` · <span style="color:#B45309">${s.missing} ${TH?'ไม่พบ (not found)':'not found'}</span>`:''} · ${tm(s.elapsed)}`;
+      if(et)et.textContent='';
+      const bt=$i('rbjBtns');if(bt)bt.innerHTML=`<button class="btn sm" onclick="rptBundleEnd()">${TH?'ปิด (Dismiss)':'Dismiss'}</button>
+        <button class="btn sm" style="background:#2563EB;border-color:#2563EB;color:#fff" onclick="rbjOpen()">${TH?'เปิดดู / พิมพ์ (Open / Print)':'Open / Print'}</button>`;
+      return;}
+    if(s.state==='error'){rptBundleEnd();alert((TH?'สร้างไฟล์ไม่สำเร็จ: ':'Could not build the file: ')+s.err);return;}
+    if(s.state==='cancelled'){rptBundleEnd();return;}
+    if(tx)tx.innerHTML=s.state==='merging'?(TH?'รวมเป็นไฟล์เดียว… (merging into one file)':'Merging into one file…')
+      :`${TH?'สร้างเอกสาร':'Building'} <b>${s.done} / ${s.total}</b> (${pc}%)${s.missing?` · <span style="color:#B45309">${s.missing} ${TH?'ไม่พบ (not found)':'not found'}</span>`:''}`;
+    const left=s.done?Math.round(s.elapsed/s.done*(s.total-s.done)):null;
+    if(et)et.textContent=`${TH?'ผ่านไป (elapsed)':'Elapsed'} ${tm(s.elapsed)}`+(left!=null&&s.state==='building'?` · ${TH?'เหลือประมาณ (about)':'about'} ${tm(left)}${TH?'':' left'}`:'');
+  }
+}
+function rbjOpen(){if(!_RBJ)return;const f='/api/reports/bundle/file?job='+_RBJ.id,n=_RBJ.name;rptBundleEnd();pdfView(f+'&inline=1',f,n);}
+function rptBundleEnd(){const w=document.getElementById('rbjWrap');if(w)w.remove();if(_RBJ)_RBJ.stop=true;try{localStorage.removeItem('cmms_rbj');}catch(e){}}
+function rptBundleStop(){if(_RBJ)post('/api/reports/bundle/cancel?job='+_RBJ.id,{}).catch(()=>{});rptBundleEnd();}
+/* after a refresh: pick up a build that was still running (or finished, not yet opened) */
+(function rbjResume(k){setTimeout(()=>{try{const x=JSON.parse(localStorage.getItem('cmms_rbj')||'null');if(!x||!x.id)return;if(!ME){if(k<20)rbjResume(k+1);return;}if(!_RBJ)rbjWatch(x.id,x.name);}catch(e){}},3000);})(0);
 function rptExport(){
   const TH=LANG==='TH',KIND=RPT.kind||'plan';
   const picked=(RPT.sel||[]).length?RPTROWS.filter(r=>RPT.sel.includes(r.id)):RPTROWS;
@@ -17285,12 +17383,14 @@ function rptTableHtml(list,KIND,rname){
              TH?'ผู้อนุมัติเซ็น':'Approver signed',
              TH?'ออกเมื่อ':'Issued',TH?'ผู้ออก':'By']}[KIND]||[];
   const sel=(RPT.sel||[]).filter(id=>list.some(r=>r.id===id));
+  const page=rptPageRows(),off=RPT.pg*(RPT.ps||50),pgAll=page.length&&page.every(r=>sel.includes(r.id));
   const th=`<th style="position:sticky;top:0;left:0;z-index:4;background:#1E293B;padding:6px 8px;border:1px solid #33415580;width:32px;text-align:center">
-      <input type="checkbox" ${sel.length&&sel.length===list.length?'checked':''} onclick="rptAll(this)" style="width:14px;height:14px;accent-color:#fff;cursor:pointer"></th>`
+      <input type="checkbox" title="${TH?'เลือกทั้งหน้านี้ (this page)':'Select this page'}" ${pgAll?'checked':''} onclick="rptAll(this)" style="width:14px;height:14px;accent-color:#fff;cursor:pointer"></th>`
     +`<th style="position:sticky;top:0;left:32px;z-index:4;background:#1E293B;color:#fff;font-weight:600;font-size:11px;padding:6px 8px;border:1px solid #33415580;width:36px">#</th>`
     +HEAD.map(h=>`<th style="position:sticky;top:0;z-index:2;background:#1E293B;color:#fff;font-weight:600;font-size:11px;padding:6px 8px;border:1px solid #33415580;white-space:nowrap;text-align:left">${h}</th>`).join('')
     +`<th style="position:sticky;top:0;z-index:2;background:#1E293B;color:#fff;font-weight:600;font-size:11px;padding:6px 8px;border:1px solid #33415580;white-space:nowrap;width:60px"></th>`;
-  const rows=list.map((r,i)=>{
+  const rows=page.map((r,k)=>{
+    const i=off+k;                                  // index in the whole list (open / re-issue use it)
     const on=sel.includes(r.id),bg=on?'#EFF6FF':((i%2)?'#F5F7FA':'#fff');
     const td=(v,x='')=>`<td style="padding:5px 8px;border:1px solid #e6e9ee;font-size:11.5px;white-space:nowrap;background:${bg};${x}">${v}</td>`;
     // a number that is zero is not news; only a figure worth acting on gets a colour
@@ -17363,7 +17463,19 @@ function rptTableHtml(list,KIND,rname){
     <div class="card" style="padding:0;overflow:auto;max-height:calc(100vh - 360px);border-radius:12px">
       <table style="border-collapse:collapse;width:100%;min-width:${KIND==='jobform'?'1150':'1050'}px"><thead><tr>${th}</tr></thead><tbody>${rows}</tbody>${foot}</table>
     </div>
-    <div style="text-align:center;padding:6px;font-size:12px;color:#94A3B8">${list.length} ${TH?'ฉบับ':'documents'}${sel.length?` · ${TH?'เลือกไว้':'selected'} ${sel.length}`:''}</div>`;
+    ${rptPagerHtml(list.length,sel.length,TH)}`;
+}
+/* b5xx: rows per page + where you are + how many pages are left */
+function rptPagerHtml(total,nsel,TH){
+  const ps=RPT.ps||50,pages=Math.max(1,Math.ceil(total/ps)),pg=RPT.pg||0,a=total?pg*ps+1:0,b=Math.min(total,pg*ps+ps),left=pages-pg-1;
+  const nb=(t,to,dis)=>`<button class="btn sm" ${dis?'disabled style="opacity:.4"':''} onclick="rptPage(${to})">${t}</button>`;
+  return `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;justify-content:center;padding:8px 4px;font-size:12px;color:#64748B">
+    <span>${TH?'แสดง (show)':'Show'} <select class="in" style="width:auto;padding:3px 6px;font-size:12px" onchange="rptPs(this.value)">${[50,100,150,200,250,300].map(v=>`<option ${v===ps?'selected':''}>${v}</option>`).join('')}</select> ${TH?'ต่อหน้า (per page)':'per page'}</span>
+    <span>·</span><span><b>${a}–${b}</b> ${TH?'จาก':'of'} <b>${total}</b>${nsel?` · ${TH?'เลือกไว้ (selected)':'selected'} <b>${nsel}</b>`:''}</span>
+    ${nb('«',0,pg===0)}${nb('‹ '+(TH?'ก่อนหน้า':'Prev'),pg-1,pg===0)}
+    <span>${TH?'หน้า (page)':'Page'} <b>${pg+1}</b> / ${pages}${left>0?` · <b style="color:#1B75BC">${left}</b> ${TH?'หน้าที่เหลือ (pages left)':(left===1?'page left':'pages left')}`:''}</span>
+    ${nb((TH?'ถัดไป':'Next')+' ›',pg+1,pg>=pages-1)}${nb('»',pages-1,pg>=pages-1)}
+  </div>`;
 }
 
 /* ══════════════ PM REPORTS — the planner's shelf of completed PM ══════════════

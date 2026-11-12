@@ -695,6 +695,7 @@ async def daily_report_archived(req: Request, d: str = "", inline: str = "",
 # ══════════════════════════════════════════════════════════════════════════════════
 
 FORM06_ROWS = 14          # lines on the printed sheet, filled or not
+FORM06_SLACK = 6.5 * 72 / 25.4      # b5xx: 6.5 mm (in points) given back by the smaller header
 FORM06_CODE = "F-SP-ENG02-06 Rev.01"
 FORM06_DEPT = "แผนกวิศวกรรม"
 # b494: the job number leads the row, so each line on the sheet can be traced to its
@@ -792,7 +793,7 @@ def build_maintenance_form(d, path=None, fac=None):
     doc = SimpleDocTemplate(fn, pagesize=landscape(A4), leftMargin=10*mm, rightMargin=10*mm,
                             topMargin=7*mm, bottomMargin=6*mm)
 
-    logo = _logo_flowable(17)
+    logo = _logo_flowable(13)          # b5xx: was 17 — the logo set the header's height
     head = Table([[logo or "",
                    [Paragraph(company, T1), Paragraph("รายงานการซ่อมบำรุงประจำวัน", T2)],
                    Paragraph(FORM06_CODE, SR)]],
@@ -801,7 +802,9 @@ def build_maintenance_form(d, path=None, fac=None):
                                    ("VALIGN", (1, 0), (1, 0), "MIDDLE"),
                                    ("VALIGN", (2, 0), (2, 0), "MIDDLE"),
                                    ("LEFTPADDING",  (0, 0), (-1, -1), 0),
-                                   ("RIGHTPADDING", (0, 0), (-1, -1), 0)]))
+                                   ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                                   ("TOPPADDING",   (0, 0), (-1, -1), 0),
+                                   ("BOTTOMPADDING", (0, 0), (-1, -1), 0)]))
     meta = Table([[Paragraph(f"แผนก:  {FORM06_DEPT}", SM),
                    Paragraph(f"วันที่: {dt.strftime('%d-%m-%Y')}", SR)]],
                  colWidths=[None, 60*mm],
@@ -843,12 +846,39 @@ def build_maintenance_form(d, path=None, fac=None):
                      Paragraph(str(j.get("solution") or ""), S),
                      (_tick(4.4*mm, BLUE) if j.get("cleared_worksite") else ""),
                      Paragraph(", ".join(who), S)])
-    # the sheet keeps its shape on a quiet day
-    for _ in range(max(0, FORM06_ROWS - len(jobs))):
-        data.append(["", "", "", "", "", "", ""])
+    # b5xx: job no. and technician narrower, the work-done column wider (same 277 mm total).
+    # A row grows when its text needs more than one line, so long work notes no longer
+    # print on top of the next row; a short row keeps the form's 9.4 mm.
+    CW = [25*mm, 44*mm, 26*mm, 54*mm, 78*mm, 24*mm, 26*mm]
+    def _rh(row):
+        need = 9.4*mm
+        for cell, w in zip(row, CW):
+            if isinstance(cell, Paragraph):
+                need = max(need, cell.wrap(w - 12, 1000)[1] + 6)
+        return need
 
-    tbl = Table(data, colWidths=[30*mm, 44*mm, 26*mm, 54*mm, 67*mm, 24*mm, 32*mm],
-                rowHeights=[12*mm] + [9.4*mm] * (len(data) - 1),
+    # the sheet keeps its shape on a quiet day — blank lines fill the space the jobs
+    # leave, so a job row that grew to two lines takes a blank line away instead of
+    # pushing the signature onto a second page (b5xx)
+    # The header gave back ~7 mm (smaller logo, no padding), so one or two rows can grow
+    # to two lines and the sheet still keeps all 14 lines; a blank line is dropped only
+    # on a day with more long rows than that.
+    # b5xx: the sheet always shows its 14 lines. When job rows grew, the BLANK lines get
+    # a little shorter to make up for it (down to 6 mm) instead of being dropped; only
+    # on a day with very long text does a blank line go.
+    job_h = [_rh(r) for r in data[1:]]
+    room = FORM06_ROWS * 9.4*mm + FORM06_SLACK
+    n_blank = max(0, FORM06_ROWS - len(job_h))
+    blank_h = 9.4*mm
+    while n_blank:
+        blank_h = min(9.4*mm, (room - sum(job_h)) / n_blank)
+        if blank_h >= 6*mm:
+            break
+        n_blank -= 1
+    data += [["", "", "", "", "", "", ""] for _ in range(n_blank)]
+
+    tbl = Table(data, colWidths=CW,
+                rowHeights=[12*mm] + job_h + [blank_h] * n_blank,
                 repeatRows=1,
                 style=TableStyle([("GRID", (0, 0), (-1, -1), .6, colors.black),
                                   ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
@@ -862,8 +892,9 @@ def build_maintenance_form(d, path=None, fac=None):
                                    ("RIGHTPADDING", (0, 0), (-1, -1), 14),
                                    ("TOPPADDING", (0, 0), (-1, -1), 2)]))
 
-    doc.build([head, Spacer(1, 1.5*mm), meta, tbl, Spacer(1, 2.5*mm),
-               Paragraph(FORM06_NOTE, NB), Spacer(1, 1.5*mm), sign])
+    from reportlab.platypus import KeepTogether
+    doc.build([head, Spacer(1, 0.5*mm), meta, tbl, Spacer(1, 2.5*mm),
+               KeepTogether([Paragraph(FORM06_NOTE, NB), Spacer(1, 1.5*mm), sign])])
     return fn
 
 
@@ -904,7 +935,9 @@ def _row_pdf(c, r, u):
     if kind == "done":
         fn = archive_found(r["plan_date"], r["factory_id"])
         if not fn and _done_rows(r["plan_date"], r["factory_id"]):
-            fn = file_daily(r["plan_date"], {**u, "active_factory": r["factory_id"]})
+            # b5xx: draw the missing sheet without re-issuing it (the shelf row stays as it was)
+            fn = build_maintenance_form(r["plan_date"], archive_path(r["plan_date"], r["factory_id"]),
+                                        r["factory_id"])
         return fn
     if kind == "jobform":
         m = _re.search(r"/api/jobs/(\d+)/pdf", r.get("path") or "")
@@ -914,9 +947,225 @@ def _row_pdf(c, r, u):
         job = c.execute("SELECT id, factory_id FROM jobs WHERE id=?", (jid,)).fetchone()
         if not job or (job["factory_id"] and job["factory_id"] != r["factory_id"]):
             return ""
-        from .jobform import file_job_form
-        return file_job_form(jid, u)
+        from .jobform import ensure_job_form          # b5xx: reuse when unchanged, no DB writes
+        return ensure_job_form(jid)[0]
     return ""
+
+
+BUNDLE_MAX = 300
+
+# ── b5xx: a big bundle as a background job that cannot slow the server down ─────
+# The documents are drawn by a SEPARATE, low-priority process (server/bundlejob.py):
+# the web server only starts it and reads its progress lines, so phones and the
+# dashboard keep their speed. Forms already drawn and unchanged are reused (see
+# jobform.ensure_job_form), nothing is written to the database, and one bundle runs at
+# a time per plant — the next one waits in a queue and says so.
+import threading as _th
+import uuid as _uuid
+import time as _time
+import json as _json
+import subprocess as _sp
+import sys as _sys
+_BJOBS = {}
+_BLOCKS = {}                 # plant -> lock: one bundle at a time per plant
+_BLOCKS_GUARD = _th.Lock()
+
+
+def _plant_lock(fac):
+    with _BLOCKS_GUARD:
+        return _BLOCKS.setdefault(fac, _th.Lock())
+
+
+def _child(spec, on_line, J=None):
+    """Run server.bundlejob in its own low-priority process; feed each stdout line to
+    on_line. Returns the exit code. J['proc'] lets Cancel stop it."""
+    d = os.path.join(_outdir(datetime.now().date()), "_bundles")
+    os.makedirs(d, exist_ok=True)
+    sf = os.path.join(d, f"_job_{_uuid.uuid4().hex[:10]}.json")
+    with open(sf, "w", encoding="utf-8") as fh:
+        _json.dump(spec, fh, default=str)
+    kw = {}
+    if os.name == "nt":
+        kw["creationflags"] = getattr(_sp, "BELOW_NORMAL_PRIORITY_CLASS", 0x4000) | getattr(_sp, "CREATE_NO_WINDOW", 0)
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    try:
+        p = _sp.Popen([_sys.executable, "-m", "server.bundlejob", sf], cwd=root, stdout=_sp.PIPE,
+                      stderr=_sp.STDOUT, text=True, encoding="utf-8", errors="replace", **kw)
+        if J is not None:
+            J["proc"] = p
+        for line in p.stdout:
+            on_line(line.rstrip("\n"))
+        return p.wait()
+    finally:
+        try:
+            os.remove(sf)
+        except OSError:
+            pass
+
+
+def _bundle_run(jid, want, u, fac):
+    J = _BJOBS[jid]
+    lock = _plant_lock(fac)
+    if not lock.acquire(blocking=False):
+        J["state"] = "queued"
+        while not lock.acquire(timeout=1):
+            if J.get("cancel"):
+                J["state"] = "cancelled"
+                return
+            J["ahead"] = sum(1 for k, v in _BJOBS.items() if v.get("fac") == fac
+                             and v["state"] in ("building", "merging"))
+    try:
+        if J.get("cancel"):
+            J["state"] = "cancelled"
+            return
+        J["state"] = "building"
+        J["t0"] = _time.time()                 # time counts from the start of the work
+        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        out = os.path.join(_outdir(datetime.now().date()), "_bundles")
+        os.makedirs(out, exist_ok=True)
+        try:   # a bundle is a view, not a record: keep only the last few
+            old = sorted((os.path.join(out, f) for f in os.listdir(out) if f.endswith(".pdf")),
+                         key=os.path.getmtime)
+            for f in old[:-10]:
+                os.remove(f)
+        except OSError:
+            pass
+        path = os.path.join(out, f"Bundle_{len(want)}_{stamp}_{jid}.pdf")
+        res = {}
+
+        def line(t):
+            k, _, rest = t.partition(" ")
+            if k == "P":
+                d, tot, miss = (int(x) for x in rest.split())
+                J.update(done=d, total=tot, missing=miss)
+            elif k == "M":
+                J["state"] = "merging"
+            elif k == "OK":
+                res["ok"] = rest
+            elif k == "ERR":
+                res["err"] = rest
+            elif k == "W":
+                _log.warning("[bundle] %s", rest)
+            elif t.strip():
+                _log.info("[bundle] %s", t)
+        _child({"mode": "bundle", "ids": want, "user": u, "out": path}, line, J)
+        if J.get("cancel"):
+            J["state"] = "cancelled"
+        elif res.get("ok") and os.path.isfile(path):
+            J.update(state="ready", path=path,
+                     name=f"Bundle_{J['total'] - J['missing']}_{stamp}.pdf")
+        else:
+            J.update(state="error", err=res.get("err") or "the build process stopped — see the server log")
+    except Exception as e:
+        J.update(state="error", err=str(e))
+    finally:
+        J.pop("proc", None)
+        lock.release()
+
+
+@router.post("/reports/bundle/start")
+async def bundle_start(req: Request):
+    u = user_from(req)
+    b = await req.json()
+    want = []
+    for x in (b.get("ids") or []):
+        if str(x).isdigit() and int(x) not in want:
+            want.append(int(x))
+    if not want:
+        raise HTTPException(400, "no documents selected")
+    if len(want) > BUNDLE_MAX:
+        raise HTTPException(400, f"too many documents in one file (max {BUNDLE_MAX})")
+    for k in [k for k, v in _BJOBS.items() if _time.time() - v["t0"] > 3600 and "proc" not in v]:
+        _BJOBS.pop(k, None)
+    fac = u.get("active_factory") or u.get("factory_id")
+    jid = _uuid.uuid4().hex[:12]
+    _BJOBS[jid] = {"t0": _time.time(), "uid": u.get("id"), "fac": fac, "state": "building",
+                   "done": 0, "total": len(want), "missing": 0, "ahead": 0,
+                   "err": "", "path": "", "name": ""}
+    cu = {k: u.get(k) for k in ("id", "name", "role", "factory_id", "active_factory")}
+    _th.Thread(target=_bundle_run, args=(jid, want, cu, fac), daemon=True).start()
+    return {"job": jid, "total": len(want)}
+
+
+def _bjob(req, jid):
+    u = user_from(req)
+    J = _BJOBS.get(jid)
+    if not J or J["uid"] != u.get("id"):
+        raise HTTPException(404, "job not found (the server may have restarted) — open the documents again")
+    return J
+
+
+@router.get("/reports/bundle/status")
+async def bundle_status(req: Request, job: str = ""):
+    J = _bjob(req, job)
+    return {**{k: J[k] for k in ("state", "done", "total", "missing", "ahead", "err", "name")},
+            "elapsed": round(_time.time() - J["t0"])}
+
+
+@router.post("/reports/bundle/cancel")
+async def bundle_cancel(req: Request, job: str = ""):
+    J = _bjob(req, job)
+    J["cancel"] = True
+    p = J.get("proc")
+    if p:
+        try:
+            p.terminate()
+        except Exception:
+            pass
+    return {"ok": True}
+
+
+@router.get("/reports/bundle/file")
+async def bundle_file(req: Request, job: str = "", inline: str = ""):
+    J = _bjob(req, job)
+    if J["state"] != "ready" or not os.path.isfile(J["path"]):
+        raise HTTPException(409, "not ready yet")
+    return _pdf_response(J["path"], inline, J["name"])
+
+
+# ── b5xx: every night at 02:00 the repair forms that changed are redrawn, in the same
+# low-priority process, so daytime bundles find them ready. Unchanged forms are skipped.
+WARM_AT = (2, 0)
+_NIGHTLY = {"on": False}
+
+
+def warm_forms_now():
+    res = {}
+
+    def line(t):
+        k, _, rest = t.partition(" ")
+        if k in ("OK", "ERR"):
+            res[k] = rest
+        elif k == "W":
+            _log.warning("[forms-nightly] %s", rest)
+    _child({"mode": "warm"}, line)
+    if res.get("OK"):
+        _log.info("[forms-nightly] %s", res["OK"])
+    else:
+        _log.warning("[forms-nightly] failed: %s", res.get("ERR") or "no answer")
+    return res
+
+
+@router.on_event("startup")
+async def _forms_nightly():
+    import asyncio
+    from datetime import timedelta
+    if os.environ.get("CMMS_FORMS_NIGHTLY", "1") == "0" or _NIGHTLY["on"]:
+        return
+    _NIGHTLY["on"] = True              # one loop per server, even if startup runs twice
+
+    async def loop():
+        while True:
+            n = datetime.now()
+            run = n.replace(hour=WARM_AT[0], minute=WARM_AT[1], second=0, microsecond=0)
+            if run <= n:
+                run += timedelta(days=1)
+            await asyncio.sleep((run - n).total_seconds())
+            try:
+                await asyncio.to_thread(warm_forms_now)
+            except Exception as e:
+                _log.error("[forms-nightly] %s", e)
+    asyncio.create_task(loop())
 
 
 @router.get("/reports/bundle")
@@ -929,8 +1178,8 @@ async def shelf_bundle(req: Request, ids: str = "", inline: str = ""):
             want.append(int(x))
     if not want:
         raise HTTPException(400, "no documents selected")
-    if len(want) > 120:
-        raise HTTPException(400, "too many documents in one file (max 120)")
+    if len(want) > BUNDLE_MAX:          # b5xx: was 120 — a month of repair forms is more than that
+        raise HTTPException(400, f"too many documents in one file (max {BUNDLE_MAX})")
     with closing(db()) as c:
         rows = _shelf_rows(c, want, u)
         if not rows:
