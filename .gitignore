@@ -35,3 +35,9 @@ _*_tmp.js
 *.xlsx
 *.pptx
 *.pdf
+
+# local build backups (kept on disk, not in git)
+_backup_*/
+.vs/
+*.accdb
+*.laccdb
