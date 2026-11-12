@@ -8,7 +8,146 @@ from .db import db, check_pw
 from . import security
 
 router = APIRouter(prefix="/api")
-SESSIONS = {}
+
+
+class SessionStore(dict):
+    """b545 — sign-ins that survive a restart.
+
+    Until now SESSIONS was a plain dict in memory, so every restart (every update) signed
+    everybody out, and every screen left open kept polling with a dead cookie — a 401
+    storm in the server window. Now each session is also written to its own small file,
+    data/sessions.db (not cmms.db: no audit trail, no locks on the main database). A token
+    the memory does not know is looked up there, so after a restart the open screens just
+    carry on. Expired rows are removed. The password hash is never written.
+    b547: the file holds only a SHA-256 of each sign-in key, never the key itself, so a
+    copy of sessions.db cannot be used to sign in as anybody."""
+
+    def __init__(self):
+        super().__init__()
+        from .config import DATA
+        self._path = os.path.join(DATA, "sessions.db")
+        self._ok = True
+        try:
+            with closing(self._c()) as c:
+                c.execute("CREATE TABLE IF NOT EXISTS sessions(tok TEXT PRIMARY KEY, data TEXT,"
+                          " created REAL, expires REAL)")
+                c.execute("DELETE FROM sessions WHERE expires<? OR tok NOT LIKE 'h:%'", (time.time(),))
+                c.commit()
+        except Exception:
+            self._ok = False                 # never block sign-in: memory still works
+
+    def _c(self):
+        import sqlite3
+        return sqlite3.connect(self._path, timeout=10)
+
+    @staticmethod
+    def _h(tok):
+        import hashlib
+        return "h:" + hashlib.sha256(str(tok).encode()).hexdigest()
+
+    def put(self, tok, sess, max_age=86400):
+        sess["_exp"] = time.time() + int(max_age)
+        dict.__setitem__(self, tok, sess)
+        self.save(tok)
+
+    def __setitem__(self, tok, sess):
+        self.put(tok, sess, (sess.get("_exp") or 0) - time.time() if sess.get("_exp") else 86400)
+
+    def save(self, tok):
+        """Write the session's current contents (call after changing it in place)."""
+        s = dict.get(self, tok)
+        if not s or not self._ok or not tok:
+            return
+        try:
+            import json
+            data = json.dumps({k: v for k, v in s.items() if k != "password"}, ensure_ascii=False, default=str)
+            with closing(self._c()) as c:
+                c.execute("INSERT OR REPLACE INTO sessions(tok,data,created,expires) VALUES(?,?,?,?)",
+                          (self._h(tok), data, time.time(), float(s.get("_exp") or time.time() + 86400)))
+                c.commit()
+        except Exception:
+            pass
+
+    def get(self, tok, default=None):
+        if not tok:
+            return default
+        s = dict.get(self, tok)
+        if s is not None:
+            if s.get("_exp") and s["_exp"] < time.time():
+                self.pop(tok, None)
+                return default
+            return s
+        if not self._ok:
+            return default
+        try:
+            import json
+            with closing(self._c()) as c:
+                r = c.execute("SELECT data, expires FROM sessions WHERE tok=?", (self._h(tok),)).fetchone()
+            if not r or (r[1] or 0) < time.time():
+                return default
+            s = json.loads(r[0])
+            dict.__setitem__(self, tok, s)   # back in memory, not rewritten
+            return s
+        except Exception:
+            return default
+
+    def __contains__(self, tok):
+        return self.get(tok) is not None
+
+    def pop(self, tok, default=None):
+        s = dict.pop(self, tok, default) if tok in self.keys() else default
+        if tok and self._ok:
+            try:
+                with closing(self._c()) as c:
+                    c.execute("DELETE FROM sessions WHERE tok=? OR tok=?", (self._h(tok), tok))
+                    c.commit()
+            except Exception:
+                pass
+        return s
+
+    def drop_user(self, uid, keep=None):
+        """Sign one person out everywhere (account disabled / deleted / admin button).
+        Returns how many sign-ins were ended. `keep` = a token to leave alone."""
+        n = mem = 0
+        for t in [t for t, s in list(self.items()) if s.get("id") == uid and t != keep]:
+            dict.pop(self, t, None)
+            mem += 1
+        if self._ok:
+            try:
+                import json
+                with closing(self._c()) as c:
+                    kh = self._h(keep) if keep else None
+                    for t, d in c.execute("SELECT tok, data FROM sessions").fetchall():
+                        try:
+                            if json.loads(d).get("id") == uid and t != kh:
+                                c.execute("DELETE FROM sessions WHERE tok=?", (t,))
+                                n += 1
+                        except Exception:
+                            pass
+                    c.commit()
+            except Exception:
+                pass
+        return max(n, mem)
+
+    def drop_all(self, keep=None):
+        """Sign EVERYBODY out except the token `keep` (the admin pressing the button)."""
+        n = 0
+        for t in [t for t in list(self.keys()) if t != keep]:
+            dict.pop(self, t, None)
+            n += 1
+        if self._ok:
+            try:
+                with closing(self._c()) as c:
+                    kh = self._h(keep) if keep else ""
+                    n = max(n, c.execute("SELECT COUNT(*) FROM sessions WHERE tok<>?", (kh,)).fetchone()[0])
+                    c.execute("DELETE FROM sessions WHERE tok<>?", (kh,))
+                    c.commit()
+            except Exception:
+                pass
+        return n
+
+
+SESSIONS = SessionStore()
 
 
 @router.get("/factories")
@@ -28,10 +167,34 @@ async def captcha(req: Request):
     return out
 
 
+def _recheck(tok, u):
+    """b546 — at most once a minute per sign-in, read the account again. A switched-off or
+    deleted account is signed out on its next request (every screen: CMMS, FG, Warehouse),
+    and a changed name / role / team / "can report" takes effect without signing out."""
+    now_t = time.time()
+    if now_t - (u.get("_chk") or 0) < 60:
+        return u
+    try:
+        with closing(db()) as c:
+            r = c.execute("SELECT name,role,active,COALESCE(can_report,0) can_report,COALESCE(team,'') team"
+                          " FROM users WHERE id=?", (u.get("id"),)).fetchone()
+    except Exception:
+        return u                              # database busy: keep working, check next time
+    if not r or not r["active"]:
+        SESSIONS.pop(tok, None)
+        raise HTTPException(401, {"msg": "บัญชีนี้ถูกปิดใช้งาน / this account has been disabled"})
+    u["name"], u["role"], u["can_report"], u["team"] = r["name"], r["role"], int(r["can_report"] or 0), r["team"] or ""
+    u["_chk"] = now_t
+    SESSIONS.save(tok)
+    return u
+
+
 def user_from(req: Request):
-    u = SESSIONS.get(req.cookies.get("bflfp"))
+    tok = req.cookies.get("bflfp")
+    u = SESSIONS.get(tok)
     if not u:
         raise HTTPException(401, "login required")
+    u = _recheck(tok, u)
     # A technician who may also report problems works in one of two modes, chosen on the
     # phone. In reporter mode the app sends X-Act-As: operator and every rule that reads
     # the role — creating a report, the reporter's lists, accepting finished work — sees
@@ -126,7 +289,8 @@ async def login(req: Request):
     sess["active_factory"] = fac_id
     sess["factory_code"] = f["code"] if f else ""
     sess["factory_name"] = f["name"] if f else ""
-    SESSIONS[tok] = sess
+    max_age = 86400 * 30 if b.get("remember") else 86400   # remember me = 30 days
+    SESSIONS.put(tok, sess, max_age)
     resp = JSONResponse({"id": r["id"], "name": r["name"], "role": r["role"],
                          "people": people, "username": r["username"],
                          "factory_id": fac_id, "factory_code": sess["factory_code"],
@@ -135,8 +299,8 @@ async def login(req: Request):
                          # shows the plant switcher on this, not on the role any more
                          "all_plants": all_plants(r),
                          "can_report": bool(sess.get("can_report")) and r["role"] == "technician",
-                         "team": sess.get("team") or ""})
-    max_age = 86400 * 30 if b.get("remember") else 86400   # remember me = 30 days
+                         "team": sess.get("team") or "",
+                         "wms_role": _wms_role(sess), **_fg_flags(sess), **_master_flags(sess)})
     resp.set_cookie("bflfp", tok, httponly=True, max_age=max_age)
     return resp
 
@@ -166,6 +330,7 @@ async def me(req: Request):
         sess = SESSIONS.get(req.cookies.get("bflfp")) or u
         sess["name"], sess["role"], sess["can_report"] = r["name"], r["role"], int(r["can_report"] or 0)
         sess["team"] = r["team"] or ""
+        SESSIONS.save(req.cookies.get("bflfp"))
         u = dict(sess)
     # A login is a key, not a person: one account may be shared by a whole crew.
     # Hand back the real technicians behind it so the phone can show their names
@@ -204,7 +369,39 @@ async def me(req: Request):
             "factory_name": u.get("factory_name", ""),
             "all_plants": all_plants(u),
             "can_report": bool(u.get("can_report")) and u.get("role") == "technician",
-            "team": u.get("team") or ""}
+            "team": u.get("team") or "",
+            "wms_role": _wms_role(u), **_fg_flags(u), **_master_flags(u)}
+
+
+def _master_flags(u):
+    """b495: Production → Master Data — who sees the menu, who may change the list."""
+    try:
+        from . import master
+        return {"master_see": master.can_see(u), "master_edit": master.can_edit(u)}
+    except Exception:
+        return {"master_see": False, "master_edit": False}
+
+
+def _fg_flags(u):
+    """FG Stock app access (users.fg_role) and whether the login goes straight to it."""
+    try:
+        from . import fg
+        return {"fg_role": fg.role_of(u), "fg_roles": fg.roles_of(u), "fg_default": fg.fg_default(u),
+                "fg_only": fg.fg_only(u)}
+    except Exception:
+        return {"fg_role": "", "fg_roles": [], "fg_default": "", "fg_only": False}
+
+
+def _wms_role(u):
+    """Warehouse app access, so the CMMS menu can offer the Warehouse link."""
+    if u.get("role") == "admin":
+        return "super"
+    try:
+        with closing(db()) as c:
+            r = c.execute("SELECT COALESCE(wms_role,'') r FROM users WHERE id=?", (u["id"],)).fetchone()
+        return (r["r"] if r else "") or ""
+    except Exception:
+        return ""          # column not made yet — the Warehouse app adds it on first use
 
 
 @router.post("/factory")
@@ -237,6 +434,7 @@ async def switch_factory(req: Request):
     # SESSIONS holds this very dict, so writing to it moves the session
     u["active_factory"] = fac_id
     u["factory_code"], u["factory_name"] = f["code"], f["name"]
+    SESSIONS.save(req.cookies.get("bflfp"))
     return {"factory_id": fac_id, "factory_code": f["code"], "factory_name": f["name"]}
 
 

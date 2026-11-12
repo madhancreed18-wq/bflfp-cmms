@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from .config import STATIC, UPLOADS, APP_VERSION, ENV, DATA
 from .db import init, db
 from . import (auth, push, jobs, reports, admin, chat, kpi, planreport, pm, pmreport, signature, elec,
-               teams, logs, live, projects, help, qrlabels)
+               teams, logs, live, projects, help, qrlabels, wms, fg, master)
 
 import logging
 # the app's own logger — the file handler is attached by logs.setup(), and everything
@@ -22,11 +22,47 @@ def create_app():
     # them went to a console instead of the file, which is to say nowhere anybody looks.
     logs.setup()
     init()
-    app = FastAPI(title="BFLFP CMMS", version=APP_VERSION, docs_url="/api/docs")
+    try:                                  # Warehouse app tables (wms_*) + users.wms_role
+        with closing(db()) as _c:
+            wms.ensure(_c)
+            _c.commit()
+    except Exception as e:
+        _log.error("[wms] table setup failed: %s", e)
+    try:                                  # FG Stock app tables (fg_*) + users.fg_role / fg_only
+        with closing(db()) as _c:
+            fg.ensure(_c)
+            _c.commit()
+    except Exception as e:
+        _log.error("[fg] table setup failed: %s", e)
+    try:                                  # b495: Production master data (product_master)
+        with closing(db()) as _c:
+            master.ensure(_c)
+            _c.commit()
+    except Exception as e:
+        _log.error("[master] table setup failed: %s", e)
+    # b472 audit trail — after the migrations, so every connection sees the final tables
+    # (restored b496: it was lost when the FG line of builds replaced app.py)
+    from . import audit
+    audit.install()
+    app = FastAPI(title="BFL Smart Factory", version=APP_VERSION, docs_url="/api/docs")
+
+    # b474 system health — times every API call, watches for stalls, alerts admins
+    from . import monitor
+    monitor.install(app)
+
+    # b481: compress pages and API answers (index.html 1.7 MB -> ~0.3 MB, big FG lists ~10x smaller)
+    from starlette.middleware.gzip import GZipMiddleware
+    app.add_middleware(GZipMiddleware, minimum_size=1024, compresslevel=5)
 
     @app.middleware("http")
     async def _no_cache(request, call_next):
-        resp = await call_next(request)
+        # b472: the audit trail learns who is asking before anything is written
+        _atok = audit.begin(request) if request.url.path.startswith("/api/") else None
+        try:
+            resp = await call_next(request)
+        finally:
+            if _atok is not None:
+                audit.end(_atok)
         p = request.url.path
         # Every API answer is a fact about right now — a job's status, a count on a
         # badge. Left cacheable, a phone can repeat a GET and be handed the answer from
@@ -35,8 +71,13 @@ def create_app():
         if p.startswith("/api/"):
             resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
             resp.headers["Pragma"] = "no-cache"
-        elif p == "/" or p.endswith(".html") or p.endswith("/sw.js") or p.endswith("/manifest.json"):
+        elif p.endswith("/sw.js"):
             resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        elif p == "/" or p.endswith(".html") or p.endswith("/manifest.json") or p.endswith(".js"):
+            # b481: "no-cache" (not "no-store") — the browser keeps its copy and asks the server
+            # each time; an unchanged page comes back as a tiny 304 instead of 1.7 MB again.
+            # A new build is still picked up on the very next open.
+            resp.headers["Cache-Control"] = "no-cache, must-revalidate"
         elif (p == "/logo.png" or p.startswith("/Logo") or (p.startswith("/fac_") and p.endswith(".png"))
               or p.startswith("/techphotos/")):
             resp.headers["Cache-Control"] = "no-cache, must-revalidate"
@@ -54,7 +95,8 @@ def create_app():
         except Exception as e:
             return {"ok": False, "version": APP_VERSION, "error": str(e)}
     for m in (auth, push, jobs, reports, admin, chat, kpi, planreport, pm, pmreport,
-              teams, logs, live, projects, help, qrlabels, signature, elec):
+              teams, logs, live, projects, help, qrlabels, signature, elec, wms, fg, master,
+              audit, monitor):
         app.include_router(m.router)
     # …and the middleware that writes an unhandled exception to the log instead of
     # losing it to a console nobody is watching. Defined since the log was written,

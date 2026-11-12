@@ -86,6 +86,19 @@ if __name__ == "__main__":
     except Exception:
         ip = "localhost"
 
+    # A second copy (double-clicked again, or a second terminal) must stop HERE, before it
+    # opens its own tunnel: that tunnel would repoint the Worker (the phones' fixed URL) to
+    # itself and then die with this copy, leaving every phone on a dead address.
+    _probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        _probe.bind(("0.0.0.0", PORT))
+    except OSError:
+        print(f"\n  ! BFLFP CMMS is already running on port {PORT} — this copy will not start.")
+        print("    Nothing was changed. Close this window (or use the one that is running).\n")
+        sys.exit(1)
+    finally:
+        _probe.close()
+
     tunnel = start_tunnel()
     atexit.register(stop_tunnel, tunnel)
 

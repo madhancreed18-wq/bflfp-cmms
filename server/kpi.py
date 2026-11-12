@@ -799,6 +799,80 @@ async def kpi_trend(req: Request, days: int = 14):
     return {"series": series}
 
 
+# ── b505: PM and CM completion % per week, from the first week the plant used the system ──
+# Weeks run Monday → Sunday (the plant's PM week, same as PM_END).
+#   PM %  = PMs due that week that were done ON TIME ÷ PMs due that week (same rule as the
+#           PM compliance ring: weekly PM inside its week, monthly-and-longer inside the
+#           month; a period still running only counts what is already finished).
+#   CM %  = CM + BD jobs RAISED that week that were finished by that week's Sunday ÷
+#           CM + BD raised that week. The current week is still running, so it is
+#           marked partial.
+@router.get("/kpi/weekly")
+async def kpi_weekly(req: Request, bucket: str = "week"):
+    """b510: PM % and CM % per week (Mon-Sun) / month, from the plant's first job.
+    b5xx: uses EXACTLY the same rules as the Headline KPI rings, so a week on the line
+    reads the same number as the rings do when that week is picked:
+      PM % = PMs done on time / PMs due in the bucket + older PMs still open (ring 1)
+      CM % = CM + BD raised in the bucket and closed (up to now) / all raised (ring 2)"""
+    u = user_from(req)
+    fac = u.get("active_factory") or u.get("factory_id")
+    b = bucket if bucket in ("day", "week", "month") else "week"
+    FJ = (" AND (COALESCE(m.factory_id,j.factory_id)=?"
+          " OR COALESCE(m.factory_id,j.factory_id) IS NULL) ")
+    KEY = {"day": "date({0})", "week": "date({0},'weekday 0','-6 days')",
+           "month": "date({0},'start of month')"}[b]
+    PM_SQL = ("SELECT"
+              " SUM(CASE WHEN " + PM_COUNTS + " THEN 1 ELSE 0 END) due,"
+              " SUM(CASE WHEN j.status IN ('ServiceCompleted','Done') THEN 1 ELSE 0 END) done,"
+              " SUM(CASE WHEN " + PM_ONTIME + " THEN 1 ELSE 0 END) ontime"
+              " FROM jobs j LEFT JOIN machines m ON m.id=j.machine_id"
+              " WHERE j.jobtype='PM' AND j.due_date IS NOT NULL AND j.due_date != ''"
+              " AND j.status NOT IN " + VOID_SQL + NOTKPI_J + FJ +
+              " AND ((j.due_date >= ? AND j.due_date <= ?)"
+              "      OR (j.due_date < ? AND j.status NOT IN ('Done','Rejected','Cancelled')))")
+    CM_SQL = ("SELECT COUNT(*) raised,"
+              " SUM(CASE WHEN j.status IN ('Done','ServiceCompleted') THEN 1 ELSE 0 END) done"
+              " FROM jobs j LEFT JOIN machines m ON m.id=j.machine_id"
+              " WHERE j.jobtype IN ('CM','BD') AND j.created_at >= ? AND j.created_at <= ?"
+              " AND j.status NOT IN " + VOID_SQL + NOTKPI_J + FJ)
+    td = date.today()
+    cur = {"day": td, "week": td - timedelta(days=td.weekday()), "month": td.replace(day=1)}[b]
+
+    def nxt(d):
+        if b == "day":
+            return d + timedelta(days=1)
+        if b == "week":
+            return d + timedelta(days=7)
+        return (d.replace(day=28) + timedelta(days=4)).replace(day=1)
+    out = []
+    with closing(db()) as c:
+        # first bucket that has any PM or CM / BD work for this plant
+        ks = [r["k"] for r in c.execute(
+            "SELECT MIN(" + KEY.format("j.due_date") + ") k FROM jobs j LEFT JOIN machines m ON m.id=j.machine_id"
+            " WHERE j.jobtype='PM' AND COALESCE(j.due_date,'')<>'' AND j.status NOT IN " + VOID_SQL + NOTKPI_J + FJ +
+            " UNION ALL SELECT MIN(" + KEY.format("SUBSTR(j.created_at,1,10)") + ") FROM jobs j"
+            " LEFT JOIN machines m ON m.id=j.machine_id WHERE j.jobtype IN ('CM','BD')"
+            " AND COALESCE(j.created_at,'')<>'' AND j.status NOT IN " + VOID_SQL + NOTKPI_J + FJ,
+            (fac, fac)) if r["k"]]
+        ks = [k for k in ks if k <= cur.isoformat()]
+        d = date.fromisoformat(min(ks)) if ks else None
+        while d is not None and d <= cur:
+            e = nxt(d) - timedelta(days=1)
+            ds, de = d.isoformat(), e.isoformat()
+            p = c.execute(PM_SQL, (fac, ds, de, ds)).fetchone()
+            q = c.execute(CM_SQL, (ds + " 00:00:00", de + " 23:59:59", fac)).fetchone()
+            due, ont = int(p["due"] or 0), int(p["ontime"] or 0)
+            rs, dn = int(q["raised"] or 0), int(q["done"] or 0)
+            out.append({"week": ds, "end": de, "iso": d.isocalendar()[1], "partial": d == cur,
+                        "pm_due": due, "pm_ontime": ont, "pm_done": int(p["done"] or 0),
+                        "pm_pct": round(ont / due * 100, 1) if due else None,
+                        # same as ring 2: closed up to now (key kept for the page / export)
+                        "cm_raised": rs, "cm_done_week": dn, "cm_done_now": dn,
+                        "cm_pct": round(dn / rs * 100, 1) if rs else None})
+            d = nxt(d)
+    return {"bucket": b, "weeks": out}
+
+
 def _crew_credit(c, fac):
     """b390 — TEAM TIME. (one_person, crew_of) helpers for crediting a job to its crew.
 
@@ -1100,14 +1174,79 @@ async def machines_search(req: Request, q: str = "", limit: int = 12):
     like = "%" + q + "%"
     with closing(db()) as c:
         rows = [dict(r) for r in c.execute(
-            """SELECT m.id, m.code, m.name, m.line, m.asset_group, m.active,
-                      (SELECT COUNT(*) FROM jobs j WHERE j.machine_id=m.id) njobs
+            """SELECT m.id, m.code, m.name, m.line, m.floor, m.asset_group, m.active,
+                      COALESCE(m.criticality,'') crit,
+                      (SELECT COUNT(*) FROM jobs j WHERE j.machine_id=m.id) njobs,
+                      (SELECT MAX(created_at) FROM jobs j WHERE j.machine_id=m.id) last_job
                  FROM machines m
                 WHERE m.factory_id=? AND (m.code LIKE ? OR m.name LIKE ?)
                 ORDER BY (m.code LIKE ?) DESC, njobs DESC, m.code
                 LIMIT ?""",
             (fac, like, like, q + "%", max(1, min(50, limit))))]
     return {"machines": rows}
+
+
+@router.get("/machines/by-code")
+async def machine_by_code(req: Request, code: str = ""):
+    """b516 — an Asset ID typed in full (and Enter) opens that machine straight away."""
+    u = user_from(req)
+    fac = u.get("active_factory") or u.get("factory_id")
+    with closing(db()) as c:
+        r = c.execute("SELECT id, code, name FROM machines WHERE factory_id=? AND UPPER(code)=UPPER(?)",
+                      (fac, (code or "").strip())).fetchone()
+    return {"machine": dict(r) if r else None}
+
+
+def _machine_extra(c, m, jobs):
+    """b516 — what the machine page shows besides the job list: every PM's NG items,
+    the crew on each job, its checklist group, what keeps going wrong and who fixes it."""
+    from collections import Counter
+    ids = [j["id"] for j in jobs]
+    names = {r["id"]: r["name"] for r in c.execute("SELECT id, name FROM users")}
+    ng, ok = {}, Counter()
+    if ids:
+        qs = ",".join("?" * len(ids))
+        try:
+            for r in c.execute(f"SELECT job_id, result, item_text, remark FROM pm_results WHERE job_id IN ({qs})", ids):
+                if (r["result"] or "").upper() == "NG":
+                    ng.setdefault(r["job_id"], []).append({"item": r["item_text"] or "", "remark": r["remark"] or ""})
+                elif (r["result"] or "").upper() == "OK":
+                    ok[r["job_id"]] += 1
+        except Exception:
+            pass
+    techs, probs, ngc = Counter(), Counter(), Counter()
+    for j in jobs:
+        hs = [names.get(int(h), "") for h in str(j.get("helpers") or "").split(",") if h.strip().isdigit()]
+        j["helper_names"] = [h for h in hs if h]
+        j["ng_items"] = ng.get(j["id"], [])
+        j["ok_n"] = ok.get(j["id"], 0)
+        if j.get("status") in ("Cancelled", "Rejected"):
+            continue
+        for t in [j.get("lead_name")] + j["helper_names"]:
+            if t:
+                techs[t] += 1
+        if (j.get("jobtype") or "") != "PM":
+            p = (j.get("problem_type") or "").split(" / ")[0].strip()
+            if not p or p.startswith("อื่น") or p.lower().startswith("other"):
+                p = (j.get("descr") or "").strip().split("\n")[0][:40]
+            if p:
+                probs[p] += 1
+        for n in j["ng_items"]:
+            ngc[n["item"][:60]] += 1
+    grp = ""
+    try:
+        from .pm import _match_all
+        tid = _match_all(c, m.get("factory_id")).get(m["id"])
+        if tid:
+            r = c.execute("SELECT machine_type FROM pm_templates WHERE id=?", (tid,)).fetchone()
+            grp = r["machine_type"] if r else ""
+    except Exception:
+        pass
+    nxt = c.execute("SELECT MIN(planned_date) d FROM jobs WHERE machine_id=? AND jobtype='PM'"
+                    " AND status NOT IN ('Done','Cancelled','Rejected','ServiceCompleted')"
+                    " AND COALESCE(planned_date,'')<>''", (m["id"],)).fetchone()
+    return {"group": grp, "next_pm_job": (nxt["d"] if nxt else "") or "",
+            "problems": probs.most_common(6), "ng_items": ngc.most_common(6), "techs": techs.most_common(6)}
 
 
 @router.get("/machines/{mid}/record")
@@ -1240,6 +1379,11 @@ async def machine_record(mid: int, req: Request, d_from: str = "", d_to: str = "
         for j in jobs:
             j["kpi_exclude"] = 1 if j.get("kpi_exclude") else 0
 
+    with closing(db()) as _cx:
+        try:
+            _x = _machine_extra(_cx, m, jobs)
+        except Exception as _e:
+            _x = {"error": str(_e)}
     return {
         "machine": m,
         "from": d_from, "to": d_to,
@@ -1270,6 +1414,7 @@ async def machine_record(mid: int, req: Request, d_from: str = "", d_to: str = "
         },
         "months": [{"m": k, **v} for k, v in months.items()],
         "repeats": _repeat_faults(jobs),
+        "extra": _x,
     }
 
 
@@ -1474,6 +1619,174 @@ async def kpi_pm_daily(req: Request, d_from: str = "", d_to: str = ""):
             done[r["done"]] += 1
     return {"from": d_from, "to": d_to, "days": [{"d": k, "planned": plan[k], "done": done[k]} for k in days],
             "planned": sum(plan.values()), "done": sum(done.values())}
+
+
+NONMACH_TRADES = ("Air Condition", "IT", "Facility")
+
+
+@router.get("/kpi/pmcm")
+async def kpi_pm_vs_cm(req: Request, bucket: str = "week", n: int = 12, cls: str = "", off: int = 0):
+    """b460: PM done vs corrective work (CM + BD reported), week by week or month by
+    month, on registered machines only — air-con, IT and civil/facility jobs are not
+    machine maintenance and are left out. cls = A / B / C narrows to one machine class.
+    Also returns, for the same window, the machines that had a CM/BD within 30 days
+    after a PM was finished on them (PM that did not hold)."""
+    u = user_from(req)
+    fac = u.get("active_factory") or u.get("factory_id")
+    bucket = "month" if bucket == "month" else "week"
+    n = max(4, min(int(n or 12), 26))
+    td = _pmcm_ref(bucket, off)                  # b462: ‹ › steps the window back
+    if bucket == "week":
+        start = td - timedelta(days=td.weekday()) - timedelta(weeks=n - 1)
+        keys = [(start + timedelta(weeks=i)).isoformat() for i in range(n)]
+        key = lambda s: (date.fromisoformat(s[:10]) - timedelta(days=date.fromisoformat(s[:10]).weekday())).isoformat()
+    else:
+        y, m = td.year, td.month
+        ms = []
+        for _ in range(n):
+            ms.append("%04d-%02d" % (y, m))
+            m -= 1
+            if not m:
+                y, m = y - 1, 12
+        keys = list(reversed(ms))
+        start = date.fromisoformat(keys[0] + "-01")
+        key = lambda s: s[:7]
+    cls = (cls or "").strip().upper()[:1]
+    with closing(db()) as c:
+        ptc = {r["name"]: (r["category"] or "") for r in c.execute(
+            "SELECT name, category FROM problem_types WHERE factory_id=?", (fac,))}
+        rows = c.execute("""SELECT j.id, UPPER(j.jobtype) t, j.status, j.created_at, j.done_at, j.machine_id,
+                   j.problem_type, j.fault_category, m.code, m.name mname,
+                   UPPER(TRIM(COALESCE(m.criticality,''))) cr
+              FROM jobs j JOIN machines m ON m.id=j.machine_id
+             WHERE m.factory_id=? AND UPPER(j.jobtype) IN ('PM','CM','BD')
+               AND j.status NOT IN """ + VOID_SQL + NOTKPI_J + """
+               AND (j.created_at >= ? OR j.done_at >= ?)""",
+                         (fac, (start - timedelta(days=31)).isoformat(), start.isoformat())).fetchall()
+    pm = {k: 0 for k in keys}
+    cm = {k: 0 for k in keys}
+    pmdone = {}
+    skipped = 0
+    for r in rows:
+        if cls and r["cr"] != cls:
+            continue
+        if r["t"] == "PM":
+            if r["status"] in ("Done", "ServiceCompleted") and r["done_at"]:
+                pmdone.setdefault(r["machine_id"], []).append(r["done_at"][:10])
+                k = key(r["done_at"])
+                if k in pm:
+                    pm[k] += 1
+            continue
+        trade = ptc.get(r["problem_type"] or "") or (r["fault_category"] or "")
+        if any(x.lower() in trade.lower() for x in NONMACH_TRADES):
+            skipped += 1
+            continue
+        if r["created_at"]:
+            k = key(r["created_at"])
+            if k in cm:
+                cm[k] += 1
+    # PM that did not hold: corrective work on a machine within 30 days after its PM
+    after = {}
+    lo = start.isoformat()
+    for r in rows:
+        if r["t"] == "PM" or not r["created_at"] or r["created_at"][:10] < lo:
+            continue
+        if cls and r["cr"] != cls:
+            continue
+        trade = ptc.get(r["problem_type"] or "") or (r["fault_category"] or "")
+        if any(x.lower() in trade.lower() for x in NONMACH_TRADES):
+            continue
+        d0 = date.fromisoformat(r["created_at"][:10])
+        prev = [d for d in pmdone.get(r["machine_id"], []) if d <= r["created_at"][:10]
+                and (d0 - date.fromisoformat(d)).days <= 30]
+        if prev:
+            a = after.setdefault(r["machine_id"], {"code": r["code"], "name": r["mname"], "cls": r["cr"],
+                                                   "n": 0, "bd": 0, "last": ""})
+            a["n"] += 1
+            a["bd"] += 1 if r["t"] == "BD" else 0
+            a["last"] = max(a["last"], r["created_at"][:10])
+    worst = sorted(after.values(), key=lambda a: (-a["n"], a["code"]))[:8]
+    return {"bucket": bucket, "cls": cls, "off": max(0, int(off or 0)),
+            "points": [{"k": k, "pm": pm[k], "cm": cm[k]} for k in keys],
+            "pm_total": sum(pm.values()), "cm_total": sum(cm.values()), "non_machine_left_out": skipped,
+            "after_pm": worst, "after_pm_machines": len(after)}
+
+
+def _pmcm_ref(bucket, off):
+    """b462: the day the window is anchored on — today, or `off` weeks / months back."""
+    td = date.fromisoformat(today())
+    off = max(0, min(int(off or 0), 120))
+    if bucket == "month":
+        y, m = td.year, td.month - off
+        while m < 1:
+            y, m = y - 1, m + 12
+        return date(y, m, 1) if off else td
+    return td - timedelta(weeks=off)
+
+
+def _pmcm_events(c, fac, since, cls=""):
+    """b461: [(kind, day, machine_id)] for PM done / CM / BD on registered machines,
+    air-con / IT / facility jobs left out — the same rules as /kpi/pmcm."""
+    ptc = {r["name"]: (r["category"] or "") for r in c.execute(
+        "SELECT name, category FROM problem_types WHERE factory_id=?", (fac,))}
+    out = []
+    for r in c.execute("""SELECT UPPER(j.jobtype) t, j.status, j.created_at, j.done_at, j.machine_id,
+               j.problem_type, j.fault_category, UPPER(TRIM(COALESCE(m.criticality,''))) cr
+          FROM jobs j JOIN machines m ON m.id=j.machine_id
+         WHERE m.factory_id=? AND UPPER(j.jobtype) IN ('PM','CM','BD')
+           AND j.status NOT IN """ + VOID_SQL + NOTKPI_J + """
+           AND (j.created_at >= ? OR j.done_at >= ?)""", (fac, since, since)):
+        if cls and r["cr"] != cls:
+            continue
+        if r["t"] == "PM":
+            if r["status"] in ("Done", "ServiceCompleted") and r["done_at"] and r["done_at"][:10] >= since:
+                out.append(("PM", r["done_at"][:10], r["machine_id"]))
+            continue
+        trade = ptc.get(r["problem_type"] or "") or (r["fault_category"] or "")
+        if any(x.lower() in trade.lower() for x in NONMACH_TRADES):
+            continue
+        if r["created_at"] and r["created_at"][:10] >= since:
+            out.append((r["t"], r["created_at"][:10], r["machine_id"]))
+    return out
+
+
+@router.get("/kpi/pmcm-compare")
+async def kpi_pm_cm_compare(req: Request, bucket: str = "week", cls: str = "", off: int = 0):
+    """b461: previous week (or month) beside the current one, day by day: PM done,
+    CM and BD reported. The current period runs only to today."""
+    u = user_from(req)
+    fac = u.get("active_factory") or u.get("factory_id")
+    real = date.fromisoformat(today())
+    td = _pmcm_ref("month" if bucket == "month" else "week", off)
+    if bucket == "month":
+        c0 = td.replace(day=1)
+        p1 = c0 - timedelta(days=1)
+        p0 = p1.replace(day=1)
+        c1 = (c0.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+    else:
+        c0 = td - timedelta(days=td.weekday())
+        c1 = c0 + timedelta(days=6)
+        p0, p1 = c0 - timedelta(days=7), c0 - timedelta(days=1)
+    cls = (cls or "").strip().upper()[:1]
+    with closing(db()) as c:
+        ev = _pmcm_events(c, fac, p0.isoformat(), cls)
+
+    def period(a, b):
+        days, d = [], a
+        while d <= b:
+            days.append(d.isoformat())
+            d += timedelta(days=1)
+        per = {k: {"d": k, "pm": 0, "cm": 0, "bd": 0} for k in days}
+        for kind, day, _m in ev:
+            if day in per:
+                per[day]["pm" if kind == "PM" else "cm" if kind == "CM" else "bd"] += 1
+        rows = [per[k] for k in days]
+        last = min(b, real).isoformat()
+        return {"from": a.isoformat(), "to": b.isoformat(), "upto": last, "days": rows,
+                "pm": sum(r["pm"] for r in rows), "cm": sum(r["cm"] for r in rows),
+                "bd": sum(r["bd"] for r in rows)}
+    return {"bucket": "month" if bucket == "month" else "week", "cls": cls, "off": max(0, int(off or 0)),
+            "prev": period(p0, p1), "cur": period(c0, c1), "today": real.isoformat()}
 
 
 @router.get("/kpi/cmjobs")

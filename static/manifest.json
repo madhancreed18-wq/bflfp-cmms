@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "BFL Group CMMS",
-  "short_name": "BFL Group",
+  "name": "BFL Smart Factory",
+  "short_name": "Smart Factory",
   "description": "Bluefalo Group maintenance & work-order system (CMMS)",
   "lang": "th",
   "dir": "ltr",

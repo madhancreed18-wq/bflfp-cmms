@@ -432,6 +432,23 @@ def _swap_id_in_list(val, old, new):
     return ",".join(out)
 
 
+@router.post("/users/{uid}/signout")
+async def signout_user(uid: int, req: Request):
+    """b547 — end every sign-in of one account (lost phone, shared phone, left the company)."""
+    u = require_role(req, "admin")
+    from .auth import SESSIONS
+    n = SESSIONS.drop_user(uid, keep=req.cookies.get("bflfp") if uid == u["id"] else None)
+    return {"ok": True, "ended": n}
+
+
+@router.post("/sessions/signout-all")
+async def signout_all(req: Request):
+    """b547 — sign everybody out except the admin pressing the button."""
+    require_role(req, "admin")
+    from .auth import SESSIONS
+    return {"ok": True, "ended": SESSIONS.drop_all(keep=req.cookies.get("bflfp"))}
+
+
 @router.delete("/users/{uid}")
 async def delete_user(uid: int, req: Request, reassign_to: int = 0):
     """Remove a person or a login account, handing their work to somebody else.
@@ -520,6 +537,11 @@ async def delete_user(uid: int, req: Request, reassign_to: int = 0):
             pass
         c.execute("DELETE FROM users WHERE id=?", (uid,))
         c.commit()
+    try:                                   # b546: a deleted account is signed out everywhere, now
+        from .auth import SESSIONS
+        SESSIONS.drop_user(uid)
+    except Exception:
+        pass
     return {"ok": True, "name": row["name"], "username": row["username"],
             "moved_to": tgt["name"], "moved": moved}
 
@@ -542,9 +564,10 @@ async def edit_user(uid: int, req: Request):
             sets["can_report"] = 1 if sets["can_report"] else 0
             try:                          # a signed-in phone picks it up without logging out
                 from .auth import SESSIONS
-                for _s in SESSIONS.values():
+                for _t, _s in list(SESSIONS.items()):
                     if _s.get("id") == uid:
                         _s["can_report"] = sets["can_report"]
+                        SESSIONS.save(_t)
             except Exception:
                 pass
         # "all plants" is only for the roles that answer for all of them — checked here
@@ -560,6 +583,13 @@ async def edit_user(uid: int, req: Request):
             c.execute(f"UPDATE users SET {','.join(k+'=?' for k in sets)} WHERE id=?",
                       (*sets.values(), uid))
         c.commit()
+    # b546: switched off, or moved to another plant -> signed out on every device at once
+    if ("active" in sets and not sets["active"]) or "factory_id" in sets:
+        try:
+            from .auth import SESSIONS
+            SESSIONS.drop_user(uid)
+        except Exception:
+            pass
     return {"ok": True}
 
 
@@ -568,7 +598,7 @@ async def edit_user(uid: int, req: Request):
 # trade before a technician has looked at it, so the planner's routing and the TRADE
 # column on the daily plan both come from here.
 
-PCATS = ["Mechanical", "Electrical", "Instrument", "Process", "Other"]
+PCATS = ["Mechanical", "Electrical", "Instrument", "Process", "Air Condition", "IT", "Facility", "Other"]   # b456: +3 teams
 
 
 @router.get("/problem-types")
@@ -589,46 +619,112 @@ async def list_problem_types(req: Request):
         for r in c.execute(
                 "SELECT j.problem_type nm, COUNT(*) n FROM jobs j"
                 " LEFT JOIN machines m ON m.id=j.machine_id"
-                " WHERE COALESCE(j.problem_type,'')<>'' AND (m.factory_id=? OR j.machine_id IS NULL)"
-                " GROUP BY j.problem_type", (fac,)):
+                " WHERE COALESCE(j.problem_type,'')<>''"
+                " GROUP BY j.problem_type"):          # b459: one list, counted over all plants
             used[r["nm"]] = r["n"]
     for r in rows:
         r["jobs"] = used.get(r["name"], 0)
     return {"types": rows, "categories": PCATS}
 
 
+PCAT_LABEL = {"Mechanical": "Mechanical", "Electrical": "Electric and control", "Instrument": "Instrument",
+              "Process": "Process", "Air Condition": "Air Condition", "IT": "IT",
+              "Facility": "Civil / Facility / Utility", "Other": "Other"}
+
+
+@router.get("/problem-types/export")
+async def export_problem_types(req: Request):
+    """b457 — the plant's problem-type list as a real .xlsx: Thai, English, team, used."""
+    import io, re
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from fastapi.responses import StreamingResponse
+    data = await list_problem_types(req)
+    u = require_role(req, "admin", "planner")
+    th = re.compile(r"[\u0E00-\u0E7F]")
+
+    def split(n):
+        parts = (n or "").split(" / ")
+        k = len(parts)
+        while k > 0 and re.search(r"[A-Za-z]", parts[k - 1]) and not th.search(parts[k - 1]):
+            k -= 1
+        return " / ".join(parts[:k]), " / ".join(parts[k:])
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Problem types"
+    head = ["#", "Symptom - Thai", "Symptom - English", "Team", "Used (jobs)", "Status"]
+    ws.append(head)
+    thin = Side(style="thin", color="D0D5DD")
+    for c in ws[1]:
+        c.font = Font(bold=True, color="FFFFFF")
+        c.fill = PatternFill("solid", fgColor="1E293B")
+        c.alignment = Alignment(vertical="center")
+    for i, r in enumerate(data["types"], 1):
+        t, e = split(r["name"])
+        ws.append([i, t, e, PCAT_LABEL.get(r["category"], r["category"]), r.get("jobs", 0),
+                   "On" if r["active"] else "Off"])
+    for row in ws.iter_rows():
+        for c in row:
+            c.border = Border(top=thin, bottom=thin, left=thin, right=thin)
+    for col, w in zip("ABCDEF", (6, 48, 56, 26, 12, 9)):
+        ws.column_dimensions[col].width = w
+    ws.freeze_panes = "A2"
+    ws.auto_filter.ref = ws.dimensions
+    from .xlstamp import stamp, file_name, user_fac
+    fname = file_name("problem-types", user_fac(u))          # b469
+    stamp(wb, user_fac(u), fname, u, "Problem types / อาการที่แจ้ง")
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return StreamingResponse(buf, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                             headers={"Content-Disposition": 'attachment; filename="%s"' % fname})
+
+
 @router.post("/problem-types")
 async def add_problem_type(req: Request):
-    u = require_role(req, "admin")
-    fac = u.get("active_factory") or u.get("factory_id")
+    """b459 — one list for all three plants: a new symptom goes on every plant."""
+    u = require_role(req, "admin", "planner")
     b = await req.json()
     name = (b.get("name") or "").strip()[:120]
     cat = b.get("category") if b.get("category") in PCATS else "Other"
     if not name:
         raise HTTPException(400, "name required")
     with closing(db()) as c:
-        from .db import ensure_problem_types
+        from .db import ensure_problem_types, regroup_problem_types
         ensure_problem_types(c)
-        dup = c.execute("SELECT id FROM problem_types WHERE factory_id=? AND name=?",
-                        (fac, name)).fetchone()
-        if dup:
+        if c.execute("SELECT 1 FROM problem_types WHERE name=? AND active=1", (name,)).fetchone():
             raise HTTPException(409, "that symptom is already on the list")
-        seq = (c.execute("SELECT COALESCE(MAX(seq),0) FROM problem_types WHERE factory_id=?",
-                         (fac,)).fetchone()[0] or 0) + 1
-        c.execute("INSERT INTO problem_types(factory_id,name,category,seq,active)"
-                  " VALUES(?,?,?,?,1)", (fac, name, cat, seq))
+        for f in [r["id"] for r in c.execute("SELECT id FROM factories")]:
+            if c.execute("SELECT 1 FROM problem_types WHERE factory_id=? AND name=?", (f, name)).fetchone():
+                c.execute("UPDATE problem_types SET active=1, category=? WHERE factory_id=? AND name=?",
+                          (cat, f, name))
+            else:
+                seq = (c.execute("SELECT COALESCE(MAX(seq),0) FROM problem_types WHERE factory_id=?",
+                                 (f,)).fetchone()[0] or 0) + 1
+                c.execute("INSERT INTO problem_types(factory_id,name,category,seq,active)"
+                          " VALUES(?,?,?,?,1)", (f, name, cat, seq))
+            regroup_problem_types(c, f)
         c.commit()
     return {"ok": True}
 
 
+def _pt_name(c, pid):
+    r = c.execute("SELECT name FROM problem_types WHERE id=?", (pid,)).fetchone()
+    if not r:
+        raise HTTPException(404, "symptom not found")
+    return r["name"]
+
+
 @router.patch("/problem-types/{pid}")
 async def edit_problem_type(req: Request, pid: int):
-    u = require_role(req, "admin")
-    fac = u.get("active_factory") or u.get("factory_id")
+    """b459 — an edit applies to the same symptom on every plant."""
+    u = require_role(req, "admin", "planner")
     b = await req.json()
     sets, args = [], []
-    if "name" in b and (b.get("name") or "").strip():
-        sets.append("name=?"); args.append((b["name"] or "").strip()[:120])
+    newname = (b.get("name") or "").strip()[:120]
+    if "name" in b and newname:
+        sets.append("name=?"); args.append(newname)
     if b.get("category") in PCATS:
         sets.append("category=?"); args.append(b["category"])
     if "active" in b:
@@ -636,8 +732,11 @@ async def edit_problem_type(req: Request, pid: int):
     if not sets:
         return {"ok": True}
     with closing(db()) as c:
-        args += [pid, fac]
-        c.execute("UPDATE problem_types SET %s WHERE id=? AND factory_id=?" % ",".join(sets), args)
+        old = _pt_name(c, pid)
+        if newname and newname != old and c.execute(
+                "SELECT 1 FROM problem_types WHERE name=?", (newname,)).fetchone():
+            raise HTTPException(409, "another symptom already has that name")
+        c.execute("UPDATE problem_types SET %s WHERE name=?" % ",".join(sets), args + [old])
         c.commit()
     return {"ok": True}
 
@@ -645,11 +744,10 @@ async def edit_problem_type(req: Request, pid: int):
 @router.delete("/problem-types/{pid}")
 async def drop_problem_type(req: Request, pid: int):
     """Retire a symptom rather than delete it — jobs already reported name it, and a
-    row that vanishes would make those jobs unreadable."""
-    u = require_role(req, "admin")
-    fac = u.get("active_factory") or u.get("factory_id")
+    row that vanishes would make those jobs unreadable. b459: on every plant."""
+    u = require_role(req, "admin", "planner")
     with closing(db()) as c:
-        c.execute("UPDATE problem_types SET active=0 WHERE id=? AND factory_id=?", (pid, fac))
+        c.execute("UPDATE problem_types SET active=0 WHERE name=?", (_pt_name(c, pid),))
         c.commit()
     return {"ok": True}
 

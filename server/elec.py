@@ -128,6 +128,18 @@ def ensure_board(c):
                 remap_person(c, r["pid"], r["acc"])
             state_set(c, "users:central-remap", "done")
             c.commit()
+        if state_get(c, "jobs:lead-not-tech") != "done":
+            # b450: a planner/admin set as a job's "technician" (a project task given to its
+            # planner) made a board column nobody can save into. Work not started yet goes
+            # back to the pool; work somebody already started is left alone.
+            c.execute("""UPDATE jobs SET lead_tech=NULL WHERE lead_tech IN
+                    (SELECT id FROM users WHERE role<>'technician')
+                  AND status IN ('Reported','WaitingAssignment','WaitingApproval','Assigned')""")
+            c.execute("""UPDATE pm_elec SET tech=NULL WHERE tech IN
+                    (SELECT id FROM users WHERE role<>'technician')
+                  AND COALESCE(started_at,'')='' AND COALESCE(done_at,'')=''""")
+            state_set(c, "jobs:lead-not-tech", "done")
+            c.commit()
     except Exception:
         pass
 
@@ -396,7 +408,13 @@ async def mine(req: Request):
                    "freq": cl["freq"], "label": cl["label"], "el_total": cl["el_total"],
                    "el_left": cl["el_missing_n"], "gen_total": cl["total"] - cl["el_total"],
                    "tech": s.get("tech"), "tech_name": names.get(str(s.get("tech") or ""), ""),
-                   "started_at": s.get("started_at") or "", "late": d < td, "counted": d >= cf}
+                   "started_at": s.get("started_at") or "", "late": d < td, "counted": d >= cf,
+                   # b5xx: the technician's 3-tab job list shows these beside his CM / BD /
+                   # PM work, grouped by day and floor, with the machine's class
+                   "machine_id": j.get("machine_id"), "pm_freq": j.get("pm_freq") or "",
+                   "priority": j.get("priority"), "created_at": j.get("created_at") or "",
+                   "mcrit": (c.execute("SELECT COALESCE(criticality,'') k FROM machines WHERE id=?",
+                                       (j.get("machine_id"),)).fetchone() or {"k": ""})["k"]}
             if s.get("done_at"):
                 continue                     # stopped: listed under Completed below
             if not cl["el_missing_n"] and not s.get("started_at"):
@@ -411,7 +429,8 @@ async def mine(req: Request):
         mon = td[:7] + "-01"
         kpi = {"done": 0, "ontime": 0, "late": 0, "open_late": sum(1 for r in mineL if r["late"] and r["counted"])}
         for s in c.execute("""SELECT e.*, j.jobid, j.status, j.planned_date, j.due_date, j.pm_freq,
-                    m.code mcode, m.name mname
+                    m.code mcode, m.name mname, j.machine_id, j.priority, j.created_at jcreated,
+                    COALESCE(m.criticality,'') mcrit
                 FROM pm_elec e JOIN jobs j ON j.id=e.job_id JOIN machines m ON m.id=j.machine_id
                 WHERE m.factory_id=? AND COALESCE(e.done_at,'')<>'' AND (e.done_by=? OR e.tech=?)
                 ORDER BY e.done_at DESC""", (fac, me, me)):
@@ -426,7 +445,9 @@ async def mine(req: Request):
             doneL.append({"id": s["job_id"], "jobid": s["jobid"], "status": s["status"], "date": d,
                           "mcode": s.get("mcode") or "", "mname": s.get("mname") or "",
                           "freq": s.get("pm_freq") or "", "done_at": s["done_at"], "ontime": on,
-                          "accepted": s["status"] == "Done", "plant_done": s["status"] in ("ServiceCompleted", "Done")})
+                          "accepted": s["status"] == "Done", "plant_done": s["status"] in ("ServiceCompleted", "Done"),
+                          "machine_id": s.get("machine_id"), "priority": s.get("priority"),
+                          "created_at": s.get("jcreated") or "", "mcrit": s.get("mcrit") or ""})
     return {"mine": mineL, "open": freeL, "done_today": doneL, "completed": doneL, "kpi": kpi, "count_from": cf}
 
 

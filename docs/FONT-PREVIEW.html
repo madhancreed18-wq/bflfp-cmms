@@ -1,0 +1,30 @@
+<!doctype html><html><head><meta charset="utf-8"><title>CMMS font preview</title>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=Noto+Sans+Thai:wght@400;500;600&family=Sarabun:wght@400;500;600&family=Anuphan:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F1F5F9;font-family:system-ui,sans-serif;color:#1E293B;padding:20px}
+h1{font-size:18px;margin:0 0 4px}.sub{color:#64748B;font-size:13px;margin-bottom:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(560px,1fr));gap:16px}
+.card{background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:14px 16px}
+.nm{font-family:system-ui;font-size:12px;font-weight:700;color:#fff;background:#1E293B;display:inline-block;border-radius:6px;padding:2px 9px;margin-bottom:10px}
+.nm.cur{background:#F07B1F}.why{font-family:system-ui;font-size:12px;color:#64748B;margin:-4px 0 10px}
+.menu{display:flex;gap:14px;background:#202020;color:#CBD5E1;border-radius:8px;padding:9px 12px;font-size:13.5px;font-weight:500;flex-wrap:wrap}
+table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}th{background:#1E293B;color:#fff;font-weight:600;text-align:left;padding:6px 8px;font-size:12px}
+td{border-bottom:1px solid #EEF1F5;padding:6px 8px}.b{font-weight:600}.tag{font-size:11px;font-weight:600;padding:1px 7px;border-radius:6px;background:#FDECEC;color:#DC2626}
+</style></head><body>
+<h1>CMMS font preview — same screen, 6 fonts</h1><div class="sub">Open this in Chrome on the PC (it loads the fonts from Google, like the app does). Pick the one that reads easiest.</div>
+<div class="grid" id="g"></div>
+<script>
+const F=[['Prompt (now)',"'Prompt'",'Wide, rounded heading font — heavy in tables',1],
+['IBM Plex Sans Thai',"'IBM Plex Sans Thai'",'Clean business font, Thai + English designed together'],
+['Noto Sans Thai',"'Noto Sans Thai','Noto Sans'",'Google standard, neutral, very readable'],
+['Anuphan',"'Anuphan'",'Modern loopless Thai, compact, close to Odoo look'],
+['Sarabun',"'Sarabun'",'Thai government document font (TH Sarabun family)'],
+['Windows system (Odoo style)',"'Segoe UI','Leelawadee UI','Leelawadee',Tahoma",'What Odoo uses on Windows — no download']];
+document.getElementById('g').innerHTML=F.map(([n,f,w,c])=>`<div class="card" style="font-family:${f},sans-serif">
+<span class="nm ${c?'cur':''}">${n}</span><div class="why">${w}</div>
+<div class="menu"><span>งาน</span><span>แผนงาน</span><span>รายงาน / Reports</span><span>สินทรัพย์</span><span>Manage</span></div>
+<table><tr><th>รหัสงาน</th><th>เครื่อง</th><th>อาการที่แจ้ง</th><th>Status</th></tr>
+<tr><td class="b">BKD-2610-041</td><td>บรรจุซองแมวเลีย TTK #1</td><td>สายลมรั่ว รอยซีลผิดปกติ</td><td><span class="tag">แจ้งแล้ว</span></td></tr>
+<tr><td class="b">PRM-2610-427</td><td>เครื่องบด#4 (Grinder)</td><td>PM · Weekly · มอเตอร์ [เช็ค]</td><td>Planned</td></tr>
+<tr><td class="b">IMP-2610-034</td><td>Retort Water Spray ฆ่าเชื้อ</td><td>เปลี่ยนวัสดุปิดช่องว่าง 1234567890</td><td>Done</td></tr></table></div>`).join('');
+</script></body></html>

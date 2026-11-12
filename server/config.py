@@ -43,6 +43,8 @@ FORM_CODE = os.environ.get("FORM_CODE", "F-SP-ENG02-03 Rev.01")
 # The PM checklist record carries its own number. QA owns it, so it is an env var
 # rather than a literal: changing a controlled document number must not need a build.
 PM_FORM_CODE = os.environ.get("PM_FORM_CODE", "F-SP-ENG02-05 Rev.01")
+# b503: pallet slip document number, issued by Document Control (fixed, printed on every slip)
+SLIP_FORM_CODE = os.environ.get("SLIP_FORM_CODE", "F-SP-WHD01-03 Rev.01")
 PUSH_CONTACT = os.environ.get("PUSH_CONTACT", "mailto:production@bluefalo-group.com")
 
 os.makedirs(UPLOADS, exist_ok=True)

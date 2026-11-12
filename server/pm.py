@@ -17,7 +17,7 @@ from fastapi import APIRouter, Request, HTTPException
 
 from .db import (db, now, today, log_status, job_row, next_jobid, set_stage,
                  user_names, VOID_SQL, offdays_of)
-from .auth import require_role
+from .auth import require_role, user_from
 
 import logging
 _log = logging.getLogger("cmms")
@@ -303,7 +303,8 @@ async def pm_machines(req: Request):
             r = c.execute("SELECT machine_type FROM pm_templates WHERE id=?", (tid,)).fetchone()
             mtype = r["machine_type"] if r else ""
         allrows = [dict(r) for r in c.execute(
-            "SELECT id,code,name,asset_group,category FROM machines WHERE factory_id=? ORDER BY code", (fac,))]
+            "SELECT id,code,name,asset_group,category FROM machines WHERE factory_id=? AND COALESCE(active,1)=1"
+            " ORDER BY code", (fac,))]
         matched = False
         if q:
             ql = q.lower()
@@ -436,7 +437,8 @@ async def machine_tree(req: Request):
     with closing(db()) as c:
         _ensure(c)
         machines = {r["id"]: {"id": r["id"], "code": r["code"], "name": r["name"]}
-                    for r in c.execute("SELECT id,code,name FROM machines WHERE factory_id=? ORDER BY code", (fac,))}
+                    for r in c.execute("SELECT id,code,name FROM machines WHERE factory_id=? AND COALESCE(active,1)=1"
+                                       " ORDER BY code", (fac,))}
         groups, grouped = {}, set()
         for r in c.execute("""SELECT pm.template_id,pm.machine_id,t.machine_type
                 FROM pm_members pm JOIN pm_templates t ON t.id=pm.template_id
@@ -640,6 +642,96 @@ async def template_history(tid: int, req: Request):
     return {"template_id": tid, "machine_type": t["machine_type"], "rows": rows}
 
 
+@router.get("/unassigned")
+async def unassigned_machines(req: Request, q: str = ""):
+    """b470 — the plant's machines that belong to NO checklist group yet (neither pinned
+    nor matched by name). Only these may go into a new group."""
+    u = require_role(req, "planner", "admin")
+    fac = _fac(u)
+    ql = (q or "").strip().lower()
+    with closing(db()) as c:
+        _ensure(c)
+        form = (c.execute("SELECT form_no FROM pm_templates WHERE factory_id=? AND COALESCE(form_no,'')<>''"
+                          " GROUP BY form_no ORDER BY COUNT(*) DESC LIMIT 1", (fac,)).fetchone()
+                or {"form_no": ""})["form_no"]
+        taken = _taken(c, fac)
+        rows = [dict(r) for r in c.execute(
+            "SELECT id,code,name,line,floor,COALESCE(criticality,'') crit FROM machines"
+            " WHERE factory_id=? AND COALESCE(active,1)=1 ORDER BY code", (fac,))]
+    out = [r for r in rows if r["id"] not in taken
+           and (not ql or ql in (r["code"] or "").lower() or ql in (r["name"] or "").lower())]
+    return {"machines": out, "form_no": form, "total_unassigned": sum(1 for r in rows if r["id"] not in taken)}
+
+
+@router.post("/templates/new")
+async def new_template(req: Request):
+    """b470 — create a checklist group in one step: its name, the machines it covers
+    (only machines with no group yet) and its checklist, every item with a frequency.
+    Nothing is written unless all of it is valid, so a half-made group never exists."""
+    u = require_role(req, "planner", "admin")
+    fac = _fac(u)
+    b = await req.json()
+    name = " ".join(str(b.get("name") or "").split())[:80]
+    mids = [int(x) for x in (b.get("machine_ids") or []) if str(x).isdigit()]
+    items = b.get("items") or []
+    miss = []
+    if not name:
+        miss.append("ชื่อกลุ่ม / group name")
+    if not mids:
+        miss.append("เลือกเครื่องอย่างน้อย 1 เครื่อง / at least one machine")
+    clean = []
+    for x in items:
+        txt = str(x.get("item") or "").strip()[:400]
+        if not txt:
+            continue
+        fq = x.get("freq") or ""
+        if fq not in FREQ_DAYS:
+            miss.append(f"ความถี่ของรายการ “{txt[:30]}” / frequency for “{txt[:30]}”")
+        clean.append((txt, str(x.get("normal_status") or "").strip()[:200],
+                      str(x.get("method") or "").strip()[:40], fq))
+    if not clean:
+        miss.append("รายการตรวจเช็คอย่างน้อย 1 รายการ / at least one checklist item")
+    elif not any(fq in FREQ_STEP for *_r, fq in clean):
+        miss.append("อย่างน้อย 1 รายการต้องมีความถี่ Week/1M/3M/6M/1Y / one item needs a scheduled frequency")
+    if miss:
+        raise HTTPException(400, {"msg": "ยังบันทึกไม่ได้ / cannot save yet", "missing": miss})
+    with closing(db()) as c:
+        _ensure(c)
+        if c.execute("SELECT 1 FROM pm_templates WHERE factory_id=? AND LOWER(machine_type)=LOWER(?)",
+                     (fac, name)).fetchone():
+            raise HTTPException(400, {"msg": "มีชื่อกลุ่มนี้แล้ว / a group with this name already exists",
+                                      "missing": ["ชื่อกลุ่มซ้ำ / name already used"]})
+        taken = _taken(c, fac)
+        ok_m = {r["id"] for r in c.execute(
+            "SELECT id FROM machines WHERE factory_id=? AND id IN (%s)" % ",".join("?" * len(mids)),
+            (fac, *mids))}
+        bad = [m for m in mids if m not in ok_m or m in taken]
+        if bad:
+            raise HTTPException(409, {"msg": "บางเครื่องอยู่ในกลุ่มอื่นแล้ว — โหลดใหม่ / some machines already "
+                                             "belong to a group — reload", "missing": []})
+        form = (c.execute("SELECT form_no FROM pm_templates WHERE factory_id=? AND COALESCE(form_no,'')<>''"
+                          " GROUP BY form_no ORDER BY COUNT(*) DESC LIMIT 1", (fac,)).fetchone()
+                or {"form_no": "SD-SP-ENG02-02"})["form_no"]
+        color = _free_group_color(c, fac)
+        tid = c.insert_id("INSERT INTO pm_templates(factory_id,machine_type,form_no,color) VALUES(?,?,?,?)",
+                          (fac, name, form, color))
+        for i, (txt, nrm, mth, fq) in enumerate(clean, 1):
+            nid = c.insert_id("INSERT INTO pm_items(template_id,seq,item,normal_status,method,freq,img,active,app_edit)"
+                              " VALUES(?,?,?,?,?,?,?,1,1)", (tid, i, txt, nrm, mth, fq, ""))
+            _item_log(c, fac, tid, nid, "add", "", _item_view({"item": txt, "normal_status": nrm,
+                                                               "method": mth, "freq": fq}), u)
+        for m in mids:
+            # off the PENDING placeholder, onto the new group
+            c.execute("DELETE FROM pm_members WHERE machine_id=? AND factory_id=?", (m, fac))
+            c.execute("INSERT INTO pm_members(template_id,machine_id,factory_id) VALUES(?,?,?)", (tid, m, fac))
+        from .db import state_get, state_set
+        _nogroup_save(c, fac, _nogroup(c, fac) - set(mids))
+        man = _manual_tpls(c, fac) | {tid}
+        state_set(c, f"pm:manual-tpl:{int(fac)}", json.dumps(sorted(man)))
+        c.commit()
+    return {"ok": True, "id": tid, "name": name, "machines": len(mids), "items": len(clean)}
+
+
 @router.post("/templates/{tid}/items")
 async def save_template_items(tid: int, req: Request):
     """Save an edited checklist: the whole list, in order, as the edit screen holds it.
@@ -729,7 +821,10 @@ async def machine_template(req: Request):
         hay = " ".join([m["name"] or "", m["asset_group"] or "", m["category"] or ""]).lower()
         an = _norm(m["name"])
         scored = []
+        _man = _manual_tpls(c, fac)
         for t in c.execute("SELECT id,machine_type FROM pm_templates WHERE factory_id=?", (fac,)):
+            if t["id"] in _man:
+                continue                      # b470: a hand-made group is never guessed by name
             toks = [x.lower() for x in _toks(t["machine_type"])]
             sc = sum(1 for x in toks if x in hay)
             tn = _norm(t["machine_type"])
@@ -938,6 +1033,17 @@ def _pm_config(c, fac):
 _MATCH_CACHE = {}
 
 
+def _manual_tpls(c, fac):
+    """b470 — checklist groups made with "+ New group". They cover exactly the machines
+    the planner ticked and are never offered by name to any other machine, so a new
+    group can never pull a machine away from the group it already belongs to."""
+    from .db import state_get
+    try:
+        return set(int(x) for x in json.loads(state_get(c, f"pm:manual-tpl:{int(fac)}", "[]") or "[]"))
+    except Exception:
+        return set()
+
+
 def _match_sig(c, fac):
     def one(q, a=()):
         r = c.execute(q, a).fetchone()
@@ -947,6 +1053,8 @@ def _match_sig(c, fac):
             one("SELECT COUNT(*) FROM pm_items"),
             one("SELECT COALESCE(SUM(COALESCE(active,1)),0) FROM pm_items"),
             one("SELECT COUNT(*) FROM machines WHERE factory_id=?", (fac,)),
+            one("SELECT COALESCE(SUM(COALESCE(active,1)),0) FROM machines WHERE factory_id=?", (fac,)),
+            len(_nogroup(c, fac)),
             one("SELECT COALESCE(SUM(LENGTH(name)),0) FROM machines WHERE factory_id=?", (fac,)),
             one("SELECT COALESCE(SUM(LENGTH(machine_type)),0) FROM pm_templates WHERE factory_id=?", (fac,)))
 
@@ -965,61 +1073,107 @@ def _match_all(c, fac):
     return out
 
 
+def _pick_tpl(tpls, m):
+    """b471 — the name / alias match for one machine (a dict with code, name, asset_group,
+    category). Shared by the matcher and by the Add-asset suggestion."""
+    hay = " ".join([m["name"] or "", m["asset_group"] or "", m["category"] or "", m["code"] or ""]).lower()
+    an = _norm(m["name"])
+    scored = []
+    for t_id, toks, tn, tmt in tpls:
+        s = sum(1 for k in toks if k in hay)
+        if tn and tn == an:
+            # the machine IS this sheet — must beat a longer sheet name that
+            # merely contains it (เครื่องตัดปลา vs เครื่องตัดปลาชาดีน)
+            s += 5000 + len(tn)
+        elif tn and (tn in an or an in tn):
+            s += 1000 + len(tn)
+        s += _alias_bonus(tmt, an)
+        if s > 0:
+            scored.append((s, t_id, tn, tmt))
+    tid = None
+    if scored:
+        top_s, top_id, top_tn, top_tmt = max(scored, key=lambda x: x[0])
+        # Sheets split per machine — เครื่องบด / เครื่องบด 3, Hi-Mixer / HIMIXER3,
+        # TTK-1 / TTK-2 — collapse to the same normalised name, so they are one
+        # family. Inside a family the machine's own number picks its copy; a
+        # machine with no copy of its own falls back to the plain sheet. This is
+        # decided on the family, not on the score, because a stray shared word
+        # can otherwise hand the machine to the wrong copy by a single point.
+        # A copy may also be named shorter than the sheet it splits off from
+        # (Ribbon Mixer / Ribbon3), so a numbered sheet whose name is the start
+        # of the winner's name counts as family too.
+        fam = [(t_id, tmt) for s, t_id, tn, tmt in scored
+               if top_tn and tn and (tn == top_tn
+                                     or (_tail_no(tmt) is not None and top_tn.startswith(tn)))]
+        if len(fam) > 1:
+            anum = _tail_no(m["name"])
+            same = [t for t in fam if anum is not None and _tail_no(t[1]) == anum]
+            if same:
+                fam = same
+            else:
+                plain = [t for t in fam if _tail_no(t[1]) is None]
+                if plain:
+                    fam = plain
+            tid = fam[0][0]
+        else:
+            tid = top_id
+    return tid
+
+
 def _match_all_uncached(c, fac):
     """{machine_id: template_id} — explicit assignment first, else normalized name /
-    alias match against the sheet names."""
-    tpls = [(t["id"], [x.lower() for x in _toks(t["machine_type"])], _norm(t["machine_type"]), t["machine_type"])
-            for t in c.execute("SELECT id,machine_type FROM pm_templates WHERE factory_id=?", (fac,))]
+    alias match against the sheet names. Retired assets (active=0) belong to no group;
+    assets marked "no group yet" are never name-matched (b471)."""
+    _man = _manual_tpls(c, fac)
+    _nog = _nogroup(c, fac)
+    tpls = _tpl_index(c, fac, _man)
     members = {r["machine_id"]: r["template_id"]
                for r in c.execute("SELECT machine_id,template_id FROM pm_members WHERE factory_id=?", (fac,))}
     out = {}
-    for m in c.execute("SELECT id,code,name,asset_group,category FROM machines WHERE factory_id=?", (fac,)):
+    for m in c.execute("SELECT id,code,name,asset_group,category FROM machines WHERE factory_id=?"
+                       " AND COALESCE(active,1)=1", (fac,)):
         tid = members.get(m["id"])
-        if not tid:
-            hay = " ".join([m["name"] or "", m["asset_group"] or "", m["category"] or "", m["code"] or ""]).lower()
-            an = _norm(m["name"])
-            scored = []
-            for t_id, toks, tn, tmt in tpls:
-                s = sum(1 for k in toks if k in hay)
-                if tn and tn == an:
-                    # the machine IS this sheet — must beat a longer sheet name that
-                    # merely contains it (เครื่องตัดปลา vs เครื่องตัดปลาชาดีน)
-                    s += 5000 + len(tn)
-                elif tn and (tn in an or an in tn):
-                    s += 1000 + len(tn)
-                s += _alias_bonus(tmt, an)
-                if s > 0:
-                    scored.append((s, t_id, tn, tmt))
-            tid = None
-            if scored:
-                top_s, top_id, top_tn, top_tmt = max(scored, key=lambda x: x[0])
-                # Sheets split per machine — เครื่องบด / เครื่องบด 3, Hi-Mixer / HIMIXER3,
-                # TTK-1 / TTK-2 — collapse to the same normalised name, so they are one
-                # family. Inside a family the machine's own number picks its copy; a
-                # machine with no copy of its own falls back to the plain sheet. This is
-                # decided on the family, not on the score, because a stray shared word
-                # can otherwise hand the machine to the wrong copy by a single point.
-                # A copy may also be named shorter than the sheet it splits off from
-                # (Ribbon Mixer / Ribbon3), so a numbered sheet whose name is the start
-                # of the winner's name counts as family too.
-                fam = [(t_id, tmt) for s, t_id, tn, tmt in scored
-                       if top_tn and tn and (tn == top_tn
-                                             or (_tail_no(tmt) is not None and top_tn.startswith(tn)))]
-                if len(fam) > 1:
-                    anum = _tail_no(m["name"])
-                    same = [t for t in fam if anum is not None and _tail_no(t[1]) == anum]
-                    if same:
-                        fam = same
-                    else:
-                        plain = [t for t in fam if _tail_no(t[1]) is None]
-                        if plain:
-                            fam = plain
-                    tid = fam[0][0]
-                else:
-                    tid = top_id
+        if not tid and m["id"] not in _nog:
+            tid = _pick_tpl(tpls, m)
         if tid:
             out[m["id"]] = tid
     return out
+
+
+def _tpl_index(c, fac, man=None):
+    man = _manual_tpls(c, fac) if man is None else man
+    return [(t["id"], [x.lower() for x in _toks(t["machine_type"])], _norm(t["machine_type"]), t["machine_type"])
+            for t in c.execute("SELECT id,machine_type FROM pm_templates WHERE factory_id=?", (fac,))
+            if t["id"] not in man]
+
+
+def _pending_tids(c, fac):
+    """b471 — the "PENDING — not yet grouped" placeholder sheet the master import makes for
+    machines that had no checklist. A machine parked there has no real group yet."""
+    from .pm_import_master import PENDING
+    return {r["id"] for r in c.execute("SELECT id FROM pm_templates WHERE factory_id=? AND machine_type=?",
+                                       (fac, PENDING))}
+
+
+def _taken(c, fac):
+    """Machines that already belong to a real checklist group."""
+    pend = _pending_tids(c, fac)
+    return {m for m, t in _match_all(c, fac).items() if t not in pend}
+
+
+def _nogroup(c, fac):
+    """b471 — new assets the planner said have no checklist group yet. They wait in the
+    "+ New group" list instead of being handed to a group by a shared word in the name."""
+    from .db import state_get
+    try:
+        return set(int(x) for x in json.loads(state_get(c, f"pm:nogroup:{int(fac)}", "[]") or "[]"))
+    except Exception:
+        return set()
+
+
+def _nogroup_save(c, fac, ids):
+    from .db import state_set
+    state_set(c, f"pm:nogroup:{int(fac)}", json.dumps(sorted(int(x) for x in ids)))
 
 
 def _machine_freqs(c, fac):
@@ -1133,6 +1287,15 @@ async def list_assets(req: Request):
         # every sheet name in the factory, so the edit row can offer them all —
         # not only the ones some asset already matches
         sheets = sorted({(t["machine_type"] or "") for t in tinfo.values() if t["machine_type"]})
+        _ensure_asset_log(c)
+        ret = {r["machine_id"]: r for r in c.execute(
+            "SELECT machine_id,user_name,at FROM asset_log WHERE factory_id=? AND action='retire' ORDER BY id", (fac,))}
+        nog = _nogroup(c, fac)
+        from .pm_import_master import PENDING
+        for r in rows:
+            if not r.get("active") and r["id"] in ret:
+                r["retired_by"], r["retired_at"] = ret[r["id"]]["user_name"], ret[r["id"]]["at"]
+            r["no_group"] = 1 if ((r["id"] in nog and not r["pm_sheet"]) or r["pm_sheet"] == PENDING) else 0
     return {"assets": rows, "sheets": sheets}
 
 
@@ -1187,11 +1350,14 @@ async def export_assets(req: Request, q: str = "", tab: str = "all"):
             ws.cell(row=r, column=i, value=v)
     ws.freeze_panes = "C2"
     ws.auto_filter.ref = f"A1:{get_column_letter(len(heads))}{max(1, len(rows) + 1)}"
+    from .xlstamp import stamp, file_name
+    _u = user_from(req)
+    name = file_name("assets", _fac(_u))                       # b469
+    stamp(wb, _fac(_u), name, _u, "Assets / สินทรัพย์")
 
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
-    name = f"assets-{today()}.xlsx"
     return StreamingResponse(
         buf, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f'attachment; filename="{name}"'})
@@ -1210,9 +1376,191 @@ async def add_asset(req: Request):
         _ensure(c)
         if c.execute("SELECT 1 FROM machines WHERE code=? AND factory_id=?", (code, fac)).fetchone():
             raise HTTPException(400, "asset ID already exists")
-        c.execute("""INSERT INTO machines(code,name,category,asset_group,criticality,factory_id,active)
-            VALUES(?,?,?,?,?,?,1)""", (code, b.get("name", ""), b.get("category", ""),
-                                       b.get("asset_group", ""), b.get("criticality", ""), fac))
+        # b471 — the checklist group is settled when the asset is added:
+        #   "auto"  → the name match (the suggestion shown in the dialog)
+        #   "none"  → no group yet; it waits in the "+ New group" list
+        #   <id>    → pinned to that existing group
+        ck = str(b.get("checklist") or "auto").strip()
+        tid = None
+        if ck not in ("auto", "none"):
+            if not ck.isdigit() or not c.execute("SELECT 1 FROM pm_templates WHERE id=? AND factory_id=?",
+                                                  (int(ck), fac)).fetchone():
+                raise HTTPException(400, "ไม่พบกลุ่มเช็คลิสต์นี้ / checklist group not found")
+            tid = int(ck)
+        mid = c.insert_id("""INSERT INTO machines(code,name,category,asset_group,criticality,line,floor,factory_id,active)
+            VALUES(?,?,?,?,?,?,?,?,1)""", (code, (b.get("name") or "").strip(), b.get("category", ""),
+                                           b.get("asset_group", ""), b.get("criticality", ""),
+                                           (b.get("line") or "").strip(), (b.get("floor") or "").strip(), fac))
+        if tid:
+            c.execute("INSERT INTO pm_members(template_id,machine_id,factory_id) VALUES(?,?,?)", (tid, mid, fac))
+        elif ck == "none":
+            _nogroup_save(c, fac, _nogroup(c, fac) | {mid})
+        _asset_log(c, fac, mid, code, (b.get("name") or "").strip(), "add",
+                   {"checklist": ck}, u)
+        c.commit()
+        got = _match_all(c, fac).get(mid)
+        gname = ""
+        if got:
+            r = c.execute("SELECT machine_type FROM pm_templates WHERE id=?", (got,)).fetchone()
+            gname = r["machine_type"] if r else ""
+    return {"ok": True, "id": mid, "template_id": got, "group": gname}
+
+
+@router.get("/assets/suggest-group")
+async def suggest_group(req: Request, name: str = "", code: str = "", category: str = "", asset_group: str = ""):
+    """b471 — which checklist group a new asset would join by its name, before it is added."""
+    u = require_role(req, "planner", "admin")
+    fac = _fac(u)
+    with closing(db()) as c:
+        _ensure(c)
+        tid = _pick_tpl(_tpl_index(c, fac), {"name": name, "code": code, "category": category,
+                                              "asset_group": asset_group}) if (name or code) else None
+        groups = [{"id": r["id"], "name": r["machine_type"]} for r in c.execute(
+            "SELECT id,machine_type FROM pm_templates WHERE factory_id=? ORDER BY machine_type", (fac,))]
+    nm = next((g["name"] for g in groups if g["id"] == tid), "")
+    return {"template_id": tid, "name": nm, "groups": groups}
+
+
+# ---------- b471: delete / retire an asset (admin) -----------------------------------
+# An asset with no history at all (added by mistake) is deleted outright. One that has
+# jobs keeps its row, retired (active=0): it leaves Assets, Checklists, new jobs and
+# auto-PM, while every old job, report and history page still names it. Planned PM
+# jobs that nobody started are cancelled; any job already started, or any open CM/BD,
+# has to be finished first. The checklist belongs to the group, so it stays for the
+# group's other machines — only when this was the last one may it go too.
+
+PM_NOT_STARTED = ("Reported", "WaitingAssignment", "Assigned")
+
+
+def _ensure_asset_log(c):
+    c.execute("""CREATE TABLE IF NOT EXISTS asset_log(id INTEGER PRIMARY KEY AUTOINCREMENT,
+        factory_id INTEGER, machine_id INTEGER, code TEXT, name TEXT, action TEXT, detail TEXT,
+        user_id INTEGER, user_name TEXT, at TEXT)""")
+
+
+def _asset_log(c, fac, mid, code, name, action, detail, u):
+    _ensure_asset_log(c)
+    c.execute("INSERT INTO asset_log(factory_id,machine_id,code,name,action,detail,user_id,user_name,at)"
+              " VALUES(?,?,?,?,?,?,?,?,?)",
+              (fac, mid, code or "", name or "", action, json.dumps(detail, ensure_ascii=False),
+               (u or {}).get("id"), (u or {}).get("name") or (u or {}).get("username") or "", now()))
+
+
+def _asset_impact(c, fac, mid):
+    m = c.execute("SELECT id,code,name,COALESCE(active,1) active FROM machines WHERE id=? AND factory_id=?",
+                  (mid, fac)).fetchone()
+    if not m:
+        raise HTTPException(404, "ไม่พบเครื่องนี้ในโรงงานนี้ / asset not found in this factory")
+    jobs = [dict(r) for r in c.execute(
+        "SELECT j.id,j.jobid,j.jobtype,j.status,j.planned_date,"
+        " (SELECT COUNT(*) FROM timelogs t WHERE t.job_id=j.id) n_logs"
+        " FROM jobs j WHERE j.machine_id=? ORDER BY j.id DESC", (mid,))]
+    cancel = [j for j in jobs if j["jobtype"] == "PM" and j["status"] in PM_NOT_STARTED and not j["n_logs"]]
+    cid = {j["id"] for j in cancel}
+    block = [j for j in jobs if j["status"] not in ("Done", "Cancelled", "Rejected") and j["id"] not in cid]
+    other = 0
+    for t in ("shiftlogs",):
+        try:
+            other += c.execute(f"SELECT COUNT(*) FROM {t} WHERE machine_id=?", (mid,)).fetchone()[0]
+        except Exception:
+            pass
+    tid = _match_all(c, fac).get(mid)
+    if not tid:
+        r = c.execute("SELECT template_id FROM pm_members WHERE machine_id=? AND factory_id=?", (mid, fac)).fetchone()
+        tid = r["template_id"] if r else None
+    grp = None
+    if tid and tid in _pending_tids(c, fac):
+        tid = None
+    if tid:
+        t = c.execute("SELECT id,machine_type FROM pm_templates WHERE id=?", (tid,)).fetchone()
+        others = [x for x in _template_users(c, fac, tid) if x != m["code"]]
+        n_items = c.execute("SELECT COUNT(*) FROM pm_items WHERE template_id=? AND COALESCE(active,1)=1",
+                            (tid,)).fetchone()[0]
+        grp = {"id": tid, "name": t["machine_type"] if t else "", "others": len(others),
+               "other_codes": others[:8], "items": n_items, "last": not others}
+    return {"id": m["id"], "code": m["code"], "name": m["name"], "active": m["active"],
+            "mode": "delete" if not jobs and not other else "retire",
+            "jobs_total": len(jobs), "done": sum(1 for j in jobs if j["status"] in ("Done", "Cancelled", "Rejected")),
+            "cancel": [{k: j[k] for k in ("id", "jobid", "status", "planned_date")} for j in cancel],
+            "block": [{k: j[k] for k in ("id", "jobid", "jobtype", "status")} for j in block],
+            "group": grp}
+
+
+@router.get("/assets/{mid}/delete-check")
+async def asset_delete_check(mid: int, req: Request):
+    u = require_role(req, "admin")
+    with closing(db()) as c:
+        _ensure(c)
+        return _asset_impact(c, _fac(u), mid)
+
+
+@router.post("/assets/{mid}/delete")
+async def asset_delete(mid: int, req: Request):
+    u = require_role(req, "admin")
+    fac = _fac(u)
+    b = await req.json()
+    drop = bool(b.get("drop_checklist"))
+    with closing(db()) as c:
+        _ensure(c)
+        im = _asset_impact(c, fac, mid)
+        if im["block"]:
+            raise HTTPException(409, {"msg": "ยังมีงานค้างของเครื่องนี้ — ปิดงานก่อน / this asset still has open jobs"
+                                             " — close them first",
+                                      "missing": [f'{j["jobid"]} ({j["jobtype"]} · {j["status"]})' for j in im["block"]]})
+        for j in im["cancel"]:
+            c.execute("UPDATE jobs SET status='Cancelled' WHERE id=?", (j["id"],))
+            log_status(c, j["id"], "Cancelled", u.get("id"))
+        c.execute("DELETE FROM pm_members WHERE machine_id=? AND factory_id=?", (mid, fac))
+        for sql in ("UPDATE pm_plans SET active=0 WHERE machine_id=?", "DELETE FROM pm_overrides WHERE machine_id=?",
+                    "DELETE FROM pm_marks WHERE machine_id=?"):
+            try:
+                c.execute(sql, (mid,))
+            except Exception:
+                pass
+        _nogroup_save(c, fac, _nogroup(c, fac) - {mid})
+        dropped = ""
+        g = im["group"]
+        if drop and g and g["last"]:
+            tid = g["id"]
+            for r in c.execute("SELECT id,item,normal_status,method,freq FROM pm_items WHERE template_id=?"
+                               " AND COALESCE(active,1)=1", (tid,)).fetchall():
+                _item_log(c, fac, tid, r["id"], "remove", _item_view(dict(r)), "", u)
+            c.execute("UPDATE pm_items SET active=0, app_edit=1 WHERE template_id=?", (tid,))
+            c.execute("DELETE FROM pm_members WHERE template_id=?", (tid,))
+            c.execute("DELETE FROM pm_templates WHERE id=? AND factory_id=?", (tid, fac))
+            from .db import state_set
+            state_set(c, f"pm:manual-tpl:{int(fac)}", json.dumps(sorted(_manual_tpls(c, fac) - {tid})))
+            dropped = g["name"]
+        detail = {"cancelled": [j["jobid"] for j in im["cancel"]], "group": g["name"] if g else "",
+                  "checklist_deleted": dropped, "jobs_kept": im["jobs_total"]}
+        if im["mode"] == "delete":
+            for sql in ("DELETE FROM qr_labels WHERE machine_id=?", "DELETE FROM pm_plans WHERE machine_id=?"):
+                try:
+                    c.execute(sql, (mid,))
+                except Exception:
+                    pass
+            c.execute("DELETE FROM machines WHERE id=? AND factory_id=?", (mid, fac))
+        else:
+            c.execute("UPDATE machines SET active=0 WHERE id=? AND factory_id=?", (mid, fac))
+        _asset_log(c, fac, mid, im["code"], im["name"], im["mode"], detail, u)
+        c.commit()
+    return {"ok": True, "mode": im["mode"], "code": im["code"], "cancelled": len(im["cancel"]),
+            "checklist_deleted": dropped}
+
+
+@router.post("/assets/{mid}/restore")
+async def asset_restore(mid: int, req: Request):
+    """Bring a retired asset back. It returns with no group pinned — name matching or the
+    "+ New group" list decides, exactly like a new asset."""
+    u = require_role(req, "admin")
+    fac = _fac(u)
+    with closing(db()) as c:
+        _ensure(c)
+        m = c.execute("SELECT code,name FROM machines WHERE id=? AND factory_id=?", (mid, fac)).fetchone()
+        if not m:
+            raise HTTPException(404, "asset not found")
+        c.execute("UPDATE machines SET active=1 WHERE id=? AND factory_id=?", (mid, fac))
+        _asset_log(c, fac, mid, m["code"], m["name"], "restore", {}, u)
         c.commit()
     return {"ok": True}
 
@@ -1285,6 +1633,7 @@ async def edit_asset(mid: int, req: Request):
             if tid:
                 c.execute("INSERT INTO pm_members(template_id,machine_id,factory_id) VALUES(?,?,?)",
                           (tid, mid, fac))
+                _nogroup_save(c, fac, _nogroup(c, fac) - {mid})
         if group is not None:
             c.execute("UPDATE machines SET pm_group_color=? WHERE id=? AND factory_id=?",
                       (color, mid, fac))
@@ -2803,3 +3152,48 @@ async def save_job_checklist(jid: int, req: Request):
         c.commit()
         cl = job_checklist(c, job_row(c, jid))
     return {"ok": True, "checklist": cl}
+
+
+@router.get("/pending")
+async def pending(req: Request):
+    """b452 — PM work orders that exist but have nobody on them yet, for the PM plan
+    page's side panel (the same idea as the CM plan's Unplanned list).
+
+    plant (default): no plant technician, and the sheet has points the plant does —
+                     an all-electrical PM is Central Electrical's, never the plant's.
+    elec=1:          the electrical part has no CE technician and is not answered yet."""
+    u = require_role(req, "planner", "admin", "manager")
+    fac = _fac(u)
+    elec = (req.query_params.get("elec") or "") == "1"
+    from .elec import counts as _elc, ELEC_START, open_points
+    out = []
+    with closing(db()) as c:
+        _cnt, _m2t = _elc(c, fac), _match_all(c, fac)
+        nm = user_names(c)
+        rows = [dict(r) for r in c.execute(
+            """SELECT j.*, m.code mcode, m.name mname, m.line mline, m.floor mfloor,
+                      e.tech e_tech, e.done_at e_done
+               FROM jobs j JOIN machines m ON m.id=j.machine_id
+               LEFT JOIN pm_elec e ON e.job_id=j.id
+               WHERE UPPER(j.jobtype)='PM' AND m.factory_id=?
+                 AND j.status NOT IN ('Cancelled','Rejected','Done','ServiceCompleted')
+               ORDER BY COALESCE(NULLIF(j.planned_date,''), j.due_date), j.jobid""", (fac,))]
+        for r in rows:
+            na, ne = _cnt.get((_m2t.get(r["machine_id"]), r.get("pm_freq") or "weekly")) or (0, 0)
+            el_only = bool(na) and na == ne
+            if elec:
+                if not ne or r.get("e_tech") or (r.get("e_done") or ""):
+                    continue
+                if (r.get("planned_date") or r.get("due_date") or "") < ELEC_START:
+                    continue
+                if not open_points(c, r):
+                    continue                  # the points were answered on the plant crew
+            else:
+                if r.get("lead_tech") or el_only:
+                    continue
+            out.append({"id": r["id"], "jobid": r["jobid"], "status": r["status"],
+                        "date": (r.get("planned_date") or r.get("due_date") or "")[:10],
+                        "mcode": r["mcode"] or "", "mname": r["mname"] or "",
+                        "line": r.get("mline") or "", "freq": r.get("pm_freq") or "",
+                        "el_only": el_only, "ce_name": nm.get(str(r.get("e_tech") or ""), "")})
+    return {"jobs": out}

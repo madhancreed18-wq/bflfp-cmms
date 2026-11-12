@@ -267,10 +267,19 @@ async def day(req: Request, d: str = ""):
                       j.problem_type,j.fault_category,j.machine_id,j.pm_freq,
                       j.planned_start,j.planned_end,j.planned_date, m.code mcode, m.name mname, m.floor mfloor, m.line mline, m.department mdept, m.asset_group mgroup, m.pm_group_color mcolor
                FROM jobs j LEFT JOIN machines m ON m.id=j.machine_id
-               WHERE j.planned_date < ? AND j.planned_date IS NOT NULL AND j.planned_date != ''
+               WHERE j.planned_date IS NOT NULL AND j.planned_date != ''
+                 AND (j.planned_date < ?
+                      -- Work with NOBODY on it is waiting work, whatever day it is planned
+                      -- for — past, today or a later day. The planner wants every
+                      -- unassigned job in the pool on whichever day the board is opened
+                      -- (a 5 Nov job could not be seen from the 6 Nov board). Work that
+                      -- already has a crew is only carried when it is actually late, so a
+                      -- crew's plan for another day is never pulled in and re-dated.
+                      OR (j.planned_date != ? AND COALESCE(j.lead_tech,0)=0))
                  AND j.status NOT IN ('Cancelled','Done','Rejected','ServiceCompleted')
                  AND (COALESCE(m.factory_id,j.factory_id)=? OR COALESCE(m.factory_id,j.factory_id) IS NULL)
-               ORDER BY j.planned_date DESC, j.priority DESC, j.id""", (min(d, today()), fac)):
+               ORDER BY j.planned_date DESC, j.priority DESC, j.id""",
+                (min(d, today()), d, fac)):
             # ONLY WORK THAT IS ACTUALLY LATE is carried. This used to be "any date before
             # the board's date", so planning ahead broke the plan behind it: opening 23 Sep
             # on the 21st pulled every job of 22 Sep in as "carried over", laid each one
@@ -386,10 +395,15 @@ async def day(req: Request, d: str = ""):
             # has something to agree with.
             if lead in acct_ids:
                 nm = acct_ids.get(lead) or nm
+            # b450: a lead who is not a technician at all (a planner) — same treatment as a
+            # phone account: the column says so and takes no drops
+            _lr = c.execute("SELECT role FROM users WHERE id=?", (lead,)).fetchone()
+            _not_tech = bool(_lr) and _lr["role"] != "technician"
             teams.append({"name": nm.split("(")[0].strip() or "Team", "color": "", "lead": lead,
                           "members": [lead], "login": None, "start": "", "end": "",
                           "jobs": list(jids), "auto": True,
-                          "lead_is_account": lead in acct_ids,
+                          "lead_not_tech": _not_tech,
+                          "lead_is_account": (lead in acct_ids) or _not_tech,
                           "lead_username": acct_ids.get(lead, "")})
         # Work that has never been given a day. It is not "unassigned on this day" —
         # it is nowhere yet. On a desk that pile lives on the calendar next door; on a
@@ -1139,10 +1153,12 @@ async def by_tech_export(req: Request, d_from: str = "", d_to: str = "", open_an
             r += 1
             n += 1
     ws.auto_filter.ref = f"A3:{get_column_letter(len(heads))}{max(r - 1, 3)}"
+    from .xlstamp import stamp, file_name
+    fn = file_name(f"assigned-jobs_{d_from}_to_{d_to}", fac)   # b469
+    stamp(wb, fac, fn, u, "Assigned jobs / งานที่มอบหมาย")
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
-    fn = f"assigned-jobs-{fcode}-{d_from}_{d_to}.xlsx"
     return StreamingResponse(buf, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                              headers={"Content-Disposition": f'attachment; filename="{fn}"'})
 

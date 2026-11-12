@@ -91,6 +91,22 @@ def _collect(jid):
         ev = c.execute("SELECT user_id FROM job_events WHERE job_id=? AND status='Assigned'"
                        " ORDER BY id LIMIT 1", (jid,)).fetchone()
         planner = names.get(str(ev["user_id"]), "") if ev and ev["user_id"] else ""
+        # b467: the saved signatures of the people behind the two top boxes, for a
+        # sheet that was never signed there on the phone
+        def _sig_of(uid):
+            if not uid:
+                return ""
+            r = c.execute("SELECT COALESCE(sig_path,'') p FROM users WHERE id=?", (uid,)).fetchone()
+            return r["p"] if r else ""
+        planner_sig = _sig_of(ev["user_id"] if ev else None)
+        req_sig = _sig_of(rid)
+        # the login that accepted the repair, and the people who sign under it
+        same_person = False
+        if j.get("approver_id") and rid:
+            same_person = int(j["approver_id"]) == int(rid) or bool(c.execute(
+                "SELECT 1 FROM users WHERE id=? AND login_id=?", (rid, j["approver_id"])).fetchone()) \
+                or bool(c.execute("SELECT 1 FROM users WHERE id=? AND login_id=?",
+                                  (j["approver_id"], rid)).fetchone())
         span = c.execute("SELECT MIN(start) a, MAX(end) b FROM timelogs"
                          " WHERE job_id=? AND seg_type='work' AND end IS NOT NULL",
                          (jid,)).fetchone()
@@ -122,6 +138,21 @@ def _collect(jid):
         j["approver_name"] = _sn["sign_appr"]
     if _sn.get("sign_inspector"):
         j["planner_name"] = _sn["sign_inspector"]
+    # b467 — fill the two top boxes the way the plant asked:
+    #   ผู้แจ้ง (reporter): the report-time signature; if none, the reporter's own
+    #     acceptance signature (ผู้ตรวจรับงาน) when the reporter is the one who
+    #     accepted; if not, the reporter's saved signature.
+    #   ผู้รับแจ้ง / ผู้อนุมัติ (received / approved): the planner who assigned the job —
+    #     the signature given here, else that planner's saved signature.
+    j["req_sig"], j["req_sig_when"] = j.get("sign_requester") or "", j.get("created_at")
+    if not j["req_sig"]:
+        if j.get("sign_appr") and (same_person or (j["approver_name"] and
+                                                   j["approver_name"] == j["requester_name"])):
+            j["req_sig"] = j["sign_appr"]
+        elif req_sig and j.get("approved_at"):
+            j["req_sig"] = req_sig
+    j["plan_sig"] = j.get("sign_inspector") or (planner_sig if planner else "")
+    j["plan_sig_when"] = j.get("inspected_at") or (j.get("planned_at") if j["plan_sig"] else None)
     j["helper_names"] = ", ".join(names.get(h, "") for h in
                                   (j.get("helpers") or "").split(",") if h)
     j["work_a"], j["work_b"] = (span["a"], span["b"]) if span else (None, None)
@@ -283,11 +314,10 @@ def _job_form_once(jid, path=None):
                      # b441: no report-time signature → the box stays blank (dotted
                      # line, no name, no date). Printing the reporter's name there read
                      # as his signature a second time beside the ผู้ตรวจรับงาน one.
-                     [sig(j.get("sign_requester"),
-                          j["requester_name"] if j.get("sign_requester") else "",
-                          j.get("created_at") if j.get("sign_requester") else None),
-                      sig(j.get("sign_inspector"), j["planner_name"],
-                          j.get("inspected_at"))]],
+                     [sig(j["req_sig"],
+                          j["requester_name"] if j["req_sig"] else "",
+                          j["req_sig_when"] if j["req_sig"] else None),
+                      sig(j["plan_sig"], j["planner_name"], j["plan_sig_when"])]],
                     colWidths=[93*mm, 93*mm], style=GRIDC))
 
     # ── ส่วนที่ 2 ─────────────────────────────────────────────────────────────
@@ -326,8 +356,7 @@ def _job_form_once(jid, path=None):
     techcell.append(Paragraph(f"ช่างผู้รับผิดชอบ 2)  {j['helper_names']}", S))
     el.append(Table([[Paragraph("ผู้อนุมัติ", HC), Paragraph("วันที่ทำการซ่อม", HC),
                       Paragraph("Supplier/ผู้รับเหมา", HC)],
-                     [sig(j.get("sign_inspector"), j["planner_name"],
-                          j.get("inspected_at")),
+                     [sig(j["plan_sig"], j["planner_name"], j["plan_sig_when"]),
                       techcell,
                       [Paragraph("1)", S), Spacer(1, 6*mm), Paragraph("2)", S)]]],
                     colWidths=[58*mm, 76*mm, 52*mm], style=GRIDC))
@@ -384,6 +413,7 @@ def file_job_form(jid, user=None):
     PM jobs still get a PDF for the button, but are neither archived nor shelved:
     this form is for corrective and breakdown work.
     """
+    _kick_refresh()                           # b467: once per server start, in the background
     j = _collect(jid)
     if str(j.get("jobtype") or "").upper() not in FORM03_TYPES:
         # not this form's work — build to a scratch name, skip the archive
@@ -392,6 +422,7 @@ def file_job_form(jid, user=None):
         return build_job_form(jid, os.path.join(_outdir(dt, j.get("factory_id")),
                                                 ascii_filename(j["jobid"])))
     fn = build_job_form(jid, archive_job_path(j))
+    _fp_write(fn, _fp(j))                     # b5xx: keep the cache in step with what was just drawn
     # the earlier route filed under repairform_dd-mm-yyyy_<jobid>.pdf — fold it away
     old = os.path.join(os.path.dirname(fn),
                        f"repairform_{datetime.strptime(_job_day(j), '%Y-%m-%d').strftime('%d-%m-%Y')}_{j['jobid']}.pdf")
@@ -425,3 +456,116 @@ def file_job_form(jid, user=None):
         # The shelf is a convenience; the archived PDF is the record.
         _log.warning("[jobform] could not file on the shelf: %s", e)
     return fn
+
+
+# ── b5xx: a filed form is reused while nothing on it has changed ─────────────────
+# Opening 126 repair forms used to redraw all 126. Each form now has a fingerprint of
+# everything printed on it (the _collect() data) plus this file's own version; while
+# the fingerprint matches, the PDF on disk is the form and is handed out as it is.
+# Fingerprints live in DATA/_formcache, NOT beside the PDFs, so the archive folders
+# hold only the documents.
+import hashlib as _hl
+import json as _json
+
+
+def _fp_dir():
+    d = os.path.join(DATA, "_formcache")
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def _fp_file(path):
+    return os.path.join(_fp_dir(), _hl.sha1(os.path.abspath(path).encode("utf-8")).hexdigest() + ".fp")
+
+
+def _fp(j):
+    try:
+        ver = str(os.path.getmtime(__file__))          # new form code -> every form redrawn once
+    except OSError:
+        ver = ""
+    return _hl.sha1((_json.dumps(j, sort_keys=True, default=str) + ver).encode("utf-8")).hexdigest()
+
+
+def _fp_write(path, fp):
+    try:
+        with open(_fp_file(path), "w") as fh:
+            fh.write(fp)
+    except OSError as e:
+        _log.warning("[jobform] fingerprint not saved: %s", e)
+
+
+def form_is_fresh(path, fp):
+    try:
+        return os.path.isfile(path) and open(_fp_file(path)).read() == fp
+    except OSError:
+        return False
+
+
+def ensure_job_form(jid, force=False):
+    """The archived form for job jid, redrawn only when something on it changed.
+    Returns (path, rebuilt). Writes NO database rows: viewing is not issuing — the shelf
+    row keeps its own 'Issued' time and 'By'."""
+    j = _collect(jid)
+    path = archive_job_path(j)
+    fp = _fp(j)
+    if not force and form_is_fresh(path, fp):
+        return path, False
+    fn = build_job_form(jid, path)
+    _fp_write(fn, fp)
+    return fn, True
+
+
+_KICKED = False
+
+
+def _kick_refresh():
+    """Start the one-time re-print of the archived forms the first time any form is
+    built after a restart. Kept here rather than in app.py so this release is just
+    this one file; the work itself runs once ever (flag in app_state)."""
+    global _KICKED
+    if _KICKED:
+        return
+    _KICKED = True
+    import threading
+    threading.Thread(target=lambda: _safe(refresh_archived_forms), daemon=True).start()
+
+
+def _safe(fn):
+    try:
+        fn()
+    except Exception as e:
+        import logging
+        logging.getLogger("cmms").warning("[jobform] refresh not run: %s", e)
+
+
+def refresh_archived_forms():
+    """b467 — rebuild every repair form already on the Reports shelf once, so the files
+    kept on disk carry the new signature rules (reporter box from the acceptance
+    signature, received/approved boxes from the planner's signature) and not only the
+    ones opened from now on. The shelf rows are left alone — their dates and order do
+    not change. Runs in the background after start; a failed job is logged and skipped."""
+    import logging
+    from .db import state_get, state_set
+    log = logging.getLogger("cmms")
+    key = "jobform:b467-signatures"
+    with closing(db()) as c:
+        if state_get(c, key, ""):
+            return 0
+        rows = [r["shift"] for r in c.execute(
+            "SELECT shift FROM plan_reports WHERE kind='jobform'")]
+        ids = [r["id"] for r in c.execute(
+            "SELECT id FROM jobs WHERE jobid IN (%s)" % ",".join("?" * len(rows)), rows)] if rows else []
+    n = bad = 0
+    for jid in ids:
+        try:
+            j = _collect(jid)
+            if str(j.get("jobtype") or "").upper() in FORM03_TYPES:
+                build_job_form(jid, archive_job_path(j)); n += 1
+        except Exception as e:
+            bad += 1
+            log.warning("[jobform] refresh %s failed: %s", jid, e)
+    with closing(db()) as c:
+        state_set(c, key, f"{n} rebuilt, {bad} failed")
+        c.commit()
+    log.info("[jobform] b467: %d archived repair forms rebuilt with signatures (%d failed)", n, bad)
+    return n

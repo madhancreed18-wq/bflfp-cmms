@@ -228,7 +228,10 @@ DR_PRIO = {3: ("ด่วนมาก", "#FEE2E2", "#991B1B"), 2: ("ด่วน
 DR_TRADE = {"Mechanical": ("เครื่องกล / Mech", "#0E7A70"),
             "Electrical": ("ไฟฟ้า / Elec", "#B45309"),
             "Instrument": ("เครื่องมือวัด / Inst", "#3364C4"),
-            "Process": ("กระบวนการ / Proc", "#7C3AED")}
+            "Process": ("กระบวนการ / Proc", "#7C3AED"),
+            "Air Condition": ("แอร์ / Air con", "#0891B2"),
+            "IT": ("ไอที / IT", "#4F46E5"),
+            "Facility": ("อาคาร-สาธารณูปโภค / Facility", "#A16207")}
 DR_COL = ["#2563EB", "#EA6A0A", "#16A34A", "#7C3AED", "#0891B2", "#DB2777"]
 DR_ICON = ('<svg class="av df" viewBox="0 0 24 24" fill="none" stroke="currentColor"'
            ' stroke-width="1.4"><circle cx="12" cy="8.6" r="3.6"/>'

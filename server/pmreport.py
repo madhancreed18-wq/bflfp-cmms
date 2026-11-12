@@ -320,7 +320,7 @@ def _sheet(j, style, width_mm):
                                    ("VALIGN", (0, 1), (-1, 1), "BOTTOM")]))
 
     foot = Table([[Paragraph(f"บันทึกเลขที่ {record_name(j)}", SM),
-                   Paragraph(f'<para alignment="right">พิมพ์เมื่อ {_dmy(now())} · BFLFP CMMS</para>', SM)]],
+                   Paragraph(f'<para alignment="right">พิมพ์เมื่อ {_dmy(now())} · BFL Smart Factory · CMMS</para>', SM)]],
                  colWidths=[width_mm / 2 * mm, width_mm / 2 * mm],
                  style=TableStyle([("TOPPADDING", (0, 0), (-1, -1), 1),
                                    ("BOTTOMPADDING", (0, 0), (-1, -1), 0)]))

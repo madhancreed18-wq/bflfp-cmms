@@ -750,13 +750,18 @@ async def raise_job(pid: int, tid: int, req: Request):
         p = c.execute("SELECT * FROM projects WHERE id=?", (pid,)).fetchone()
         _pfac = p["factory_id"] or _fac(u, req)       # the project's plant numbers the job
         jid = next_jobid(c, "PRJ", factory_id=_pfac)
+        # b450: only a technician can be a job's technician — a task given to its planner
+        # becomes a job waiting to be assigned, not a job booked to the planner
+        _who = t["who"]
+        if _who and not c.execute("SELECT 1 FROM users WHERE id=? AND role='technician'", (_who,)).fetchone():
+            _who = None
         descr = f"{p['code']} · {t['name']}"[:400]
         new_id = c.insert_id(
             """INSERT INTO jobs(jobid,jobtype,machine_id,descr,priority,status,planned_date,
                  lead_tech,due_date,jobsource,created_by,created_at,ptask_id,factory_id)
                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (jid, "PRJ", b.get("machine_id"), descr, 1, "Reported", t["plan_start"],
-             t["who"], t["plan_end"], "project", u["id"], now(), tid, _pfac))
+             _who, t["plan_end"], "project", u["id"], now(), tid, _pfac))
         set_stage(c, new_id)
         c.execute("UPDATE project_tasks SET job_id=? WHERE id=?", (new_id, tid))
         c.commit()
