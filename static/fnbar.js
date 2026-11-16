@@ -14,12 +14,13 @@
     receiver: ['ตรวจรับพาเลท', 'Pallet Checker', '#2563EB'],
     issuer: ['โหลดพาเลท', 'Pallet Loader', '#7C3AED'],
     checker: ['คลังสินค้า', 'Warehouse', '#0B6E99'],
+    viewer: ['ดูข้อมูล FG', 'FG Viewer', '#64748B'],      // b570: read only, pages chosen per person
   };
-  const ALL = ['packing', 'packcheck', 'receiver', 'issuer', 'checker'];
+  const ALL = ['packing', 'packcheck', 'receiver', 'issuer', 'checker'];   // admin gets these (not the Viewer)
   function list(me) {
     if (!me) return [];
     const fg = me.role === 'admin' || me.cmms_role === 'admin' || (me.fg_roles || []).includes('admin')
-      ? ALL.slice() : (me.fg_roles || []).filter(r => ALL.includes(r));
+      ? ALL.slice() : (me.fg_roles || []).filter(r => ALL.includes(r) || r === 'viewer');
     return (me.fg_only && fg.length ? [] : ['cmms']).concat(fg);
   }
   function current(me) {

@@ -1,6 +1,60 @@
 # Changelog — BFLFP CMMS
 All notable changes. Format: version · date · changes. Newest on top.
 
+## FG Stock b572 — 2026-11-15 (Access pallets no longer count for new slip numbers)
+- New pallet slips are numbered from the app's own slips only. Slips made from the old Access history
+  (src='access') are no longer counted, so they don't push a new lot to #2.
+- A lot that so far has only Access pallets starts a new run when the first app slip is made: the app's slips
+  are #1, #2 … with "RUN 2" on the slip (the run is part of the pallet key and QR, so they never clash with
+  the Access pallets). Same mechanism as packing a lot again (b524).
+- If the next number's pallet key is already held by an Access slip in the same run, that number is skipped.
+- Existing slips are not renumbered or changed. Applies to Save slip, the 'Next slip #' preview and slip edit.
+
+## FG Stock b572 — 2026-11-16 (SEMI product name blank on the slip)
+- A code in FG › Products with an EMPTY name (e.g. SEMI 98-CT30CVBS-NA) gave slips with no ชื่อสินค้า / Formula
+  name — the Master Data fallback (b567) only ran when the code was missing from Products. Now the name is taken
+  from Master Data whenever the Products name is blank — on the preview and on save.
+- Slips already saved with an empty name (and the receive / issue rows made from them) are filled at start-up
+  from Products, else Master Data, by product code — and again whenever a product is saved in FG › Products.
+  Only empty names are touched. Reprint the slip if the paper one went out blank.
+
+## FG Stock b571 — 2026-11-16 (product name on the slip preview)
+- Pallet slips (QR): the A6 preview showed an empty ชื่อสินค้า / Formula name for a product that is only in
+  Master Data (not in FG › Products), e.g. FG010000684. The preview now takes the name from Products, then
+  Master Data, then the ชื่อสูตร box — the same order the server already used on save, so saved / printed slips
+  were never affected (no saved slip has an empty name).
+
+## FG Stock b570 — 2026-11-13 (FG Viewer: read-only FG access, pages chosen per person)
+- CMMS › Manage › Users › Extra functions: new tick ดูข้อมูล FG อย่างเดียว / FG Viewer (read only). When ticked, a
+  list of FG pages appears under it — tick the pages this person may open (Dashboard, Shift summary, Packing
+  dashboard, Lot dashboard, FG Issuer report, Pallet trace, Stock balance, Stock card, Receive / Release history,
+  Daily report, Report files). Change the ticks any time; the person sees the change on their next page load.
+- The viewer's menu shows only the ticked pages. The server checks the same list: stock, stock card, history,
+  trace, issuer report, daily report and the dashboard open for a viewer only when that page is ticked, and every
+  save / scan / confirm / print-slip / master-data call stays closed (viewer rights = view only).
+- New column users.fg_pages (added at start-up). Unticking the Viewer clears its pages. Admins don't get a Viewer tile.
+
+## FG Stock b570 — 2026-11-13 (Lot dashboard: all lots in the lot box)
+- Clicking the เลขล็อต / lot no. box opens a drop-down of EVERY lot packed till date (newest first) — lot no.,
+  product, FG code, last slip time, pallets and bags. Typing filters it at once (lot no., FG code or product
+  name; several words must all match). ↑ ↓ Enter Esc work; the lot on screen is marked. The recent-lot chips stay.
+- New GET /api/fg/lot-dash/lots (slips only, cancelled left out); the old 14-result type-ahead is no longer used here.
+
+## FG Stock ui b571 — 2026-11-13 (drop-down lists can be scrolled)
+- Every type-ahead drop-down (product name, FG code, lot …): scrolling the list with the mouse wheel or
+  its scrollbar no longer closes it. Before, any scroll closed the list, so items below the first 4–5
+  (e.g. a newly added Master Data product at the end) could not be reached.
+- Product-name search matches every typed word in any order: "tuna fish 20kg" finds
+  "Cat26% Tuna Rich Cat Food Fish Mix (20KG)".
+
+## FG Stock ui b570 — 2026-11-13 (new Master Data rows show on the slip form without a reload)
+- Pallet slip form: the product-name and FG-code drop-downs re-read Master Data and the FG product list while
+  the packer types (at most every 20 s). Before, both lists were read once when the page opened, so a row the
+  Production manager added later did not show on a packing PC until the page was reloaded.
+- Master Data rows count as usable unless their status is Disable / Inactive (was: exactly "Active").
+- Typing an FG code also finds codes that are only in Master Data.
+- Rows with no FG code in Master Data still can't be picked — the slip needs an FG code.
+
 ## FG Stock b569 — 2026-11-12 (PKG code on older slips)
 - Slips made before b567 get their PKG code from Master Data (by FG code, Active rows first, codes joined
   with ", "). Runs at start-up and only fills slips whose PKG code is EMPTY — a code already on a slip is never

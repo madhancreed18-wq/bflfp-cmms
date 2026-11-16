@@ -271,6 +271,12 @@ tr.pkdel td{background:#F1F5F9!important;color:#94A3B8}tr.pkdel td b,tr.pkdel td
 .ld-bar .vl{width:250px;font-size:12.5px;color:#475569;white-space:nowrap}.ld-bar .vl b{color:#1E293B;font-size:14px}
 .ld-info{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 16px;font-size:13px}.ld-info span{display:block;color:#64748B;font-size:12px}
 .ld-chip{height:40px;border:1px solid #CBD5E1;background:#fff;border-radius:999px;padding:0 14px;font-size:14px;cursor:pointer;white-space:nowrap;font-family:ui-monospace,Consolas,monospace}
+.ldd{max-height:420px;padding:0}.ldd-h{position:sticky;top:0;background:#F8FAFC;border-bottom:1px solid #E2E8F0;padding:7px 12px;font-size:12px;color:#64748B}
+.ldd-i{display:flex;justify-content:space-between;gap:12px;padding:7px 12px;cursor:pointer;border-bottom:1px solid #F1F5F9}
+.ldd-i:hover,.ldd-i.on{background:#EEF6FD}.ldd-i.cur{box-shadow:inset 3px 0 0 #1E73BE}
+.ldd-l{display:flex;flex-direction:column;min-width:0}.ldd-l b{font-family:ui-monospace,Consolas,monospace;font-size:13.5px;color:#0F172A}
+.ldd-l span,.ldd-r span{font-size:12px;color:#64748B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ldd-r{display:flex;flex-direction:column;align-items:flex-end;font-size:12px;color:#334155;white-space:nowrap;flex-shrink:0}
 .ld-chip.on{background:#0F172A;border-color:#0F172A;color:#fff;font-weight:700}
 @media(max-width:900px){.ld-info{grid-template-columns:1fr 1fr}.ld-bar .vl{width:auto}}
 </style>
@@ -307,7 +313,8 @@ const FN_PAGES={packing:['slip','pkdash','lotdash','ovr','shrep','rfiles','pmast
   checker:['home','shdash','isrep','trace','queue','ovr','hrecv','hrel','stock','card','daily','rfiles','paudit','packing','lists','prod','cust','people'],   // b544: checker PC also gets the master pages
   admin:['paudit','packing','lists','prod','cust','people','users','accimp','accarch']};      // admin's setup pages live in the Warehouse function
 const isAdmin=()=>!!(ME&&(ME.fg_roles||[]).includes('admin'));
-function fnPages(){return (FN_PAGES[FN]||[]).concat(FN==='checker'&&isAdmin()?FN_PAGES.admin:[]);}
+// b570: FG Viewer (read only) — the pages ticked for this person in CMMS › Manage › Users (ME.fg_pages)
+function fnPages(){if(FN==='viewer')return (ME&&ME.fg_pages)||[];return (FN_PAGES[FN]||[]).concat(FN==='checker'&&isAdmin()?FN_PAGES.admin:[]);}
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const can=k=>!!(ME&&ME.can.includes(k));
@@ -389,7 +396,7 @@ async function apiC(url,again,ttl){
 function err(e){return `<div class="msg m-bad">${esc(e.message||e)}</div>`;}
 async function logout(){try{await post('/api/logout');}catch(e){}location.href='/';}
 
-const ROLE={admin:['ผู้ดูแล','Admin','#0F172A'],packing:['แพคกิ้ง','Packing','#0D9488'],packcheck:['Checker แพคกิ้ง','Packing checker','#B45309'],receiver:['ตรวจรับพาเลท (รับเข้า FG)','Pallet Checker (FG receiver)','#1B75BC'],issuer:['โหลดพาเลท (จ่ายออก FG)','Pallet Loader (FG issuer)','#7C3AED'],checker:['ผู้ตรวจสอบ','Checker','#D97706']};
+const ROLE={admin:['ผู้ดูแล','Admin','#0F172A'],packing:['แพคกิ้ง','Packing','#0D9488'],packcheck:['Checker แพคกิ้ง','Packing checker','#B45309'],receiver:['ตรวจรับพาเลท (รับเข้า FG)','Pallet Checker (FG receiver)','#1B75BC'],issuer:['โหลดพาเลท (จ่ายออก FG)','Pallet Loader (FG issuer)','#7C3AED'],checker:['ผู้ตรวจสอบ','Checker','#D97706'],viewer:['ผู้ดูข้อมูล (ดูอย่างเดียว)','FG Viewer (read only)','#64748B']};
 const STL={waiting:['รอตรวจสอบ','At checker'],confirmed:['ยืนยันแล้ว','Confirmed'],rejected:['ไม่อนุมัติ','Rejected'],sentback:['ส่งกลับ','Sent back'],
   packed:['แพคแล้ว','Packed'],cancelled:['ยกเลิก','Cancelled'],moved_to_fg:['ย้ายเข้า FG แล้ว','Moved to FG'],rejected_by_fg:['FG ไม่รับ','Rejected by FG']};
 const stPill=s=>`<span class="pill p-${s}">${esc(L(...(STL[s]||[s,s])))}</span>`;
@@ -439,7 +446,7 @@ function pages(){return [
   ['people',IC.master,L('ผู้ตรวจสอบ / หัวหน้ากะ','Checkers & leaders'),'master','M'],
   ['users',IC.user,L('ผู้ใช้งาน','Users & roles'),'admin','M'],
   ['accimp',IC.master,L('นำเข้า Access','Import Access'),'admin','M'],
-  ['accarch',IC.hist,L('ข้อมูลเก่า Access (ทุกตาราง)','Old Access data (all tables)'),'admin','M']].filter(p=>fnPages().includes(p[0])&&(p[3]==='home'||can(p[3])))
+  ['accarch',IC.hist,L('ข้อมูลเก่า Access (ทุกตาราง)','Old Access data (all tables)'),'admin','M']].filter(p=>fnPages().includes(p[0])&&(p[3]==='home'||can(p[3])||FN==='viewer'))
     .sort((a,b)=>fnPages().indexOf(a[0])-fnPages().indexOf(b[0]));}
 function buildNav(){
   let h='',g=false;
@@ -581,7 +588,7 @@ function ta(inp,source,onPick,min){
   const pick=i=>{const it=items[i];if(!it)return;inp.value=it.v;close();if(onPick)onPick(it);inp.dispatchEvent(new Event('input'));inp.dispatchEvent(new Event('change'));};
   const draw=()=>{
     if(!items.length){close();return;}
-    if(!box){box=document.createElement('div');box.className='tadd';document.body.appendChild(box);}
+    if(!box){box=document.createElement('div');box.className='tadd';box.addEventListener('mousedown',e=>e.preventDefault());document.body.appendChild(box);}
     const r=inp.getBoundingClientRect();box.style.left=r.left+'px';box.style.top=(r.bottom+2)+'px';box.style.width=Math.max(r.width,280)+'px';
     box.innerHTML=items.map((it,i)=>`<div class="tadi ${i===hi?'on':''}" data-i="${i}"><b>${esc(it.t)}</b>${it.s?`<span>${esc(it.s)}</span>`:''}</div>`).join('');
     box.querySelectorAll('.tadi').forEach(d=>d.onmousedown=e=>{e.preventDefault();pick(+d.dataset.i);});
@@ -596,16 +603,19 @@ function ta(inp,source,onPick,min){
     else if(e.key==='ArrowUp'){hi=Math.max(0,hi-1);draw();e.preventDefault();}
     else if(e.key==='Enter'&&hi>=0){pick(hi);e.preventDefault();e.stopPropagation();}
     else if(e.key==='Escape')close();});
-  window.addEventListener('scroll',close,true);
+  window.addEventListener('scroll',e=>{if(box&&(e.target===box||box.contains(e.target)))return;close();},true);   // b571: scrolling the list itself keeps it open
 }
-const taProdName=q=>{q=q.toLowerCase();const seen=new Set(),out=[];
+const taProdName=async q=>{await Promise.all([loadPMX(),loadProds()]);q=q.toLowerCase();
+  const ws=q.split(/\s+/).filter(Boolean),hasAll=t=>{t=t.toLowerCase();return ws.every(w=>t.includes(w));};   const seen=new Set(),out=[];   // b571: words in any order
   // b567: Master Data first (it carries the PKG code), then the FG product list
-  (PMX||[]).filter(p=>(p.name+' '+p.code).toLowerCase().includes(q)).sort((a,b)=>(a.name.toLowerCase().startsWith(q)?0:1)-(b.name.toLowerCase().startsWith(q)?0:1))
+  (PMX||[]).filter(p=>hasAll(p.name+' '+p.code)).sort((a,b)=>(a.name.toLowerCase().startsWith(q)?0:1)-(b.name.toLowerCase().startsWith(q)?0:1))
     .forEach(p=>{if(seen.has(p.code))return;seen.add(p.code);const f=(PRODS||[]).find(x=>x.code===p.code);out.push({v:f?f.name:p.name,t:f?f.name:p.name,s:p.code+(p.pkg?' · PKG '+p.pkg:''),code:p.code,pkg:pkgOf(p.code)});});
-  (PRODS||[]).filter(p=>!seen.has(p.code)&&(p.name+' '+p.code).toLowerCase().includes(q)).sort((a,b)=>(a.name.toLowerCase().startsWith(q)?0:1)-(b.name.toLowerCase().startsWith(q)?0:1))
+  (PRODS||[]).filter(p=>!seen.has(p.code)&&hasAll(p.name+' '+p.code)).sort((a,b)=>(a.name.toLowerCase().startsWith(q)?0:1)-(b.name.toLowerCase().startsWith(q)?0:1))
     .forEach(p=>out.push({v:p.name,t:p.name,s:p.code,code:p.code,pkg:''}));
   return out.slice(0,14);};
-const taProd=q=>{q=q.toLowerCase();return (PRODS||[]).filter(p=>(p.code+' '+p.name).toLowerCase().includes(q))
+const taProd=async q=>{await Promise.all([loadPMX(),loadProds()]);q=q.toLowerCase();
+  const have=new Set((PRODS||[]).map(p=>p.code)),md=[];(PMX||[]).forEach(p=>{if(!have.has(p.code)){have.add(p.code);md.push(p);}});   // b570: codes only in Master Data too
+  return (PRODS||[]).concat(md).filter(p=>(p.code+' '+p.name).toLowerCase().includes(q))
   .sort((a,b)=>(a.code.toLowerCase().startsWith(q)?0:1)-(b.code.toLowerCase().startsWith(q)?0:1)).slice(0,12).map(p=>({v:p.code,t:p.code,s:p.name}));};
 const taSrv=(kind,prodSel)=>async q=>{try{return (await api(`/api/fg/suggest?kind=${kind}&q=${encodeURIComponent(q)}${prodSel?'&product='+encodeURIComponent(prodSel()||''):''}`)).items;}catch(e){return [];}};
 const taRows=(rows,keys)=>q=>{q=q.toLowerCase();const seen=new Set(),out=[];
@@ -1060,15 +1070,63 @@ async function pgLotDash(){
   $('#app').innerHTML=`<div class="pkd"><h1>${PKB('แดชบอร์ดล็อต','Lot dashboard')}</h1>
    <p class="sub">${PKB('เลือกเลขล็อต — ยอดที่แพคทั้งหมด และจำนวนถุงที่แพคของแต่ละเครื่องแพค','choose a lot — total packed and bags packed by each packing machine')}</p>
    <div class="card pkd-f">
-    <div><label>${PKB('เลขล็อต','lot no.')}</label><input class="in mono" id="ldQ" value="${esc(LDQ)}" placeholder="261109042-PC" style="width:220px;text-transform:uppercase" onkeydown="if(event.key==='Enter')ldGo(this.value)" autocomplete="off"></div>
+    <div><label>${PKB('เลขล็อต','lot no.')}</label><input class="in mono" id="ldQ" value="${esc(LDQ)}" placeholder="${L('คลิกเพื่อดูทุกล็อต หรือพิมพ์ค้นหา','click for all lots, or type')}" style="width:260px;text-transform:uppercase" autocomplete="off" spellcheck="false"
+      onfocus="ldOpen()" onclick="ldOpen()" oninput="if(!LDD.box)ldOpen(1);LDD.typed=1;LDD.hi=0;ldDraw2()" onkeydown="ldKey(event)" onblur="setTimeout(ldClose,150)"></div>
     <button class="btn pri" onclick="ldGo($('#ldQ').value)">${PKB('แสดง','show')}</button>
     <div><label>${PKB('ล็อตล่าสุด','recent lots')}</label><div class="pkd-ch" id="ldRec"></div></div>
-    <button class="btn" title="${L('โหลดใหม่','Refresh')}" onclick="ldGo(LDQ)">↻</button></div>
+    <button class="btn" title="${L('โหลดใหม่','Refresh')}" onclick="LDL=null;ldLots();ldGo(LDQ)">↻</button></div>
    <div id="ldB">${LDQ?LOADH:''}</div></div>`;
-  ta($('#ldQ'),taSrv('packlot'),it=>ldGo(it.v),1);
+  LDL=null;ldLots();
   ldLoad();
 }
-function ldGo(v){LDQ=(v||'').trim().toUpperCase();const i=$('#ldQ');if(i)i.value=LDQ;ldLoad();}
+function ldGo(v){LDQ=(v||'').trim().toUpperCase();const i=$('#ldQ');if(i)i.value=LDQ;ldClose();ldLoad();}
+/* b570: lot drop-down — every lot packed till date (GET /api/fg/lot-dash/lots, loaded once per visit),
+   opens on click with the full list, filters in the browser while typing (lot no., FG code or product name;
+   several words = all must match). ↑ ↓ Enter Esc. The recent-lot chips stay beside it. */
+let LDL=null,LDD={box:null,typed:0,hi:-1,items:[]};
+async function ldLots(){
+  if(LDL)return LDL;
+  try{LDL=(await api('/api/fg/lot-dash/lots')).lots;}catch(e){LDL=null;return [];}
+  if(LDD.box)ldDraw2();
+  return LDL;
+}
+function ldOpen(keep){
+  const i=$('#ldQ');if(!i)return;
+  if(!LDD.box&&!keep){LDD.typed=0;LDD.hi=-1;}
+  if(!LDD.typed)i.select();   // first click: whole list, and typing replaces the lot shown
+  if(!LDD.box){LDD.box=document.createElement('div');LDD.box.className='tadd ldd';document.body.appendChild(LDD.box);
+    LDD.box.addEventListener('mousedown',e=>e.preventDefault());}
+  ldDraw2();if(!LDL)ldLots();
+}
+function ldClose(){if(LDD.box){LDD.box.remove();LDD.box=null;}LDD.hi=-1;}
+function ldDraw2(){
+  const i=$('#ldQ'),B=LDD.box;if(!i||!B)return;
+  const r=i.getBoundingClientRect();B.style.left=r.left+'px';B.style.top=(r.bottom+2)+'px';
+  B.style.width=Math.min(520,window.innerWidth-r.left-12)+'px';B.style.maxHeight=Math.max(200,window.innerHeight-r.bottom-20)+'px';
+  if(!LDL){B.innerHTML=`<div class="ldd-h">${L('กำลังโหลดล็อต…','Loading lots…')}</div>`;return;}
+  const q=LDD.typed?i.value.trim().toLowerCase():'',ws=q.split(/\s+/).filter(Boolean);
+  const all=ws.length?LDL.filter(x=>{const h=(x.lot+' '+x.code+' '+x.name).toLowerCase();return ws.every(w=>h.includes(w));}):LDL;
+  const MAX=400;LDD.items=all.slice(0,MAX);
+  if(LDD.hi>=LDD.items.length)LDD.hi=LDD.items.length-1;
+  const head=ws.length?L(`พบ ${n0(all.length)} จาก ${n0(LDL.length)} ล็อต`,`${n0(all.length)} of ${n0(LDL.length)} lots`)
+                       :L(`ทุกล็อตที่แพคแล้ว · ${n0(LDL.length)} ล็อต (ใหม่สุดก่อน)`,`All packed lots · ${n0(LDL.length)} (newest first)`);
+  B.innerHTML=`<div class="ldd-h">${head}</div>`+(LDD.items.length?LDD.items.map((x,k)=>
+    `<div class="ldd-i ${k===LDD.hi?'on':''} ${x.lot===LDQ?'cur':''}" data-k="${k}"><div class="ldd-l"><b>${esc(x.lot)}</b><span>${esc(x.name||'')}${x.code?' · '+esc(x.code):''}</span></div>
+      <div class="ldd-r">${esc(x.last?fmtT(x.last):'')}<span>${n0(x.n)} ${L('พาเลท','pal.')} · ${n0(x.bags)} ${L('ถุง','bags')}</span></div></div>`).join('')
+    :`<div class="ldd-h" style="border:0">${L('ไม่พบล็อต','No lot matches')}</div>`)+
+    (all.length>MAX?`<div class="ldd-h" style="border:0;border-top:1px solid #E2E8F0">${L(`แสดง ${MAX} รายการแรก — พิมพ์เพิ่มเพื่อกรอง`,`Showing the first ${MAX} — keep typing to narrow`)}</div>`:'');
+  B.querySelectorAll('.ldd-i').forEach(d=>d.onclick=()=>{ldGo(LDD.items[+d.dataset.k].lot);$('#ldQ').blur();});
+  const on=B.querySelector('.ldd-i.on')||(!ws.length&&B.querySelector('.ldd-i.cur'));if(on)on.scrollIntoView({block:'nearest'});
+}
+function ldKey(e){
+  if(e.key==='Escape'){ldClose();return;}
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){if(!LDD.box)ldOpen();const n=LDD.items.length;if(!n)return;
+    LDD.hi=e.key==='ArrowDown'?Math.min(n-1,LDD.hi+1):Math.max(0,LDD.hi-1);ldDraw2();e.preventDefault();return;}
+  if(e.key==='Enter'){e.preventDefault();const it=LDD.box&&LDD.hi>=0?LDD.items[LDD.hi]:null;
+    const v=it?it.lot:(LDD.typed&&LDD.items.length===1?LDD.items[0].lot:e.target.value);ldGo(v);e.target.blur();}
+}
+window.addEventListener('resize',()=>{if(LDD.box)ldDraw2();});
+document.addEventListener('scroll',e=>{if(LDD.box&&!LDD.box.contains(e.target))ldDraw2();},true);
 async function ldLoad(){
   let r;try{r=await api('/api/fg/lot-dash?lot='+encodeURIComponent(LDQ));}catch(e){$('#ldB').innerHTML=err(e);return;}
   if(PAGE!=='lotdash')return;LDR=r;
@@ -2054,10 +2112,17 @@ async function pkQr(text){
 let LISTS={machine:[],line:[],pack_types:['Finished Goods','Semi','WIP']},PRODS=null,PMX=null;
 async function loadLists(){
   try{const d=await api('/api/fg/lists');LISTS={machine:d.rows.filter(r=>r.kind==='machine'&&r.active).map(r=>r.name),line:d.rows.filter(r=>r.kind==='line'&&r.active).map(r=>r.name),pack_types:d.pack_types,all:d.rows};}catch(e){}
-  if(!PRODS){try{PRODS=(await api('/api/fg/products')).rows.filter(p=>p.active);}catch(e){PRODS=[];}}
-  // b567: Master Data (Production's Excel list) — product name → FG code + PKG code(s)
-  if(!PMX){try{PMX=(await api('/api/fg/prod-master')).items.filter(r=>r.fg_code&&(r.status||'Active')==='Active').map(r=>({code:String(r.fg_code).trim(),name:niceName(r.product_name||''),pkg:pkgList(r.pkg_code)}));}catch(e){PMX=[];}}
+  await loadProds();await loadPMX();
 }
+/* b570: products + Master Data are re-read while typing (at most every 20 s), so rows the Production manager
+   adds show up on a packing PC that has had the page open all day — no reload needed. */
+let PRODS_AT=0,PMX_AT=0;const LIST_TTL=20000;
+async function loadProds(force){if(PRODS&&!force&&Date.now()-PRODS_AT<LIST_TTL)return;
+  try{PRODS=(await api('/api/fg/products')).rows.filter(p=>p.active);PRODS_AT=Date.now();}catch(e){if(!PRODS)PRODS=[];}}
+// b567: Master Data (Production's Excel list) — product name → FG code + PKG code(s). b570: any status except Disable / Inactive counts.
+async function loadPMX(force){if(PMX&&!force&&Date.now()-PMX_AT<LIST_TTL)return;
+  try{PMX=(await api('/api/fg/prod-master')).items.filter(r=>String(r.fg_code||'').trim()&&!/^(disable|disabled|inactive)$/i.test(String(r.status||'').trim()))
+    .map(r=>({code:String(r.fg_code).trim(),name:niceName(r.product_name||''),pkg:pkgList(r.pkg_code)}));PMX_AT=Date.now();}catch(e){if(!PMX)PMX=[];}}
 /* b567 — "CAT30% ALLEY OCEAN FLAVOUR (8 KG)" → "Cat30% Alley Ocean Flavour (8 kg)" (same rule as the server's nice_name) */
 function niceName(t){t=String(t||'').replace(/\s+/g,' ').trim();if(!t||/[a-z\u0E00-\u0E7F]/.test(t)||!/[A-Z]/.test(t))return t;
   const cap=w=>w.toLowerCase().replace(/(^|[\s&\-\/(+])([a-z])/g,(m,a,b)=>a+b.toUpperCase()),out=[];
@@ -2073,7 +2138,9 @@ function niceName(t){t=String(t||'').replace(/\s+/g,' ').trim();if(!t||/[a-z\u0E
 const pkgList=v=>String(v||'').replace(/;/g,',').split(',').map(x=>x.trim()).filter(x=>x.replace(/[-–—\s]/g,'')).slice(0,10).join(', ');
 /* PKG code(s) of an FG code from Master Data (all Active rows of that code, no repeats) */
 function pkgOf(code){const a=[];(PMX||[]).filter(r=>r.code===code).forEach(r=>r.pkg.split(',').map(x=>x.trim()).filter(Boolean).forEach(x=>{if(!a.includes(x))a.push(x);}));return a.join(', ');}
-const prodByCode=code=>(PRODS||[]).find(x=>x.code===code)||(()=>{const m=(PMX||[]).find(r=>r.code===code);return m?{code,name:m.name,weight:0,shelf_life_days:0,master:1}:null;})();
+// b572: an FG › Products entry with an EMPTY name (e.g. a SEMI code) takes the name from Master Data
+const prodByCode=code=>{const p=(PRODS||[]).find(x=>x.code===code),m=(PMX||[]).find(r=>r.code===code);
+  if(p)return (p.name||'').trim()||!m?p:Object.assign({},p,{name:m.name});return m?{code,name:m.name,weight:0,shelf_life_days:0,master:1}:null;};
 const PCL={pending:['รอ Checker แพคกิ้ง','Waiting packing check'],approved:['ผ่าน Checker แพคกิ้ง','Packing approved'],rejected:['Checker แพคกิ้งไม่ผ่าน','Packing rejected']};
 const pcPill=s=>`<span class="pill ${s==='approved'?'p-confirmed':s==='rejected'?'p-rejected':'p-waiting'}">${esc(L(...(PCL[s]||[s,s])))}</span>`;
 const LAST=(()=>{try{return JSON.parse(localStorage.getItem('fg_slip_last')||'{}')}catch(e){return {}}})();
@@ -2430,7 +2497,9 @@ function pkLive(){
     const run=(PKLOT&&PKLOT.run)||1;
     $('#pkNo').innerHTML='#'+PKNEXT+(run>1?` <small class="pkrun">${L('รอบ','Run')} ${run}</small>`:'')+(PKLOT&&PKLOT.status==='paused'?` <small class="pkrun" style="background:#FEF3C7;color:#92400E">${L('พักไว้ — แพคต่อ','Paused — continue')}</small>`:'');
     if(PKLOT&&PKLOT.status==='closed'){const k=v.product_code+'|'+v.lot_no;if(PKASKED!==k){PKASKED=k;pkReopenDlg(v,PKLOT);}}
-    const p=(PRODS||[]).find(x=>x.code===v.product_code)||{};
+    // b571: the name comes from the FG product list OR Master Data (a code only in Master Data showed a blank
+    // name on the preview), else the name in the form's ชื่อสูตร box — same order the server uses on save
+    const p=Object.assign({},prodByCode(v.product_code)||{});if(!p.name)p.name=(($('#pkPn')||{}).value||'').trim();
     const txt=JSON.stringify({Id:'(new)',Product_code:v.product_code,Product_Name:p.name||'',Lot_No:v.lot_no,Pallet:String(PKNEXT),No:String(v.bags||''),weight:n0(bagKg(v.bag_weight))+' kg',MFG:v.mfg,EXP:v.exp,Station:v.pack_machine,Operator:v.staff_name,...(run>1?{Run:run}:{})});
     const qtx=(v.lot_no||'').replace(/\D/g,'').slice(0,9).padStart(9,'0')+String(PKNEXT%1000).padStart(3,'0');   // b531: lot 9 + slip 3 + 1 random letter (given on save)                    // the real code (FG + slip id + check) is given on save
     try{const h=await qrSvgStr(qtx);$('#pkQr2').innerHTML=h;if(PKPV<0)$('#pkQr').innerHTML=h;}catch(e){}

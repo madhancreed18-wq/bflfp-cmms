@@ -2028,10 +2028,11 @@ const APPIC={   // BFL colours: blue #1B75BC / dark blue #0F3D6E / orange #F9731
  packcheck:'<rect x="9" y="8" width="24" height="31" rx="4" fill="#CFE2F5"/><rect x="14" y="5" width="14" height="7" rx="2" fill="#0F3D6E"/><path d="M14 19h14M14 25h9" stroke="#1B75BC" stroke-width="2.6" stroke-linecap="round"/><circle cx="33" cy="33" r="9" fill="#F97316"/><path d="M29 33l3 3 5-6" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
  receiver:'<rect x="7" y="31" width="34" height="5" rx="1.5" fill="#0F3D6E"/><rect x="9" y="36" width="5" height="4" fill="#0F3D6E"/><rect x="21.5" y="36" width="5" height="4" fill="#0F3D6E"/><rect x="34" y="36" width="5" height="4" fill="#0F3D6E"/><rect x="11" y="19" width="26" height="12" rx="2" fill="#CFE2F5"/><path d="M24 4v14" stroke="#F97316" stroke-width="4" stroke-linecap="round"/><path d="M17 12l7 7 7-7" stroke="#F97316" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
  issuer:'<rect x="4" y="14" width="24" height="18" rx="2.5" fill="#CFE2F5"/><path d="M28 19h8l6 7v6H28z" fill="#1B75BC"/><circle cx="13" cy="34" r="4.5" fill="#0F3D6E"/><circle cx="35" cy="34" r="4.5" fill="#0F3D6E"/><path d="M10 23h11M17 19l4 4-4 4" stroke="#F97316" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
+ viewer:'<rect x="6" y="9" width="36" height="30" rx="4" fill="#CFE2F5"/><path d="M12 32V24M19 32V18M26 32v-9M33 32V14" stroke="#1B75BC" stroke-width="3.4" stroke-linecap="round"/><circle cx="35" cy="35" r="8" fill="#F97316"/><path d="M30.5 35c2.8-3.6 6.2-3.6 9 0-2.8 3.6-6.2 3.6-9 0z" fill="#fff"/><circle cx="35" cy="35" r="1.6" fill="#0F3D6E"/>',
  checker:'<path d="M5 19L24 8l19 11v21H5z" fill="#CFE2F5"/><path d="M5 19L24 8l19 11" stroke="#0F3D6E" stroke-width="3" fill="none" stroke-linejoin="round"/><rect x="12" y="25" width="24" height="15" fill="#1B75BC"/><rect x="15" y="32" width="4" height="6" fill="#fff"/><rect x="22" y="29" width="4" height="9" fill="#fff"/><rect x="29" y="27" width="4" height="11" fill="#F97316"/>'
 };
 const APPNAME=f=>{const TH=LANG==='TH';return {cmms:['CMMS','CMMS'],packing:['แพคกิ้ง','Packing'],packcheck:['Checker แพคกิ้ง','Packing check'],
-  receiver:['ตรวจรับพาเลท (รับเข้า FG)','Pallet Checker (FG receiver)'],issuer:['โหลดพาเลท (จ่ายออก FG)','Pallet Loader (FG issuer)'],checker:['คลังสินค้า','Warehouse']}[f][TH?0:1];};
+  receiver:['ตรวจรับพาเลท (รับเข้า FG)','Pallet Checker (FG receiver)'],issuer:['โหลดพาเลท (จ่ายออก FG)','Pallet Loader (FG issuer)'],checker:['คลังสินค้า','Warehouse'],viewer:['ดูข้อมูล FG (ดูอย่างเดียว)','FG Viewer (read only)']}[f][TH?0:1];};
 /* b482 — "Choose what to open" after sign-in for a non-admin with 2+ functions (e.g. CMMS + Pallet Checker).
    Big phone-friendly cards; the pick opens that function's own screens. Admins keep the plant grid. */
 const APPDESC=f=>{const TH=LANG==='TH';return {cmms:['แจ้งซ่อม ดูงานซ่อมบำรุง','Report problems, maintenance jobs'],packing:['ทำใบพาเลท QR พิมพ์ A6','Make and print A6 QR pallet slips'],
@@ -14877,8 +14878,13 @@ function userDlg(id){
   <label id="u_cr_w" style="display:${u.role==='technician'?'flex':'none'};gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="u_cr" style="width:auto" ${u.can_report?'checked':''}> ${
     LANG==='TH'?'แจ้งซ่อมได้ด้วย (ใช้เป็นผู้แจ้งได้ในบัญชีเดียวกัน)':'Can also report problems (works as operator too, same login)'}</label>
   ${ME.role==='admin'?`<label style="margin-top:10px">${LANG==='TH'?'งานเพิ่มเติม (FG Stock / คลังสินค้า) — เลือกได้หลายงาน':'Extra functions (FG Stock / Warehouse) — tick several'}</label>
-  <div id="u_fgl" style="display:grid;gap:4px">${[['packing','แพคกิ้ง','Packing'],['packcheck','Checker แพคกิ้ง','Packing checker'],['receiver','รับเข้า FG','FG receiver'],['issuer','จ่ายออก FG','FG issuer'],['checker','ผู้ตรวจสอบ (คลังสินค้า)','Warehouse checker']]
+  <div id="u_fgl" style="display:grid;gap:4px">${[['packing','แพคกิ้ง','Packing'],['packcheck','Checker แพคกิ้ง','Packing checker'],['receiver','รับเข้า FG','FG receiver'],['issuer','จ่ายออก FG','FG issuer'],['checker','ผู้ตรวจสอบ (คลังสินค้า)','Warehouse checker'],['viewer','ดูข้อมูล FG อย่างเดียว','FG Viewer (read only)']]
     .map(r=>`<label style="display:flex;gap:8px;align-items:center;margin:0"><input type="checkbox" class="u_fgr" value="${r[0]}" style="width:auto" onchange="ufgDef()"> ${LANG==='TH'?r[1]+' / '+r[2]:r[2]}</label>`).join('')}</div>
+  <div id="u_fgvw" style="display:none;margin:6px 0 0 26px;padding:8px 10px;border:1px solid #CBD5E1;border-radius:8px;background:#F8FAFC">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12.5px;color:#475569;margin-bottom:6px">
+      <span>${LANG==='TH'?'หน้าที่ผู้ดูข้อมูลเห็นได้ (ดูอย่างเดียว แก้ไขไม่ได้)':'Pages this viewer can open (read only — cannot change anything)'}</span>
+      <span style="white-space:nowrap"><a href="#" onclick="ufgvAll(1);return false">${LANG==='TH'?'ทั้งหมด':'All'}</a> · <a href="#" onclick="ufgvAll(0);return false">${LANG==='TH'?'ไม่เลือก':'None'}</a></span></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:3px 10px">${UFGV.map(v=>`<label style="display:flex;gap:8px;align-items:center;margin:0;font-weight:400"><input type="checkbox" class="u_fgp" value="${v[0]}" style="width:auto"> ${LANG==='TH'?v[1]:v[2]}</label>`).join('')}</div></div>
   <label style="margin-top:8px">${LANG==='TH'?'เปิดก่อนหลังล็อกอิน':'Opens first after login'}</label><select id="u_fgd"><option value="cmms">CMMS</option></select>
   <label style="display:flex;gap:8px;align-items:center;margin-top:6px"><input type="checkbox" id="u_fgo" style="width:auto" onchange="ufgDef()"> ${LANG==='TH'?'เฉพาะ FG (ไม่เห็น CMMS)':'FG only (no CMMS)'}</label>`:''}
   <div class="row" style="margin-top:14px"><button class="btn primary" onclick="saveUser(${id})">${t('save')}</button>
@@ -14886,10 +14892,18 @@ function userDlg(id){
   dlg.showModal();
   if(ME.role==='admin'&&$('#u_fgl')){ufgDef();if(id)api('/api/fg/users/'+id).then(r=>{
     document.querySelectorAll('.u_fgr').forEach(x=>x.checked=(r.fg_roles||[]).includes(x.value));
+    document.querySelectorAll('.u_fgp').forEach(x=>x.checked=(r.fg_pages||[]).includes(x.value));
     $('#u_fgo').checked=!!r.fg_only;ufgDef(r.fg_default);}).catch(()=>{});}
 }
-const UFGN={cmms:'CMMS',packing:'แพคกิ้ง / Packing',packcheck:'Checker แพคกิ้ง / Packing checker',receiver:'รับเข้า FG / FG receiver',issuer:'จ่ายออก FG / FG issuer',checker:'คลังสินค้า / Warehouse'};
+const UFGN={cmms:'CMMS',packing:'แพคกิ้ง / Packing',packcheck:'Checker แพคกิ้ง / Packing checker',receiver:'รับเข้า FG / FG receiver',issuer:'จ่ายออก FG / FG issuer',checker:'คลังสินค้า / Warehouse',viewer:'ดูข้อมูล FG / FG Viewer'};
+// b570: FG Viewer (read only) — the FG pages it may be given; must match VIEW_PAGES in server/fg.py
+const UFGV=[['home','แดชบอร์ด','Dashboard'],['shdash','สรุปกะ','Shift summary'],['pkdash','แดชบอร์ดการบรรจุ','Packing dashboard'],
+  ['lotdash','แดชบอร์ดล็อต','Lot dashboard'],['isrep','รายงาน FG Issuer (จ่ายออก)','FG Issuer report'],['trace','ติดตามพาเลท','Pallet trace'],
+  ['stock','สต็อกคงเหลือ','Stock balance'],['card','สต็อกการ์ด','Stock card'],['hrecv','ประวัติรับเข้า','Receive history'],
+  ['hrel','ประวัติจ่ายออก','Release history'],['daily','รายงานประจำวัน','Daily report'],['rfiles','ไฟล์รายงาน','Report files']];
+function ufgvAll(on){document.querySelectorAll('.u_fgp').forEach(x=>x.checked=!!on);}
 function ufgDef(want){
+  const vw=document.querySelector('.u_fgr[value=viewer]');if($('#u_fgvw'))$('#u_fgvw').style.display=vw&&vw.checked?'block':'none';
   const sel=$('#u_fgd');if(!sel)return;const cur=want||sel.value;
   const rs=[...document.querySelectorAll('.u_fgr:checked')].map(x=>x.value),opts=($('#u_fgo').checked&&rs.length?[]:['cmms']).concat(rs);
   sel.innerHTML=opts.map(o=>`<option value="${o}" ${o===cur?'selected':''}>${UFGN[o]}</option>`).join('');
@@ -14911,7 +14925,9 @@ async function saveUser(id){
   // FG Stock / Warehouse role lives in the FG app (users.fg_role); admins are always FG admin
   if(newId&&$('#u_fgl')&&$('#u_r').value!=='admin'){
     const rs=[...document.querySelectorAll('.u_fgr:checked')].map(x=>x.value);
-    try{await post('/api/fg/users/'+newId,{fg_roles:rs,fg_default:$('#u_fgd').value,fg_only:$('#u_fgo').checked});}catch(e){alert(e.message);}
+    const pg=[...document.querySelectorAll('.u_fgp:checked')].map(x=>x.value);
+    if(rs.includes('viewer')&&!pg.length){alert(LANG==='TH'?'ผู้ดูข้อมูล FG: เลือกอย่างน้อย 1 หน้า':'FG Viewer: tick at least one page');return;}
+    try{await post('/api/fg/users/'+newId,{fg_roles:rs,fg_default:$('#u_fgd').value,fg_only:$('#u_fgo').checked,fg_pages:pg});}catch(e){alert(e.message);}
   }
   dlg.close();renderAdmin();
 }

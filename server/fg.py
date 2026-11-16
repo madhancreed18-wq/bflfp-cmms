@@ -52,7 +52,10 @@ from .auth import user_from
 
 router = APIRouter(prefix="/api/fg")
 
-FG_ROLES = ("admin", "packing", "packcheck", "receiver", "issuer", "checker")
+FG_ROLES = ("admin", "packing", "packcheck", "receiver", "issuer", "checker", "viewer")
+# b570: FG Viewer (read only) — sees only the pages ticked for that person in CMMS › Manage › Users
+# (users.fg_pages). Any of these may be ticked; nothing that saves, scans, prints slips or confirms.
+VIEW_PAGES = ("home", "shdash", "pkdash", "lotdash", "isrep", "trace", "stock", "card", "hrecv", "hrel", "daily", "rfiles")
 CAN = {
     "admin": {"view", "pack", "packcheck", "receive", "issue", "check", "admin", "master"},
     "packing": {"view", "pack"},                 # packing room: make + print the A6 QR slip
@@ -60,6 +63,7 @@ CAN = {
     "checker": {"view", "check", "master"},     # b544: + the master pages (not users / Access import / Access archive)
     "receiver": {"view", "receive"},
     "issuer": {"view", "issue"},
+    "viewer": {"view"},                          # b570: read only — pages from users.fg_pages
 }
 PACK_TYPES = ("Finished Goods", "Semi", "WIP")         # b520: "Repack" renamed "Semi"; WIP added
 DEFAULT_LISTS = {   # the old VB pallet-slip app's lists — editable in FG › Lists
@@ -249,6 +253,8 @@ def ensure(c):
         c.execute("UPDATE users SET fg_roles=COALESCE(fg_role,'') WHERE COALESCE(fg_role,'')<>''")
     if "fg_default" not in cols:
         c.execute("ALTER TABLE users ADD COLUMN fg_default TEXT DEFAULT ''")
+    if "fg_pages" not in cols:       # b570: FG Viewer — comma list of VIEW_PAGES this person may open
+        c.execute("ALTER TABLE users ADD COLUMN fg_pages TEXT DEFAULT ''")
     if "fg_packsup" not in cols:     # b553: หัวหน้าแพค (pack supervisor / production manager) — approves scan overrides
         c.execute("ALTER TABLE users ADD COLUMN fg_packsup INTEGER DEFAULT 0")
     # b503: slips made from the Access history were stored with no QR text, so their QR was a
@@ -269,6 +275,12 @@ def ensure(c):
             print(f"[fg] PKG code filled on {n} older slip(s) from Master Data")
     except Exception as e:
         print(f"[fg] PKG code fill skipped: {e}")
+    try:
+        n = _fill_names(c)    # b572
+        if n:
+            print(f"[fg] product name filled on {n} slip / receive / issue row(s)")
+    except Exception as e:
+        print(f"[fg] product name fill skipped: {e}")
 
 
 _READY = False
@@ -341,7 +353,7 @@ def conn():
 
 
 # ---------------------------------------------------------------- who
-FN_ORDER = ("packing", "packcheck", "receiver", "issuer", "checker")
+FN_ORDER = ("packing", "packcheck", "receiver", "issuer", "checker", "viewer")
 
 
 def _clean_roles(v):
@@ -364,6 +376,34 @@ def roles_of(u):
         return _clean_roles(r["rs"] or r["r"])
     except Exception:
         return []
+
+
+def _clean_pages(v):
+    if isinstance(v, str):
+        v = v.split(",")
+    got = {p.strip() for p in (v or []) if p and p.strip()}
+    return [p for p in VIEW_PAGES if p in got]
+
+
+def pages_of(u):
+    """b570: the pages an FG Viewer may open ([] for everyone else)."""
+    try:
+        with closing(conn()) as c:
+            r = c.execute("SELECT COALESCE(fg_pages,'') p FROM users WHERE id=?", (u["id"],)).fetchone()
+        return _clean_pages(r["p"]) if r else []
+    except Exception:
+        return []
+
+
+def ctx_read(req: Request, *pages):
+    """b570: a read-only call behind the checker's rights (stock, stock card, history, trace, reports,
+    dashboard): open to the checker / admin as before, and to an FG Viewer who has one of `pages` ticked.
+    Anything that saves still uses ctx(req, "check") and stays closed to a viewer."""
+    u = user_from(req)
+    rs = roles_of(u)
+    if "check" in caps_of(u, rs) or not ("viewer" in rs and set(pages) & set(pages_of(u))):
+        return ctx(req, "check")
+    return ctx(req, "view")
 
 
 def role_of(u):
@@ -516,6 +556,46 @@ def _nice_names(c):
             v = nice_name(r["v"])
             if v != r["v"]:
                 c.execute(f"UPDATE {tbl} SET {col}=? WHERE id=?", (v, r["id"]))
+                n += 1
+    return n
+
+
+def _master_name(c, fac, code):
+    """b572: the product name for an FG code from Master Data (product_master), Active rows first — '' if none."""
+    if not code:
+        return ""
+    try:
+        m = c.execute("""SELECT product_name FROM product_master WHERE factory_id=? AND TRIM(fg_code)=? AND TRIM(COALESCE(product_name,''))<>''
+                         ORDER BY CASE status WHEN 'Active' THEN 0 ELSE 1 END, id LIMIT 1""", (fac, code.strip())).fetchone()
+    except Exception:
+        return ""
+    return nice_name(m["product_name"]) if m else ""
+
+
+def _fill_names(c, fac=None):
+    """b572: slips (and the receive / issue rows made from them) saved with an EMPTY product name get it from
+    FG › Products, else Master Data, by product code. Only empty names are touched — safe at every start-up and
+    after a product's name is saved."""
+    known = {}
+
+    def name_for(f, code):
+        k = (f, (code or "").strip())
+        if k not in known:
+            r = c.execute("SELECT name FROM fg_products WHERE factory_id=? AND code=? AND TRIM(COALESCE(name,''))<>''", k).fetchone()
+            known[k] = nice_name(r["name"]) if r else _master_name(c, f, k[1])
+        return known[k]
+    n = 0
+    for tbl, codecol, where in (("fg_packing", "product_code", "src IN ('slip','split','qr')"),
+                                ("fg_receive", "product_id", "src='app'"), ("fg_release", "product_id", "src='app'")):
+        try:
+            rows = c.execute(f"""SELECT id, factory_id, {codecol} code FROM {tbl} WHERE {where} AND TRIM(COALESCE(product_name,''))=''
+                                 AND COALESCE({codecol},'')<>''""" + (" AND factory_id=?" if fac else ""), (fac,) if fac else ()).fetchall()
+        except Exception:
+            continue
+        for r in rows:
+            v = name_for(r["factory_id"], r["code"])
+            if v:
+                c.execute(f"UPDATE {tbl} SET product_name=? WHERE id=?", (v, r["id"]))
                 n += 1
     return n
 
@@ -873,7 +953,7 @@ async def me(req: Request):
             "fg_roles": rs, "fg_default": fg_default(u), "cmms_role": u.get("role"),
             "slip_form_code": _slip_form_code(), "can": sorted(caps_of(u, rs)), "packsup": is_sup(u), "role_can": {r: sorted(CAN.get(r, set())) for r in FG_ROLES}, "factory_id": fac,
             "factory_code": f["code"] if f else "", "factory_name": f["name"] if f else "",
-            "fg_only": fg_only(u), "checkers": checkers, "release_types": RELEASE_TYPES, "can_loc": can_loc(u, rs)}
+            "fg_only": fg_only(u), "fg_pages": pages_of(u) if "viewer" in rs else [], "checkers": checkers, "release_types": RELEASE_TYPES, "can_loc": can_loc(u, rs)}
 
 
 @router.get("/summary")
@@ -1477,7 +1557,7 @@ async def trace(req: Request, code: str = "", lot: str = ""):
     """b566: traceability. code = any pallet-slip QR (old or new, short code or full JSON) -> the pallet:
     every slip it has had (first → in use), packing / packing-check, FG receive (location), every issue
     with old → new QR, and what is still on it. lot = every pallet of that lot with its state."""
-    u, fac, _ = ctx(req, "check")
+    u, fac, _ = ctx_read(req, "trace")
     with closing(conn()) as c:
         if lot.strip() and not code.strip():
             lt = lot.strip()
@@ -1554,7 +1634,7 @@ async def trace(req: Request, code: str = "", lot: str = ""):
 async def issue_report(req: Request, d1: str = "", d2: str = "", code: str = ""):
     """b565: FG Issuer report — every issue saved on the phones (src='app') between d1 and d2 (issue
     date), with customer, full / part, photo, checker status and the new slip made for a part pallet."""
-    u, fac, _ = ctx(req, "check")
+    u, fac, _ = ctx_read(req, "pkdash", "isrep")
     d2 = (d2 or _today())[:10]
     d1 = (d1 or d2)[:10]
     with closing(conn()) as c:
@@ -1674,7 +1754,7 @@ def _time_cond(tcol, t1, t2):
 @router.get("/history")
 async def history(req: Request, kind: str = "recv", d1: str = "", d2: str = "", q: str = "",
                   status: str = "", limit: int = 500, t1: str = "", t2: str = "", product: str = "", lot: str = ""):
-    u, fac, _ = ctx(req, "check")
+    u, fac, _ = ctx_read(req, "shdash", "hrecv", "hrel")
     tbl, dcol = ("fg_receive", "receive_date") if kind == "recv" else ("fg_release", "release_date")
     tcol = ("substr(COALESCE(NULLIF(receive_time,''),substr(recv_at,12,5)),1,5)" if kind == "recv"
             else "substr(COALESCE(NULLIF(release_time,''),substr(issue_at,12,5)),1,5)")
@@ -1815,7 +1895,7 @@ async def prod_master(req: Request):
 
 @router.get("/stock")
 async def stock(req: Request, q: str = "", all: int = 0):
-    u, fac, _ = ctx(req, "check")
+    u, fac, _ = ctx_read(req, "stock")
     with closing(conn()) as c:
         prods = {r["code"]: dict(r) for r in c.execute("SELECT * FROM fg_products WHERE factory_id=?", (fac,))}
         names = {r["product_id"]: r["product_name"] for r in c.execute(
@@ -1841,7 +1921,7 @@ async def stock(req: Request, q: str = "", all: int = 0):
 
 @router.get("/stockcard")
 async def stockcard(req: Request, product: str, lot: str = ""):
-    u, fac, _ = ctx(req, "check")
+    u, fac, _ = ctx_read(req, "card")
     args = [fac, product]
     lc = ""
     if lot:
@@ -1866,7 +1946,7 @@ async def stockcard(req: Request, product: str, lot: str = ""):
 @router.get("/daily")
 async def daily(req: Request, d1: str = "", d2: str = ""):
     """Daily receive / release totals by product type (bags and kg)."""
-    u, fac, _ = ctx(req, "check")
+    u, fac, _ = ctx_read(req, "daily")
     d2 = d2 or _today()
     d1 = d1 or (datetime.date.fromisoformat(d2) - datetime.timedelta(days=13)).isoformat()
     with closing(conn()) as c:
@@ -1985,9 +2065,12 @@ def _lot_run(c, fac, product, lot):
 
 
 def _next_slip(c, fac, product, lot, run=None):
+    """b572: slips made from the old Access history (src='access') do not count — the next number
+    follows the app's own slips only. A number whose pallet key an Access slip already holds is
+    skipped, so no two pallets ever share a key / QR. Existing slips are never renumbered."""
     if run is None:
         run = _lot_run(c, fac, product, lot)["run"]
-    w = "factory_id=? AND product_code=? AND lot_no=? AND COALESCE(lot_run,1)=?"
+    w = "factory_id=? AND product_code=? AND lot_no=? AND COALESCE(lot_run,1)=? AND COALESCE(src,'')<>'access'"
     r = c.execute(f"SELECT MAX(slip_no) m FROM fg_packing WHERE {w}", (fac, product, lot, run)).fetchone()
     m = r["m"] if r and r["m"] else 0
     # pallets that came in by QR only (no slip_no) still hold their pallet numbers
@@ -1996,7 +2079,26 @@ def _next_slip(c, fac, product, lot, run=None):
             m = max(m, int(x["pallet_no"]))
         except (TypeError, ValueError):
             pass
-    return m + 1
+    n = m + 1
+    while c.execute("SELECT 1 FROM fg_packing WHERE factory_id=? AND pkey=?", (fac, pkey_of(product, lot, n, run))).fetchone():
+        n += 1
+    return n
+
+
+def _slip_run(c, fac, product, lot):
+    """b572: lot state for new slips. A lot that so far has only Access-made pallets in its current run
+    starts a new run, so the app's slips begin at #1 (the run is part of the pallet key / QR, so they
+    never clash with the Access pallets). Returns (state, new_run?)."""
+    st = _lot_run(c, fac, product, lot)
+    run = st["run"]
+    w = "factory_id=? AND product_code=? AND lot_no=? AND COALESCE(lot_run,1)=?"
+    acc = c.execute(f"SELECT COUNT(*) FROM fg_packing WHERE {w} AND COALESCE(src,'')='access'", (fac, product, lot, run)).fetchone()[0]
+    app = c.execute(f"SELECT COUNT(*) FROM fg_packing WHERE {w} AND COALESCE(src,'')<>'access'", (fac, product, lot, run)).fetchone()[0]
+    if acc and not app:
+        top = c.execute("SELECT MAX(COALESCE(lot_run,1)) FROM fg_packing WHERE factory_id=? AND product_code=? AND lot_no=?",
+                        (fac, product, lot)).fetchone()[0] or 1
+        return dict(st, run=max(int(top), run) + 1, status="open"), True
+    return st, False
 
 
 def _slip_form_code():
@@ -2008,12 +2110,14 @@ def _slip_fields(c, fac, b):
     code = (b.get("product_code") or "").strip()
     lot = (b.get("lot_no") or "").strip().upper()
     p = _product(c, fac, code)
-    if not p:
+    if not p or not (p.get("name") or "").strip():
         # b567: a code that is only in Master Data (product_master, the Production team's Excel list)
-        m = c.execute("""SELECT product_name FROM product_master WHERE factory_id=? AND fg_code=? AND COALESCE(product_name,'')<>''
-                         ORDER BY CASE status WHEN 'Active' THEN 0 ELSE 1 END, id LIMIT 1""", (fac, code)).fetchone() if code else None
-        if m:
-            p = {"name": nice_name(m["product_name"]), "packaging": "", "weight": 0, "shelf_life_days": 0}
+        # b572: also when FG › Products has the code with an EMPTY name (e.g. a SEMI code added without one)
+        mn = _master_name(c, fac, code)
+        if p and mn:
+            p = dict(p, name=mn)
+        elif not p and mn:
+            p = {"name": mn, "packaging": "", "weight": 0, "shelf_life_days": 0}
     if not p:
         raise HTTPException(400, {"msg": "ไม่พบรหัสสินค้า (unknown product code) — add it in Products first"})
     if not lot:
@@ -2080,7 +2184,7 @@ async def slip_next(req: Request, product: str = "", lot: str = ""):
         if not (product and lot):
             return {"next": 1, "run": 1, "status": "open"}
         p, l = product.strip(), lot.strip().upper()
-        st = _lot_run(c, fac, p, l)
+        st, _new = _slip_run(c, fac, p, l)     # b572
         return dict(st, next=_next_slip(c, fac, p, l, st["run"]), machines=_lot_machines(c, fac, p, l, st["run"]))
 
 
@@ -2097,7 +2201,9 @@ async def slip_new(req: Request):
         f = _slip_fields(c, fac, b)
         f["staff_name"] = f["staff_name"] or who
         pkg = _pkg_list(b.get("pkg_code"))
-        st = _lot_run(c, fac, f["product_code"], f["lot_no"])
+        st, new_run = _slip_run(c, fac, f["product_code"], f["lot_no"])     # b572
+        if new_run:
+            _lot_row(c, fac, f["product_code"], f["lot_no"], st["run"])
         run = st["run"]
         if st["status"] == "closed":
             raise HTTPException(409, {"msg": "lot_closed", "last_slip": st["last_slip"], "run": run})
@@ -2280,7 +2386,10 @@ async def slip_edit(req: Request, sid: int):
         sn = r["slip_no"] or r["pallet_no"]
         run = r.get("lot_run") or 1
         if (f["product_code"], f["lot_no"]) != (r["product_code"], r["lot_no"]):
-            run = _lot_run(c, fac, f["product_code"], f["lot_no"])["run"]
+            st_, new_run = _slip_run(c, fac, f["product_code"], f["lot_no"])     # b572
+            run = st_["run"]
+            if new_run:
+                _lot_row(c, fac, f["product_code"], f["lot_no"], run)
             sn = _next_slip(c, fac, f["product_code"], f["lot_no"], run)
         c.execute("""UPDATE fg_packing SET lot_run=?,pkey=?,lot_no=?,pallet_no=?,slip_no=?,product_code=?,product_name=?,packaging=?,
             qty=?,weight_unit=?,bag_weight=?,total_weight=?,mfg=?,exp=?,doc_no=?,pack_machine=?,pd_line=?,pack_type=?,
@@ -2812,6 +2921,10 @@ async def product_save(req: Request):
         else:
             c.execute("""INSERT INTO fg_products(name,type_id,packaging,weight,shelf_life_days,owner,active,updated_at,
                          factory_id,code) VALUES(?,?,?,?,?,?,?,?,?,?)""", vals + (fac, code))
+        try:
+            _fill_names(c, fac)     # b572: slips saved while this product had no name get it now
+        except Exception:
+            pass
         c.commit()
     return {"ok": True}
 
@@ -2883,11 +2996,13 @@ async def user_get(req: Request, uid: int):
     u, fac, _ = ctx(req, "admin")
     with closing(conn()) as c:
         r = c.execute("SELECT COALESCE(fg_role,'') fg_role, COALESCE(fg_roles,'') fg_roles, COALESCE(fg_default,'') fg_default,"
-                      " COALESCE(fg_only,0) fg_only, role FROM users WHERE id=?", (uid,)).fetchone()
+                      " COALESCE(fg_only,0) fg_only, COALESCE(fg_pages,'') fg_pages, role FROM users WHERE id=?", (uid,)).fetchone()
     if not r:
         raise HTTPException(404, {"msg": "not found"})
     d = dict(r)
     d["fg_roles"] = _clean_roles(d["fg_roles"] or d["fg_role"])
+    d["fg_pages"] = _clean_pages(d["fg_pages"])
+    d["view_pages"] = list(VIEW_PAGES)
     return d
 
 
@@ -2905,6 +3020,9 @@ async def user_set(req: Request, uid: int):
                   (rs[0] if rs else "", ",".join(rs), dflt if rs else "", only, uid))
         if "packsup" in b:
             c.execute("UPDATE users SET fg_packsup=? WHERE id=?", (1 if b.get("packsup") else 0, uid))
+        if "fg_pages" in b or "viewer" not in rs:      # b570: the Viewer's pages (cleared when the tick is off)
+            c.execute("UPDATE users SET fg_pages=? WHERE id=?",
+                      (",".join(_clean_pages(b.get("fg_pages"))) if "viewer" in rs else "", uid))
         c.commit()
     return {"ok": True, "fg_roles": rs, "fg_default": dflt}
 
@@ -3228,7 +3346,7 @@ async def access_archive_rows(req: Request, tbl: str, q: str = "", page: int = 1
 async def dashboard(req: Request, days: int = 30):
     """Numbers for the Warehouse home: stock now, and receive / release over the chosen period.
     Works on the imported Access history and the app's own records alike."""
-    u, fac, _ = ctx(req, "check")
+    u, fac, _ = ctx_read(req, "home")
     days = days if days in (1, 7, 30, 90, 365) else 30
     d2 = _today()
     d1 = (datetime.date.today() - datetime.timedelta(days=days - 1)).isoformat()
@@ -3959,6 +4077,22 @@ async def lot_dash(req: Request, lot: str = ""):
                    WHERE factory_id=? AND lot_no=? AND src='slip' AND status<>'cancelled'
                    ORDER BY product_code, COALESCE(lot_run,1), slip_no, id""", (fac, lt))]
     return {"lot": lt, "rows": rows, "recent": recent}
+
+
+@router.get("/lot-dash/lots")
+async def lot_dash_lots(req: Request):
+    """b570: every lot that has pallet slips (cancelled left out), newest first — the Lot dashboard's lot
+    drop-down loads this once and filters it in the browser while typing."""
+    u, fac, _ = ctx(req, "view")
+
+    def _work():
+        with closing(conn()) as c:
+            return [{"lot": r["lot_no"], "code": r["pc"] or "", "name": r["pn"] or "", "last": (r["last"] or "")[:16],
+                     "n": r["n"], "bags": r["bags"] or 0} for r in c.execute(
+                """SELECT lot_no, MAX(product_code) pc, MAX(product_name) pn, MAX(packed_at) last, COUNT(*) n, SUM(qty) bags
+                   FROM fg_packing WHERE factory_id=? AND src='slip' AND status<>'cancelled' AND COALESCE(lot_no,'')<>''
+                   GROUP BY lot_no ORDER BY last DESC""", (fac,))]
+    return {"lots": await asyncio.to_thread(_work)}
 
 
 @router.get("/pack-dash")
