@@ -8,3 +8,6 @@ pillow
 openpyxl
 # production database (uncomment when moving to PostgreSQL):
 # psycopg2-binary
+# PR app (b587): quotation scan — photos / scanned PDFs also need Tesseract OCR with Thai
+pypdfium2
+pytesseract

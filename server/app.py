@@ -7,6 +7,10 @@ from .config import STATIC, UPLOADS, APP_VERSION, ENV, DATA
 from .db import init, db
 from . import (auth, push, jobs, reports, admin, chat, kpi, planreport, pm, pmreport, signature, elec,
                teams, logs, live, projects, help, qrlabels, wms, fg, master)
+from . import backup                 # b573: one-click / nightly backup of the live data
+from . import dbview                 # b583: System settings › Database (read-only viewer)
+from . import manpower               # b585: technicians available vs work needed
+from . import pr                     # b587: PR — purchase requests (was the stand-alone PR app)
 
 import logging
 # the app's own logger — the file handler is attached by logs.setup(), and everything
@@ -34,6 +38,12 @@ def create_app():
             _c.commit()
     except Exception as e:
         _log.error("[fg] table setup failed: %s", e)
+    try:                                  # b587: PR app tables (pr_*) + users.pr_role
+        with closing(db()) as _c:
+            pr.ensure(_c)
+            _c.commit()
+    except Exception as e:
+        _log.error("[pr] table setup failed: %s", e)
     try:                                  # b495: Production master data (product_master)
         with closing(db()) as _c:
             master.ensure(_c)
@@ -96,7 +106,9 @@ def create_app():
             return {"ok": False, "version": APP_VERSION, "error": str(e)}
     for m in (auth, push, jobs, reports, admin, chat, kpi, planreport, pm, pmreport,
               teams, logs, live, projects, help, qrlabels, signature, elec, wms, fg, master,
-              audit, monitor):
+              audit, monitor, backup, dbview,   # b573 Backup · b583 Database
+              manpower,                         # b585 Manpower
+              pr):                              # b587 PR (purchase requests)
         app.include_router(m.router)
     # …and the middleware that writes an unhandled exception to the log instead of
     # losing it to a console nobody is watching. Defined since the log was written,

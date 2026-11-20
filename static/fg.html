@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0F172A">
 <title>FG Stock</title>
+<link rel="icon" type="image/png" href="/Logo192.png?v=576">
+<link rel="apple-touch-icon" sizes="180x180" href="/Logo180.png?v=576">
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="/fnbar.js"></script>
 <style>
@@ -22,7 +24,10 @@ header.top .who{font-size:13px;color:#CBD5E1;text-align:right;line-height:1.2}
 .rchip{font-size:12px;font-weight:700;padding:4px 10px;border-radius:99px;color:#fff;white-space:nowrap}
 .tbtn{background:#333;border:0;color:#fff;border-radius:8px;padding:8px 10px;min-height:40px;cursor:pointer;font-size:13px}
 .layout{display:flex;min-height:calc(100vh - 56px)}
-nav.side{width:220px;flex:none;background:#202020;color:#E2E8F0;padding:10px;display:flex;flex-direction:column;gap:2px}
+nav.side{width:220px;flex:none;background:#202020;color:#E2E8F0;padding:10px;display:flex;flex-direction:column;gap:2px;
+  position:sticky;top:56px;align-self:flex-start;height:calc(100vh - 56px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#3a3a3a transparent}
+nav.side::-webkit-scrollbar{width:6px}nav.side::-webkit-scrollbar-thumb{background:#3a3a3a;border-radius:3px}
+/* b577: the side menu stays put while the page scrolls (and scrolls by itself when it is long) */
 nav.side .grp{padding:14px 12px 4px;font-size:11px;letter-spacing:.06em;color:#94A3B8}
 nav.side button{display:flex;align-items:center;gap:10px;text-align:left;background:none;border:0;border-radius:9px;padding:10px 12px;cursor:pointer;color:#9AA0A6;font-weight:500;position:relative;font-size:14px;white-space:nowrap;min-height:42px}
 nav.side button>span:not(.bdg){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
@@ -165,6 +170,14 @@ tr.pkdel td{background:#F1F5F9!important;color:#94A3B8}tr.pkdel td b,tr.pkdel td
 .tadi.on,.tadi:hover{background:#EEF6FD}
 /* paper form print */
 .paper{display:none}
+/* b578: Packing dashboard printed as a report (no side menu, no buttons) */
+@media print{
+  body.pr-pkd main>*:not(.paper){display:block!important}body.pr-pkd main>.paper{display:none!important}
+  body.pr-pkd .noprint,body.pr-pkd .pkd-d .tab{display:none!important}
+  body.pr-pkd .pkd{zoom:.66}body.pr-pkd .pkd *{overflow:visible!important}body.pr-pkd .pkd .pkd-nm{max-width:none!important}
+  body.pr-pkd .pkd .card,body.pr-pkd .pkd-t{break-inside:avoid}
+  body.pr-pkd *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
 @media print{
   header.top,nav.side,nav.bot,#fnbar,main>*:not(.paper),.noprint{display:none!important}
   main{padding:0;max-width:none}body{background:#fff}.layout{display:block;min-height:0}
@@ -249,6 +262,17 @@ tr.pkdel td{background:#F1F5F9!important;color:#94A3B8}tr.pkdel td b,tr.pkdel td
 .pkd-c small{color:#64748B}.pkd-c.on{background:#0F172A;border-color:#0F172A;color:#fff;font-weight:700}.pkd-c.on small{color:#CBD5E1}
 .pkd-live{margin-left:auto;height:32px;display:inline-flex;align-items:center;gap:4px;background:#DBEAFE;color:#1E3A8A;border-radius:999px;padding:0 12px;font-size:12.5px;font-weight:600}.pkd-live small{color:#1E3A8A;font-weight:600}
 .pkd-k{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin:12px 0}
+.ldm-f{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;padding:12px 16px}.ldm-f label{display:block;font-size:12.5px;color:#475569;margin-bottom:4px}.ldm-f .in{width:auto}
+.ldm-mp{height:42px;min-width:170px;border:1px solid #CBD5E1;background:#fff;border-radius:10px;cursor:pointer;font:inherit;font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;padding:0 12px}.ldm-mp:hover{border-color:#1B75BC}.ldm-mp small{font-weight:400;color:#64748B;font-size:12px}.ldm-mp .cv{margin-left:auto;color:#64748B;font-size:12px}
+.ldm-pop{position:absolute;z-index:9000;background:#fff;border:1px solid #E2E8F0;border-radius:12px;box-shadow:0 12px 32px rgba(15,23,42,.18);padding:10px;width:290px}
+.ldm-ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.ldm-ph b{font-size:16px}.ldm-ph button{width:34px;height:32px;border:1px solid #E2E8F0;background:#fff;border-radius:8px;cursor:pointer;font-size:16px}.ldm-ph button:disabled{opacity:.35;cursor:default}
+.ldm-g{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.ldm-mb{height:48px;border:1px solid #E2E8F0;background:#fff;border-radius:8px;cursor:pointer;font:inherit;font-size:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.15}.ldm-mb:hover:not(:disabled){border-color:#1B75BC;background:#EFF6FF}
+.ldm-mb small{font-size:10.5px;color:#64748B}.ldm-mb.on{background:#0F172A;border-color:#0F172A;color:#fff;font-weight:700}.ldm-mb.on small{color:#CBD5E1}.ldm-mb.now{border-color:#1B75BC}.ldm-mb:disabled{opacity:.35;cursor:default}
+.ldm-sb{display:flex;align-items:stretch;height:42px;border:1px solid #CBD5E1;border-radius:999px;background:#fff;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.06)}.ldm-sb:focus-within{border-color:#1B75BC;box-shadow:0 0 0 3px rgba(27,117,188,.15)}
+.ldm-sb .fb{border:none;border-right:1px solid #E2E8F0;background:#F8FAFC;padding:0 14px 0 16px;cursor:pointer;font:inherit;font-size:13.5px;color:#334155;display:flex;align-items:center;gap:6px;white-space:nowrap}.ldm-sb .fb:hover{background:#EFF6FF}.ldm-sb .fb b{background:#1B75BC;color:#fff;border-radius:999px;font-size:11px;padding:1px 7px}
+.ldm-sb input{flex:1;border:none;outline:none;font:inherit;font-size:14.5px;padding:0 16px;min-width:0;background:transparent}.ldm-sb .x{border:none;background:none;cursor:pointer;color:#94A3B8;font-size:16px;padding:0 14px}
+.ldm-chips{display:flex;gap:6px;flex-wrap:wrap;padding:0 16px 12px}.ldm-chip{display:inline-flex;align-items:center;gap:6px;background:#EFF6FF;border:1px solid #BFDBFE;color:#1E3A8A;border-radius:999px;padding:3px 6px 3px 10px;font-size:12.5px;cursor:pointer}.ldm-chip button{border:none;background:none;cursor:pointer;color:#1E3A8A;font-size:14px;padding:0 3px}
+.ldm-mi{display:flex;width:100%;gap:8px;align-items:center;border:none;background:none;text-align:left;font:inherit;font-size:13px;padding:7px 8px;border-radius:6px;cursor:pointer;color:#16202c;box-sizing:border-box}.ldm-mi:hover{background:#F1F5F9}.ldm-mi .n{margin-left:auto;color:#94A3B8;font-size:11.5px}.ldm-mh{font-size:10.5px;color:#94A3B8;text-transform:uppercase;letter-spacing:.05em;padding:5px 8px 3px}
 .pkd-t{background:#fff;border:1px solid var(--line);border-left:4px solid;border-radius:10px;padding:12px 14px;min-width:0}
 .pkd-t .k{font-size:13px;color:#475569;line-height:1.3}.pkd-t .k small{color:#64748B}
 .pkd-t .v{font-size:24px;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums}.pkd-t .s{font-size:11.5px;color:#64748B;line-height:1.3}
@@ -409,44 +433,76 @@ const IC={home:I('<path d="M3 11l9-7 9 7v9H3z"/>'),recv:I('<path d="M12 3v12"/><
   card:I('<path d="M4 4h16v16H4z"/><path d="M4 9h16M9 9v11"/>'),rep:I('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'),
   pack:I('<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/>'),master:I('<path d="M4 6h16M4 12h16M4 18h10"/>'),
   user:I('<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'),
-  scan:I('<path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10"/>')};
+  scan:I('<path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10"/>'),
+  /* b577: one icon per page, so the side menu can be read by its icons */
+  dash:I('<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>'),
+  clock:I('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+  bars:I('<path d="M3 3v18h18"/><path d="M8 17v-5M13 17V8M18 17v-9"/>'),
+  layers:I('<path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/>'),
+  truck:I('<path d="M3 6h11v10H3z"/><path d="M14 9h4l3 3v4h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>'),
+  route:I('<circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h8a3.5 3.5 0 0 0 0-7H8a3.5 3.5 0 0 1 0-7h8"/>'),
+  qr:I('<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v1M14 20h1M17 20h4v-3"/>'),
+  list:I('<path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/>'),
+  clip:I('<rect x="5" y="4" width="14" height="18" rx="2"/><path d="M9 4V2h6v2"/><path d="M9 13l2 2 4-4"/>'),
+  okc:I('<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>'),
+  inbox:I('<path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1 2h6l1-2h5"/>'),
+  outbox:I('<path d="M12 15V3"/><path d="M8 7l4-4 4 4"/><path d="M3 13v6h18v-6"/>'),
+  queue:I('<path d="M4 6h9M4 12h9M4 18h9"/><path d="M16 7l2 2 3-3M16 17l2 2 3-3"/>'),
+  hin:I('<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10h14V9"/><path d="M12 11v6M9 14l3 3 3-3"/>'),
+  hout:I('<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10h14V9"/><path d="M12 17v-6M9 14l3-3 3 3"/>'),
+  boxes:I('<path d="M3 21V10l9-6 9 6v11"/><path d="M7 21v-7h10v7"/><path d="M7 17h10"/>'),
+  ledger:I('<path d="M5 3h12a2 2 0 0 1 2 2v16H7a2 2 0 0 1-2-2z"/><path d="M5 19a2 2 0 0 1 2-2h12"/><path d="M9 7h6M9 11h6"/>'),
+  cal:I('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M8 14h3v3H8z"/>'),
+  sheet:I('<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8M8 17h8M12 13v4"/>'),
+  folder:I('<path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'),
+  db:I('<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>'),
+  unlock:I('<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/>'),
+  printer:I('<path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>'),
+  gear:I('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'),
+  tag:I('<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/>'),
+  bldg:I('<rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 7h1M14 7h1M9 11h1M14 11h1M9 15h1M14 15h1M10 21v-3h4v3"/>'),
+  badge:I('<circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0"/><path d="M16 11l2 2 4-4"/>'),
+  users:I('<circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0"/><path d="M16 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-4-6.3"/>'),
+  imp:I('<path d="M12 3v10M8 9l4 4 4-4"/><ellipse cx="12" cy="17" rx="8" ry="3"/>'),
+  frep:I('<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 18v-3M12 18v-6M16 18v-4"/>'),
+  archive:I('<rect x="3" y="3" width="18" height="5" rx="1"/><path d="M5 8v11a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>')};
 
 /* ---------- navigation ---------- */
 function pages(){return [
-  ['home',IC.rep,L('แดชบอร์ด','Dashboard'),'home',''],
-  ['shdash',IC.rep,L('สรุปกะ','Shift summary'),'check',''],
-  ['pkdash',IC.rep,L('แดชบอร์ดการบรรจุ','Packing dashboard'),'view',''],
-  ['lotdash',IC.rep,L('แดชบอร์ดล็อต','Lot dashboard'),'view',''],
-  ['isrep',IC.issue,L('รายงาน FG Issuer (จ่ายออก)','FG Issuer report'),'check',''],
-  ['trace',IC.scan,L('ติดตามพาเลท (Traceability)','Pallet trace'),'check',''],
-  ['slip',IC.pack,L('ใบพาเลท (QR)','Pallet slips (QR)'),'pack',''],
-  ['slips',IC.hist,L('รายการใบพาเลท','Pallet slips'),'pack',''],
-  ['slipchk',IC.check,L('Checker แพคกิ้ง','Packing check'),'packcheck',''],
+  ['home',IC.dash,L('แดชบอร์ด','Dashboard'),'home',''],
+  ['shdash',IC.clock,L('สรุปกะ','Shift summary'),'check',''],
+  ['pkdash',IC.bars,L('แดชบอร์ดการบรรจุ','Packing dashboard'),'view',''],
+  ['lotdash',IC.layers,L('แดชบอร์ดล็อต','Lot dashboard'),'view',''],
+  ['isrep',IC.frep,L('รายงาน FG Issuer (จ่ายออก)','FG Issuer report'),'check',''],
+  ['trace',IC.route,L('ติดตามพาเลท (Traceability)','Pallet trace'),'check',''],
+  ['slip',IC.qr,L('ใบพาเลท (QR)','Pallet slips (QR)'),'pack',''],
+  ['slips',IC.list,L('รายการใบพาเลท','Pallet slips'),'pack',''],
+  ['slipchk',IC.clip,L('Checker แพคกิ้ง','Packing check'),'packcheck',''],
   ['pscan',IC.scan,L('สแกนตรวจใบพาเลท','Scan & verify slip'),'packcheck',''],
-  ['papproved',IC.check,L('รายการที่ตรวจแล้ว','Checked list'),'packcheck',''],
+  ['papproved',IC.okc,L('รายการที่ตรวจแล้ว','Checked list'),'packcheck',''],
   ['recv',IC.recv,L('ตรวจรับ (สแกน)','Check pallet (scan)'),'receive',''],
-  ['myrecv',IC.hist,L('งานรับเข้าของฉัน','My receive jobs'),'receive',''],
-  ['issue',IC.issue,L('โหลด (สแกน)','Load pallet (scan)'),'issue',''],
-  ['myissue',IC.hist,L('งานจ่ายออกของฉัน','My issue jobs'),'issue',''],
-  ['queue',IC.check,L('คิวตรวจสอบ','Checker queue'),'check','q'],
-  ['hrecv',IC.hist,L('ประวัติรับเข้า','Receive history'),'check',''],
-  ['hrel',IC.hist,L('ประวัติจ่ายออก','Release history'),'check',''],
-  ['stock',IC.stock,L('สต็อกคงเหลือ','Stock balance'),'check',''],
-  ['card',IC.card,L('สต็อกการ์ด','Stock card'),'check',''],
-  ['daily',IC.rep,L('รายงานประจำวัน','Daily report'),'check',''],
-  ['shrep',IC.rep,L('รายงานการบรรจุ ประจำกะ','Shift packing reports'),'view',''],
-  ['rfiles',IC.hist,L('ไฟล์รายงาน','Report files'),'view',''],
-  ['pmaster',IC.master,L('ข้อมูลหลัก (Master Data)','Master Data'),'view',''],
-  ['ovr',IC.check,L('คำขอปลดล็อก','Override requests'),'override','o'],
-  ['paudit',IC.hist,L('ประวัติพิมพ์ / ตรวจใบพาเลท','Slip print & check audit'),'master','M'],
+  ['myrecv',IC.inbox,L('งานรับเข้าของฉัน','My receive jobs'),'receive',''],
+  ['issue',IC.truck,L('โหลด (สแกน)','Load pallet (scan)'),'issue',''],
+  ['myissue',IC.outbox,L('งานจ่ายออกของฉัน','My issue jobs'),'issue',''],
+  ['queue',IC.queue,L('คิวตรวจสอบ','Checker queue'),'check','q'],
+  ['hrecv',IC.hin,L('ประวัติรับเข้า','Receive history'),'check',''],
+  ['hrel',IC.hout,L('ประวัติจ่ายออก','Release history'),'check',''],
+  ['stock',IC.boxes,L('สต็อกคงเหลือ','Stock balance'),'check',''],
+  ['card',IC.ledger,L('สต็อกการ์ด','Stock card'),'check',''],
+  ['daily',IC.cal,L('รายงานประจำวัน','Daily report'),'check',''],
+  ['shrep',IC.sheet,L('รายงานการบรรจุ ประจำกะ','Shift packing reports'),'view',''],
+  ['rfiles',IC.folder,L('ไฟล์รายงาน','Report files'),'view',''],
+  ['pmaster',IC.db,L('ข้อมูลหลัก (Master Data)','Master Data'),'view',''],
+  ['ovr',IC.unlock,L('คำขอปลดล็อก','Override requests'),'override','o'],
+  ['paudit',IC.printer,L('ประวัติพิมพ์ / ตรวจใบพาเลท','Slip print & check audit'),'master','M'],
   ['packing',IC.pack,L('ข้อมูลแพคกิ้ง','Packing records'),'master','M'],
-  ['lists',IC.master,L('เครื่องแพค / ไลน์','Machines & lines'),'master','M'],
-  ['prod',IC.master,L('สินค้า','Products'),'master','M'],
-  ['cust',IC.master,L('ลูกค้า','Customers'),'master','M'],
-  ['people',IC.master,L('ผู้ตรวจสอบ / หัวหน้ากะ','Checkers & leaders'),'master','M'],
-  ['users',IC.user,L('ผู้ใช้งาน','Users & roles'),'admin','M'],
-  ['accimp',IC.master,L('นำเข้า Access','Import Access'),'admin','M'],
-  ['accarch',IC.hist,L('ข้อมูลเก่า Access (ทุกตาราง)','Old Access data (all tables)'),'admin','M']].filter(p=>fnPages().includes(p[0])&&(p[3]==='home'||can(p[3])||FN==='viewer'))
+  ['lists',IC.gear,L('เครื่องแพค / ไลน์','Machines & lines'),'master','M'],
+  ['prod',IC.tag,L('สินค้า','Products'),'master','M'],
+  ['cust',IC.bldg,L('ลูกค้า','Customers'),'master','M'],
+  ['people',IC.badge,L('ผู้ตรวจสอบ / หัวหน้ากะ','Checkers & leaders'),'master','M'],
+  ['users',IC.users,L('ผู้ใช้งาน','Users & roles'),'admin','M'],
+  ['accimp',IC.imp,L('นำเข้า Access','Import Access'),'admin','M'],
+  ['accarch',IC.archive,L('ข้อมูลเก่า Access (ทุกตาราง)','Old Access data (all tables)'),'admin','M']].filter(p=>fnPages().includes(p[0])&&(p[3]==='home'||can(p[3])||FN==='viewer'))
     .sort((a,b)=>fnPages().indexOf(a[0])-fnPages().indexOf(b[0]));}
 function buildNav(){
   let h='',g=false;
@@ -858,9 +914,45 @@ async function pgPkDash(){
     <div><label>${PKB('กะ','shift')}</label><div class="pkd-ch" id="pkdSh"></div></div>
     <div><label>${PKB('เครื่องแพค','packing machine')}</label><select class="in" id="pkdM" onchange="PKD.mc=this.value;pkdLoad()"><option value="">ทั้งหมด (all)</option></select></div>
     <span class="pkd-live" id="pkdLive"></span>
+    <span class="noprint" style="display:flex;gap:8px"><button class="btn" onclick="pkdPrint()" title="${L('พิมพ์ หรือบันทึกเป็น PDF','Print or save as PDF')}">🖨 ${L('PDF / พิมพ์','PDF / Print')}</button>
+     <button class="btn" id="pkdImgB" onclick="pkdImage()" title="${L('บันทึกเป็นรูปภาพ PNG','Save as a PNG image')}">🖼 ${L('รูปภาพ','Image')}</button></span>
    </div>
    <div id="pkdB">${LOADH}</div></div>`;
   pkdLoad();
+}
+/* b578 — Packing dashboard as a report: the whole page without the side menu.
+   PDF / Print: the browser's print window (choose "Save as PDF"), A4 landscape.
+   Image: the page drawn into a PNG (2x sharp) and downloaded. */
+function pkdName(){const r=PKD.data||{};return `packing-dashboard_${r.d||PKD.d}_${PKD.sh==='all'?'all-day':'shift-'+PKD.sh}${PKD.mc?'_'+PKD.mc.replace(/[^\w-]+/g,''):''}`;}
+function pkdPrint(){
+  const t=document.title;document.title=pkdName();document.body.classList.add('pr-pkd');
+  const done=()=>{document.body.classList.remove('pr-pkd');document.title=t;window.removeEventListener('afterprint',done);};
+  window.addEventListener('afterprint',done);setTimeout(()=>window.print(),50);
+}
+async function pkdImage(){
+  const el=document.querySelector('.pkd');if(!el)return;const b=$('#pkdImgB');if(b){b.disabled=true;b.textContent='…';}
+  try{
+    // wide tables are drawn in full (no side scroll in a picture)
+    const L0=el.getBoundingClientRect().left,cw=Math.max(el.scrollWidth,...[...el.querySelectorAll('table')].map(t=>t.scrollWidth+t.getBoundingClientRect().left-L0+18));
+    const W=Math.ceil(cw)+32,H=Math.ceil(el.scrollHeight)+60;
+    const cl=el.cloneNode(true);cl.querySelectorAll('.noprint').forEach(x=>x.remove());
+    // the clone keeps what is typed / chosen on screen
+    const si=el.querySelectorAll('input,select'),ci=cl.querySelectorAll('input,select');
+    si.forEach((x,k)=>{const y=ci[k];if(!y)return;if(x.tagName==='SELECT'){[...y.options].forEach((o,j)=>{if(j===x.selectedIndex)o.setAttribute('selected','selected');else o.removeAttribute('selected');});}else y.setAttribute('value',x.value);});
+    const css=[...document.querySelectorAll('style')].map(x=>x.textContent).join('\n').replace(/@media print\{[\s\S]*?\n\}/g,'');
+    const root=getComputedStyle(document.documentElement),vars=[...document.styleSheets].flatMap(sh=>{try{return [...sh.cssRules]}catch(e){return []}})
+      .filter(r=>r.selectorText===':root').map(r=>r.style.cssText).join(';');
+    const body=new XMLSerializer().serializeToString(cl);
+    const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><foreignObject x="0" y="0" width="${W}" height="${H}">`+
+      `<div xmlns="http://www.w3.org/1999/xhtml" style="${vars};width:${W-32}px;padding:16px;background:#F1F5F9;color:#0F172A;font:15px/1.45 Sarabun,'Leelawadee UI',Tahoma,system-ui,sans-serif">`+
+      `<style>${css.replace(/</g,'&lt;')}.pkd *{overflow:visible!important}.pkd .pkd-nm{max-width:none!important}</style>${body}</div></foreignObject></svg>`;
+    const img=new Image();img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);await img.decode();
+    const k=2,cv=document.createElement('canvas');cv.width=W*k;cv.height=H*k;const g=cv.getContext('2d');g.scale(k,k);g.fillStyle='#F1F5F9';g.fillRect(0,0,W,H);g.drawImage(img,0,0);
+    const blob=await new Promise(r=>cv.toBlob(r,'image/png'));
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=pkdName()+'.png';document.body.appendChild(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);
+  }catch(e){alert(L('บันทึกรูปไม่ได้ — ใช้ PDF / พิมพ์ แทน','Could not make the image — use PDF / Print instead')+'\n'+(e.message||e));}
+  finally{if(b){b.disabled=false;b.textContent='🖼 '+L('รูปภาพ','Image');}}
 }
 function pkdDay(k){const t=pkdAdd(PKD.d,k);if(t>shDay()||(PKD.data&&t<PKD.data.first))return;PKD.d=t;$('#pkdD').value=t;pkdLoad();}
 async function pkdLoad(quiet){
@@ -1066,8 +1158,120 @@ function trLot(d){
    Pick a lot: total packed (pallets, bags, kg), bags packed by each packing machine, per product × machine,
    pack check / FG state, every slip of the lot. GET /api/fg/lot-dash?lot= (cancelled slips left out). */
 let LDQ='',LDR=null;
+/* b578 — Lot dashboard opens on an Excel-style list of every lot of a month:
+   Year + month (calendar) + production day (YYMMDD, the lot's own date, running no. left out),
+   a search bar in the middle (several words = all must match, like the CMMS), column filters and sort.
+   Click a lot -> the lot's own dashboard (as before), "‹ All lots" goes back to the list. */
+let LDM={ym:'',day:'',q:'',data:null,f:{},py:''};
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],MONT=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 async function pgLotDash(){
+  if(LDQ)return ldDetailPage();
   $('#app').innerHTML=`<div class="pkd"><h1>${PKB('แดชบอร์ดล็อต','Lot dashboard')}</h1>
+   <p class="sub">${PKB('ทุกล็อตของเดือน — เลือกเดือน ค้นหา/ตัวกรอง หรือเลือกล็อตตามวัน แล้วคลิกล็อตเพื่อดูรายละเอียด','every lot of a month — pick the month, search or filter, or pick a lot day, then click a lot to open it')}</p>
+   <div class="card" style="padding:0"><div class="ldm-f">
+    <div><label>${PKB('เดือน','month')}</label><button class="ldm-mp" id="ldmMP" onclick="ldmPick(event)">📅 <span id="ldmMPt">…</span><span class="cv">▾</span></button></div>
+    <div style="flex:1;min-width:320px"><label>${PKB('ค้นหา','search')}</label><div class="ldm-sb">
+      <button class="fb" id="ldmFB" onclick="ldmFMenu(event)">⏷ ${L('ตัวกรอง','Filter')} <span id="ldmFN"></span></button>
+      <input id="ldmQ" value="${esc(LDM.q)}" autocomplete="off" placeholder="🔍 ${L('ค้นหา ล็อต สินค้า รหัส FG เครื่องแพค ไลน์ PKG … (หลายคำ = ต้องตรงทุกคำ)','Search lot, product, FG code, machine, line, PKG … (several words = all must match)')}" oninput="LDM.q=this.value;ldmDraw()">
+      <button class="x" title="${L('ล้าง','Clear')}" onclick="LDM.q='';$('#ldmQ').value='';ldmDraw()">✕</button></div></div>
+    <div><label>${PKB('ล็อต (YYMMDD)','lot (YYMMDD)')}</label><select class="in mono" id="ldmD" style="height:42px" onchange="LDM.day=this.value;ldmDraw()"></select></div>
+    <button class="btn" style="height:42px" title="${L('โหลดใหม่','Refresh')}" onclick="ldmLoad(LDM.ym)">↻</button>
+   </div><div class="ldm-chips" id="ldmC"></div></div>
+   <div class="pkd-k" id="ldmK"></div>
+   <div class="card" style="padding:12px"><div id="ldmT">${LOADH}</div></div></div>`;
+  ldmLoad(LDM.ym);
+}
+async function ldmLoad(ym){
+  let r;try{r=await api('/api/fg/lot-dash/month?ym='+encodeURIComponent(ym||''));}catch(e){if($('#ldmT'))$('#ldmT').innerHTML=err(e);return;}
+  if(PAGE!=='lotdash'||!$('#ldmT'))return;
+  if(r.ym!==LDM.ym)LDM.day='';LDM.data=r;LDM.ym=r.ym;
+  ldmMonths();ldmDraw();
+}
+/* b579: month picker — one button "📅 Oct 2026" that opens a small calendar of months only:
+   ‹ year ›, 12 months in a 3×4 grid with the number of lots under each; months with no lots are greyed out. */
+function ldmMonths(){const ym=LDM.ym,k=+ym.slice(5,7)-1,t=$('#ldmMPt');
+  if(t)t.innerHTML=`${(LANG==='TH'?MONT[k]:MON[k])+' '+ym.slice(0,4)} <small>${n0(new Set(LDM.data.rows.map(x=>x.lot)).size)} ${L('ล็อต','lots')}</small>`;}
+function ldmPop(html,anchor){ldmPopClose();const m=document.createElement('div');m.className='ldm-pop';m.id='ldmPop';m.innerHTML=html;
+  m.addEventListener('click',e=>e.stopPropagation());document.body.appendChild(m);ldmPopAt(m,anchor);
+  setTimeout(()=>document.addEventListener('click',ldmPopClose,{once:true}),0);return m;}
+function ldmPopAt(m,anchor){const r=anchor.getBoundingClientRect();
+  m.style.left=Math.max(6,Math.min(r.left+scrollX,innerWidth-m.offsetWidth-10))+'px';m.style.top=(r.bottom+scrollY+6)+'px';}
+function ldmPopClose(){const m=$('#ldmPop');if(m)m.remove();document.removeEventListener('click',ldmPopClose);}
+function ldmPick(ev,y){if(ev)ev.stopPropagation();const r=LDM.data;if(!r)return;
+  y=String(y||LDM.ym.slice(0,4));const cnt=Object.fromEntries(r.months.map(m=>[m.ym,m.n]));
+  const ys=[...new Set(r.months.map(m=>m.ym.slice(0,4)).concat([LDM.ym.slice(0,4)]))].sort();
+  const now=new Date(),nym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const h=`<div class="ldm-ph"><button ${y<=ys[0]?'disabled':''} onclick="ldmPick(null,${+y-1})">‹</button><b>${y}</b><button ${y>=ys[ys.length-1]?'disabled':''} onclick="ldmPick(null,${+y+1})">›</button></div>
+   <div class="ldm-g">${MON.map((m,k)=>{const ym=`${y}-${String(k+1).padStart(2,'0')}`,n=cnt[ym]||0;
+    return `<button class="ldm-mb ${ym===LDM.ym?'on':''} ${ym===nym?'now':''}" ${n?'':'disabled'} onclick="ldmPopClose();ldmLoad('${ym}')">${LANG==='TH'?MONT[k]:m}<small>${n?n+' '+L('ล็อต','lots'):'–'}</small></button>`;}).join('')}</div>`;
+  const m=$('#ldmPop');if(m&&m.dataset.k==='mon'){m.innerHTML=h;return;}
+  ldmPop(h,$('#ldmMP')).dataset.k='mon';}
+/* b579: Filter menu at the left of the search bar (like the CMMS): pick a column, then tick values (counts
+   shown); each choice becomes a chip under the bar (click the chip to change it, ✕ to remove). Same column =
+   any of the ticked values, different columns = all must match; the search words apply on top. */
+const ldmYY=d=>d.slice(2,4)+d.slice(5,7)+d.slice(8,10);
+function ldmFields(){const sp=v=>(v||'').split(',').map(z=>z.trim()).filter(Boolean);
+  return [['product',L('สินค้า','Product'),x=>[x.code+' · '+x.name]],['mc',L('เครื่องแพค','Packing M/C'),x=>sp(x.mc)],['line',L('ไลน์','Line'),x=>sp(x.line)],
+   ['pkg','PKG',x=>sp(x.pkg)],['pc',L('Checker แพค','Pack check'),x=>[x.pcw?L('รอตรวจ','Waiting'):x.pcr?L('มีไม่ผ่าน','Has rejected'):L('ผ่านครบ','All passed')]],
+   ['fg',L('FG รับแล้ว','Accepted by FG'),x=>[x.fgok>=x.pallets?L('รับครบ','All accepted'):x.fgr?L('มีปฏิเสธ','Has rejected'):x.fgok?L('รับบางส่วน','Part accepted'):L('ยังไม่รับ','None yet')]]];}
+function ldmPass(x,skip){return ldmFields().every(([k,,g])=>{if(k===skip)return true;const v=LDM.f[k];return !v||!v.length||g(x).some(z=>v.includes(z));});}
+function ldmBase(){const r=LDM.data,ws=(LDM.q||'').toLowerCase().split(/\s+/).filter(Boolean);
+  return r.rows.filter(x=>(!LDM.day||x.date===LDM.day)&&(!ws.length||ws.every(w=>[x.lot,x.code,x.name,x.mc,x.line,x.pkg,ldmYY(x.date)].join(' ').toLowerCase().includes(w))));}
+function ldmFMenu(ev){if(ev)ev.stopPropagation();if(!LDM.data)return;const base=ldmBase();
+  const h=`<div class="ldm-mh">${L('กรองด้วยคอลัมน์ไหน','Filter on which column?')}</div>`+ldmFields().map(([k,lb,g])=>{const n=new Set(base.flatMap(g)).size,c=(LDM.f[k]||[]).length;
+    return `<button class="ldm-mi" onclick="ldmFPick('${k}')">${esc(lb)}<span class="n" ${c?'style="color:#1B75BC;font-weight:700"':''}>${c?c+' '+L('เลือก','picked'):n+' '+L('ค่า','values')}</span></button>`;}).join('')
+   +(Object.keys(LDM.f).length?`<div style="border-top:1px solid #EEF1F4;margin-top:5px;padding-top:5px"><button class="ldm-mi" onclick="LDM.f={};ldmPopClose();ldmDraw()">✕ ${L('ล้างตัวกรองทั้งหมด','Clear all filters')}</button></div>`:'');
+  const m=$('#ldmPop');if(m&&m.dataset.k==='flt'){m.innerHTML=h;m.style.width='270px';return;}
+  const p=ldmPop(h,$('#ldmFB'));p.dataset.k='flt';p.style.width='270px';ldmPopAt(p,$('#ldmFB'));}
+function ldmFPick(k){const fd=ldmFields().find(f=>f[0]===k),g=fd[2],pool=ldmBase().filter(x=>ldmPass(x,k)),c={};
+  pool.forEach(x=>g(x).forEach(v=>c[v]=(c[v]||0)+1));const cur=LDM.f[k]||[];
+  cur.forEach(v=>{if(!(v in c))c[v]=0;});const vs=Object.keys(c).sort();window._ldmV=vs;
+  const h=`<div class="ldm-mh">${esc(fd[1])} — ${L('เลือกได้หลายค่า','tick any')}</div>
+   ${vs.length>8?`<input class="in" style="width:100%;margin:2px 0 6px;box-sizing:border-box" placeholder="${L('ค้นหา','search')}…" oninput="ldmFSrch(this.value)">`:''}
+   <div id="ldmFV" style="max-height:300px;overflow:auto">${vs.map((v,i)=>`<label class="ldm-mi" data-v="${esc(v.toLowerCase())}"><input type="checkbox" ${cur.includes(v)?'checked':''} onchange="ldmFTog('${k}',${i},this.checked)"><span style="flex:1">${esc(v)}</span><span class="n">${c[v]}</span></label>`).join('')||`<div class="muted" style="padding:8px">${L('ไม่มีค่า','no values')}</div>`}</div>
+   <div style="border-top:1px solid #EEF1F4;margin-top:5px;padding-top:5px;display:flex;gap:4px"><button class="ldm-mi" onclick="ldmFMenu()">‹ ${L('คอลัมน์อื่น','Other column')}</button><button class="ldm-mi" style="justify-content:flex-end" onclick="ldmPopClose()"><b>${L('เสร็จ','Done')}</b></button></div>`;
+  let m=$('#ldmPop');if(m&&m.dataset.k==='flt')m.innerHTML=h;else{m=ldmPop(h,$('#ldmFB'));m.dataset.k='flt';}
+  m.style.width='360px';ldmPopAt(m,$('#ldmFB'));}
+function ldmFSrch(q){q=q.toLowerCase();document.querySelectorAll('#ldmFV [data-v]').forEach(e=>e.style.display=e.dataset.v.includes(q)?'':'none');}
+function ldmFTog(k,i,on){const v=window._ldmV[i];let a=(LDM.f[k]||[]).filter(z=>z!==v);if(on)a.push(v);if(a.length)LDM.f[k]=a;else delete LDM.f[k];ldmDraw();}
+function ldmChips(){const F=ldmFields(),ks=Object.keys(LDM.f).filter(k=>F.some(z=>z[0]===k)),n=ks.reduce((a,k)=>a+LDM.f[k].length,0);
+  $('#ldmFN').innerHTML=n?`<b>${n}</b>`:'';
+  $('#ldmC').innerHTML=ks.map(k=>{const f=F.find(z=>z[0]===k);return `<span class="ldm-chip" onclick="event.stopPropagation();ldmFPick('${k}')">${esc(f[1])}: <b>${esc(LDM.f[k].join(', '))}</b><button onclick="event.stopPropagation();delete LDM.f['${k}'];ldmDraw()">✕</button></span>`;}).join('')
+   +(ks.length>1?`<span class="ldm-chip" style="background:#fff" onclick="LDM.f={};ldmDraw()">✕ ${L('ล้างทั้งหมด','Clear all')}</span>`:'');
+  $('#ldmC').style.display=ks.length?'':'none';}
+function ldmDraw(){
+  const r=LDM.data;if(!r)return;
+  const yymmdd=d=>d.slice(2,4)+d.slice(5,7)+d.slice(8,10),dd=d=>d.slice(8,10)+'/'+d.slice(5,7)+'/'+d.slice(0,4);
+  const days=[...new Set(r.rows.map(x=>x.date))].sort().reverse();
+  const ds=$('#ldmD');if(LDM.day&&!days.includes(LDM.day))LDM.day='';
+  ds.innerHTML=`<option value="">${L('ทุกวัน','All days')} (${n0(new Set(r.rows.map(x=>x.lot)).size)})</option>`+days.map(d=>{const n=new Set(r.rows.filter(x=>x.date===d).map(x=>x.lot)).size;
+    return `<option value="${d}" ${d===LDM.day?'selected':''}>${yymmdd(d)} · ${dd(d)} · ${n} ${L('ล็อต','lots')}</option>`;}).join('');
+  const rows=ldmBase().filter(x=>ldmPass(x));ldmChips();
+  const T={l:new Set(rows.map(x=>x.lot)).size,p:rows.reduce((a,x)=>a+x.pallets,0),b:rows.reduce((a,x)=>a+x.bags,0),kg:rows.reduce((a,x)=>a+x.kg,0),
+    w:rows.reduce((a,x)=>a+x.pcw,0),f:rows.reduce((a,x)=>a+x.fgok,0)};
+  const K=[['ล็อต','lots',T.l,'#F97316'],['พาเลท','pallets',T.p,'#1B75BC'],['ถุง','bags',T.b,'#0EA5E9'],['น้ำหนักรวม (kg)','total kg',Math.round(T.kg),'#16A34A'],
+    ['รอ Checker แพค','waiting pack check',T.w,'#F59E0B'],['FG รับแล้ว','accepted by FG',T.f,'#0D9488']];
+  $('#ldmK').innerHTML=K.map(k=>`<div class="pkd-t" style="border-left-color:${k[3]}"><div class="k">${PKB(k[0],k[1])}</div><div class="v">${n0(k[2])}</div></div>`).join('');
+  const dm=t=>t?t.slice(8,10)+'/'+t.slice(5,7)+' '+t.slice(11,16):'-',lst=v=>esc((v||'').split(',').join(', '));
+  xTable($('#ldmT'),'ldm',[
+    XC('date',L('วันผลิต','Prod. day'),{val:x=>yymmdd(x.date),fmt:x=>`<b class="mono">${yymmdd(x.date)}</b><div class="muted">${dd(x.date)}</div>`,cls:'nw'}),
+    XC('lot','Lot No.',{cls:'mono nw',fmt:x=>`<b style="color:#1B75BC">${esc(x.lot)}</b>`}),
+    XC('code',L('สินค้า','Product'),{val:x=>x.code+' · '+x.name,fmt:x=>`<div style="font-weight:600">${esc(x.code)}</div><div class="muted pkd-nm" title="${esc(x.name)}">${esc(x.name)}</div>`}),
+    XC('pallets',L('พาเลท','Pallets'),{r:1,num:1}),
+    XC('bags',L('ถุง','Bags'),{r:1,num:1,fmt:x=>n0(x.bags)}),
+    XC('kg','kg',{r:1,num:1,fmt:x=>n0(Math.round(x.kg))}),
+    XC('mc',L('เครื่องแพค','Packing M/C'),{fmt:x=>lst(x.mc)}),
+    XC('line',L('ไลน์','Line'),{fmt:x=>lst(x.line),cls:'nw'}),
+    XC('pkg','PKG',{cls:'mono',fmt:x=>lst(x.pkg)}),
+    XC('pc',L('Checker แพค','Pack check'),{val:x=>x.pcw?L('รอตรวจ','Waiting'):x.pcr?L('มีไม่ผ่าน','Has rejected'):L('ผ่านครบ','All passed'),
+      fmt:x=>`${x.pcok}/${x.pallets}`+(x.pcw?` <span class="pill p-waiting">${L('รอ','wait')} ${x.pcw}</span>`:'')+(x.pcr?` <span class="pill p-rejected">✕ ${x.pcr}</span>`:''),cls:'nw'}),
+    XC('fgok',L('FG รับแล้ว','Accepted by FG'),{r:1,num:1,fmt:x=>`${x.fgok}/${x.pallets}`+(x.fgr?` <span class="pill p-rejected">✕ ${x.fgr}</span>`:'')}),
+    XC('first',L('แพค แรก – ล่าสุด','First – last packed'),{fmt:x=>`${dm(x.first)} – ${dm(x.last)}`,cls:'nw'})],
+    rows,{pageSize:25,onRow:x=>ldGo(x.lot),empty:`<div class="muted">${L('ไม่มีล็อตในช่วงที่เลือก','No lots for this selection')}</div>`});
+}
+function ldBack(){LDQ='';ldClose();pgLotDash();}
+async function ldDetailPage(){
+  $('#app').innerHTML=`<div class="pkd"><h1><button class="btn" style="margin-right:10px;vertical-align:middle" onclick="ldBack()">‹ ${L('ทุกล็อต','All lots')}</button>${PKB('แดชบอร์ดล็อต','Lot dashboard')}</h1>
    <p class="sub">${PKB('เลือกเลขล็อต — ยอดที่แพคทั้งหมด และจำนวนถุงที่แพคของแต่ละเครื่องแพค','choose a lot — total packed and bags packed by each packing machine')}</p>
    <div class="card pkd-f">
     <div><label>${PKB('เลขล็อต','lot no.')}</label><input class="in mono" id="ldQ" value="${esc(LDQ)}" placeholder="${L('คลิกเพื่อดูทุกล็อต หรือพิมพ์ค้นหา','click for all lots, or type')}" style="width:260px;text-transform:uppercase" autocomplete="off" spellcheck="false"
@@ -1079,7 +1283,7 @@ async function pgLotDash(){
   LDL=null;ldLots();
   ldLoad();
 }
-function ldGo(v){LDQ=(v||'').trim().toUpperCase();const i=$('#ldQ');if(i)i.value=LDQ;ldClose();ldLoad();}
+function ldGo(v){LDQ=(v||'').trim().toUpperCase();if(!$('#ldB')){ldClose();return ldDetailPage();}const i=$('#ldQ');if(i)i.value=LDQ;ldClose();ldLoad();}
 /* b570: lot drop-down — every lot packed till date (GET /api/fg/lot-dash/lots, loaded once per visit),
    opens on click with the full list, filters in the browser while typing (lot no., FG code or product name;
    several words = all must match). ↑ ↓ Enter Esc. The recent-lot chips stay beside it. */
@@ -1130,7 +1334,7 @@ document.addEventListener('scroll',e=>{if(LDD.box&&!LDD.box.contains(e.target))l
 async function ldLoad(){
   let r;try{r=await api('/api/fg/lot-dash?lot='+encodeURIComponent(LDQ));}catch(e){$('#ldB').innerHTML=err(e);return;}
   if(PAGE!=='lotdash')return;LDR=r;
-  if(!LDQ&&r.recent.length){LDQ=r.recent[0].lot_no;$('#ldQ').value=LDQ;return ldLoad();}
+  if(!LDQ)return ldBack();
   $('#ldRec').innerHTML=r.recent.slice(0,6).map(x=>`<button class="ld-chip ${x.lot_no===LDQ?'on':''}" onclick="ldGo('${esc(x.lot_no)}')">${esc(x.lot_no)}</button>`).join('');
   ldDraw();
 }
@@ -1468,8 +1672,64 @@ async function onIssueScan(text){
   const B=$('#isBody');B.innerHTML=`<div class="card">${L('กำลังค้นหา…','Looking up…')}</div>`;
   try{IS=await post('/api/fg/scan/issue',{text});}catch(e){B.innerHTML=err(e);return;}
   IS.form={qty:IS.qty_default,customer_id:'',release_type:IS.release_types[0],plate:'',release_no:'',memo:''};IS.mode='';ISPH=null;
-  isConfirm();
+  isCustAsk(isConfirm);    // b575: which customer — once per load, then "same as before?"
 }
+/* ════════ b575 — the load's customer, asked right after the scan ════════
+   First pallet: pick from the list (type to filter) — or, if the customer is not there, type the name and
+   "Add new customer" (saved to the Customer list at once, marked for the checker PC to review).
+   Next pallets: "Same customer: …" in one tap, or "Different customer" → the same list.
+   The last customer is kept on this phone for 16 h (localStorage). */
+const ISLK='bflfp_is_last';
+function isLast(){try{const v=JSON.parse(localStorage.getItem(ISLK)||'null');if(v&&v.code&&Date.now()-(v.t||0)<16*3600e3)return v;}catch(e){}return null;}
+function isSetLast(c){try{localStorage.setItem(ISLK,JSON.stringify({code:c.code,name:c.name||'',type:IS.form.release_type,t:Date.now()}));}catch(e){}}
+let ICAFTER=null;
+function isCustAsk(after){
+  ICAFTER=after;
+  const last=isLast(),lc=last&&IS.customers.find(c=>c.code===last.code);
+  if(!lc){isCustList();return;}
+  dlg(`<h2>${L('ลูกค้ารายเดิม หรือ ลูกค้าใหม่?','Same customer or a different one?')}</h2>
+   <div class="muted" style="margin:-4px 0 10px">${esc(IS.stock.lot_no)}${IS.stock.pallet_no?' · P'+esc(IS.stock.pallet_no):''} · ${esc(IS.stock.product_name||'')}</div>
+   <div style="display:grid;gap:10px">
+    <button class="btn ok big" style="min-height:80px;text-align:left;justify-content:flex-start;flex-direction:column;align-items:flex-start" onclick="icSame()">
+     <span>✓ ${L('ลูกค้าเดิม','Same customer')}</span><small style="font-weight:600;font-size:15px">${esc(lc.code)} · ${esc(lc.name)}</small>
+     ${last.type?`<small style="font-weight:400">${esc(last.type)}</small>`:''}</button>
+    <button class="btn big" style="min-height:64px" onclick="isCustList()">${L('ลูกค้าใหม่ / ลูกค้าอื่น','Different customer')}</button>
+    <button class="btn" onclick="icCancel()">${L('ยกเลิก','Cancel')}</button></div>`);icModal();
+}
+function icCancel(){closeDlg();if(ICAFTER===isLoad){ICAFTER=null;return;}ICAFTER=null;isStep('cancel','at customer');go('issue');}
+const icModal=()=>{const o=$('#dlg');if(o)o.onclick=null;};   // a tap outside must not leave the loader on a half-done scan
+function icSame(){const last=isLast();if(last&&IS.release_types.includes(last.type))IS.form.release_type=last.type;isStep('same_customer',last?last.code:'');icPick(last.code,1);}
+function isCustList(){
+  dlg(`<h2>${L('โหลดให้ลูกค้ารายไหน?','Which customer is this load for?')}</h2>
+   <input class="in" id="icQ" placeholder="${L('พิมพ์ชื่อหรือรหัสลูกค้า','type the customer name or code')}" autocomplete="off" style="font-size:17px" oninput="icDraw()">
+   <div id="icL" style="max-height:46vh;overflow:auto;margin-top:8px;border:1px solid var(--line,#E2E8F0);border-radius:10px"></div>
+   <div id="icA" style="margin-top:8px"></div><div id="icE"></div>
+   <div class="btns" style="justify-content:flex-end;margin-top:8px"><button class="btn" onclick="icCancel()">${L('ยกเลิก','Cancel')}</button></div>`);
+  icModal();icDraw();setTimeout(()=>{const q=$('#icQ');if(q)q.focus();},60);
+}
+function icDraw(){
+  const q=($('#icQ')||{}).value||'',ql=q.trim().toLowerCase(),flat=v=>String(v||'').toLowerCase().replace(/\s+/g,'');
+  const all=IS.customers.filter(c=>!ql||(c.code+' '+c.name).toLowerCase().includes(ql));
+  $('#icL').innerHTML=all.slice(0,300).map(c=>`<button class="btn" style="display:flex;width:100%;justify-content:flex-start;gap:10px;border:0;border-bottom:1px solid #F1F5F9;border-radius:0;min-height:48px;text-align:left" onclick="icPick(${esc(JSON.stringify(c.code))})">
+     <b class="mono" style="min-width:52px">${esc(c.code)}</b><span>${esc(c.name)}</span></button>`).join('')
+    ||`<div class="muted" style="padding:12px">${L('ไม่พบในรายการ','Not in the list')}</div>`;
+  const exact=IS.customers.some(c=>flat(c.name)===flat(q)||c.code.toLowerCase()===ql);
+  $('#icA').innerHTML=q.trim().length>=2&&!exact?`<button class="btn pri big" style="width:100%" onclick="icNew()">+ ${L('เพิ่มลูกค้าใหม่','Add new customer')}: “${esc(q.trim())}”</button>
+     <div class="muted" style="font-size:12px;margin-top:4px">${L('ไม่มีในรายการ? พิมพ์ชื่อให้ครบ แล้วกดเพิ่ม — จะบันทึกลงรายชื่อลูกค้าด้วย','Not listed? Type the full name and add it — it is saved to the Customer list too')}</div>`:'';
+}
+async function icNew(){
+  const name=$('#icQ').value.trim(),b=document.querySelector('#icA button');if(b)b.disabled=true;
+  let r;try{r=await post('/api/fg/customers/quick',{name});}catch(e){if(b)b.disabled=false;$('#icE').innerHTML=err(e);return;}
+  if(!IS.customers.some(c=>c.code===r.code))IS.customers.push({code:r.code,name:r.name});
+  IS.customers.sort((a,b)=>a.code<b.code?-1:1);
+  icPick(r.code);
+}
+function icPick(code,same){
+  const c=IS.customers.find(x=>x.code===code);if(!c)return;
+  IS.form.customer_id=c.code;isSetLast(c);if(!same)isStep('customer',c.code+' · '+c.name);closeDlg();
+  const f=ICAFTER;ICAFTER=null;if(f)f();
+}
+function isCustChange(){isKeep();isCustList();ICAFTER=isLoad;}
 /* b483 loader flow: scan → "is this the pallet you are loading?" → full / part → load details → save.
    Every tap is written to the audit trail (issue-step), and copied onto the release when it is saved. */
 const isStep=(step,note)=>{post('/api/fg/issue-step',{flow:IS.flow,step,note:note||''}).catch(()=>{});};
@@ -1550,20 +1810,20 @@ function isLoad(){
   $('#app').innerHTML=`<div class="ph">${isSteps(3)}${isHead()}
    <div class="msg ${IS.mode==='full'?'m-ok':'m-warn'}" style="font-weight:600">${IS.mode==='full'?L('ทั้งพาเลท','Full pallet'):L('บางส่วน','Part')} · ${n0(f.qty)} ${esc(s.unit)}${IS.mode==='part'?` ${L('จาก','of')} ${n0(av)}`:''}${s.weight_unit?` · ${n0(f.qty*s.weight_unit)} kg`:''}${IS.mode==='part'?`<div style="font-weight:500;margin-top:4px">${L('เหลือ','Left')} ${n0(av-f.qty)} ${esc(s.unit)} → ${L('ใบพาเลทใหม่','new pallet slip')}</div>`:''}</div>
    <div class="card" style="display:grid;gap:10px">
-    <label class="f">${L('ลูกค้า','Customer')} *<input class="in" id="isC" value="${esc(f.customer_id)}" placeholder="${L('พิมพ์รหัสหรือชื่อลูกค้า','type customer code or name')}" autocomplete="off"></label><div id="isCn" class="muted" style="margin-top:-6px"></div>
+    <div class="f"><span>${L('ลูกค้า','Customer')} *</span><div style="display:flex;gap:8px;align-items:center;border:1px solid #CBD5E1;border-radius:10px;padding:8px 10px;background:#F8FAFC">
+     <div style="flex:1;min-width:0"><b class="mono">${esc(f.customer_id||'—')}</b> <span>${esc((IS.customers.find(x=>x.code===f.customer_id)||{}).name||'')}</span></div>
+     <button class="btn sm" onclick="isCustChange()">${L('เปลี่ยน','Change')}</button></div></div>
     <label class="f">${L('ประเภทจ่าย','Release type')} *<select class="in" id="isT">${IS.release_types.map(t=>`<option ${t===f.release_type?'selected':''}>${esc(t)}</option>`).join('')}</select></label>
     <label class="f">${L('ทะเบียนรถ','Truck plate')}<input class="in" id="isP" value="${esc(f.plate)}"></label>
     <label class="f">${L('เลขที่ใบจ่าย / แผน','Release no. / plan')}<input class="in" id="isN" value="${esc(f.release_no)}"></label>
     <label class="f">${L('หมายเหตุ','Memo')}<input class="in" id="isM" value="${esc(f.memo)}"></label></div><div id="isE"></div>
    <div class="foot"><button class="btn" onclick="isKeep();isStep('back','to pallet details');isConfirm()">${L('ย้อนกลับ','Back')}</button><button class="btn ok" id="isGo" onclick="isSave()">${L('ยืนยันโหลด → ตัดสต็อก','Confirm load → reduce stock')}</button></div></div>`;
-  const cn=()=>{const c=IS.customers.find(x=>x.code===$('#isC').value.trim());$('#isCn').textContent=c?c.name:'';};
-  ta($('#isC'),q=>{q=q.toLowerCase();return IS.customers.filter(c=>(c.code+' '+c.name).toLowerCase().includes(q)).slice(0,12).map(c=>({v:c.code,t:c.code,s:c.name}));},cn);
-  $('#isC').addEventListener('input',cn);cn();
 }
-function isKeep(){const f=IS.form;f.customer_id=$('#isC').value.trim();f.release_type=$('#isT').value;f.plate=$('#isP').value;f.release_no=$('#isN').value;f.memo=$('#isM').value;}
+function isKeep(){const f=IS.form;const t=$('#isT');if(!t)return;f.release_type=t.value;f.plate=$('#isP').value;f.release_no=$('#isN').value;f.memo=$('#isM').value;}
 async function isSave(){
   isKeep();const f=IS.form,s=IS.stock;
-  if(!IS.customers.some(c=>c.code===f.customer_id)){$('#isE').innerHTML=err(L('เลือกลูกค้าจากรายการ','Pick a customer from the list'));return;}
+  if(!IS.customers.some(c=>c.code===f.customer_id)){isCustChange();return;}
+  {const c=IS.customers.find(x=>x.code===f.customer_id);if(c)isSetLast(c);}   // b575: keep the release type with it
   const checks={};['product','lot','qty','customer','type','plate'].forEach(k=>checks[k]={v:'ok'});   // confirmed on the "correct?" screen + this summary
   const b=Object.assign({decision:'approve',stock:s,checks,mode:IS.mode,flow:IS.flow},f);
   if(IS.mode==='part'){b.photo=ISPH.data;b.photo_at=ISPH.at;}
@@ -2937,8 +3197,25 @@ function pkDraw(){
 }
 function pkCopy(id){const s=PKROWS.find(x=>x.id===id);if(!s)return;
   Object.assign(LAST,{doc_no:s.doc_no,product_code:s.product_code,lot_no:s.lot_no,pd_line:s.pd_line,pack_machine:s.pack_machine,qty:s.qty,bag_weight:s.bag_weight,pack_type:s.pack_type,mfg:s.mfg,exp:s.exp,exp_sfx:s.exp_sfx||'',exp_fmt:s.exp_fmt||'',staff_name:s.staff_name});pgSlip();window.scrollTo(0,0);}
+/* b578 — Save asks first: "is this the right lot number?" (big, with product, dates and the next slip no.).
+   Only after Yes does it ask how many slips to make. */
 function pkSaveDlg(){
   const v=slipVals('sf'),bad=slipCheck(v);if(bad){$('#sfMsg').innerHTML=err(bad);return;}$('#sfMsg').innerHTML='';
+  const nm=((PRODS||[]).find(p=>p.code===v.product_code)||{}).name||'';
+  const dd=x=>x?x.slice(8,10)+'/'+x.slice(5,7)+'/'+x.slice(0,4):'-';
+  dlg(`<h2>${L('ยืนยันเลขล็อต','Confirm the lot number')}</h2>
+   <p class="muted">${L('ต้องการบันทึกใบพาเลทด้วยเลขล็อตนี้ใช่หรือไม่?','Do you want to save pallet slips with this lot number?')}</p>
+   <div class="card" style="text-align:center;padding:18px 14px;border:2px solid ${PKC.orange};background:#FFF7ED">
+    <div class="muted" style="font-size:12.5px">${L('เลขล็อต','Lot number')}</div>
+    <div class="mono" style="font-size:34px;font-weight:800;letter-spacing:.02em;color:#0F172A">${esc(v.lot_no)}</div>
+    <div style="margin-top:6px;font-weight:600">${esc(v.product_code)}${nm?' · '+esc(nm):''}</div>
+    <div class="muted" style="margin-top:4px">MFG ${dd(v.mfg)} → EXP ${dd(v.exp)} · ${L('ใบถัดไป','next slip')} <b>#${PKNEXT}</b></div>
+   </div>
+   <div class="btns" style="justify-content:flex-end;margin-top:14px"><button class="btn" onclick="closeDlg()">${L('ไม่ใช่ — กลับไปแก้','No — go back')}</button>
+    <button class="btn pri" onclick="pkSaveCount()">${L('ใช่ — เลขล็อตถูกต้อง','Yes — the lot is correct')}</button></div>`);
+}
+function pkSaveCount(){
+  const v=slipVals('sf');
   dlg(`<h2>${L('ต้องการสร้างใบพาเลทกี่ใบ?','How many slips to make?')}</h2>
    <p class="muted">${L('ทุกใบใช้ข้อมูลเดียวกัน แต่ได้เลขใบและ QR ใหม่','All slips get the same data, each with its own slip number and QR')}</p>
    <div class="card" style="display:grid;gap:10px">
@@ -3553,16 +3830,49 @@ async function prSave(code){
   const b={code:code||$('#peC').value.trim(),name:$('#peN').value,type_id:$('#peT').value,packaging:$('#peP').value,weight:+$('#peW').value||0,shelf_life_days:+$('#peS').value||0,owner:$('#peO').value,active:$('#peA').checked};
   try{await post('/api/fg/products',b);closeDlg();prLoad();}catch(e){$('#peE').innerHTML=err(e);}
 }
+/* b575 — Customers (checker PC / admin): search, add / edit with details (contact, phone, address, note),
+   switch off / on. Customers the loader added while scanning are marked "from loader" — check their details. */
+let CUF={q:'',f:'on'},CUR=[];
 async function pgCust(){
   let d;try{d=await api('/api/fg/customers');}catch(e){$('#app').innerHTML=err(e);return;}
-  $('#app').innerHTML=`<h1>${L('ลูกค้า','Customers')}</h1><p class="sub">${d.rows.length} ${L('ราย','customers')}</p>
-   <div class="bar"><input class="in" id="cuC" placeholder="${L('รหัส','Code')}" style="width:120px"><input class="in" id="cuN" placeholder="${L('ชื่อ','Name')}" style="min-width:260px"><button class="btn pri" onclick="cuSave()">${L('เพิ่ม / แก้ไข','Add / update')}</button></div>
-<div id="cuT"></div>`;
-  xTable($('#cuT'),'cust',[XC('code',L('รหัส','Code'),{cls:'mono'}),XC('name',L('ชื่อ','Name')),XC('active',L('ใช้งาน','Active'),{val:c=>c.active?'✓':'—'})],d.rows,
-   {onRow:c=>{$('#cuC').value=c.code;$('#cuN').value=c.name;},maxH:'calc(100vh - 250px)'});
-  ta($('#cuC'),q=>{q=q.toLowerCase();return d.rows.filter(c=>(c.code+' '+c.name).toLowerCase().includes(q)).slice(0,12).map(c=>({v:c.code,t:c.code,s:c.name}));},it=>{const c=d.rows.find(x=>x.code===it.v);if(c)$('#cuN').value=c.name;});
+  CUR=d.rows;
+  const nl=CUR.filter(c=>c.src==='loader'&&c.active).length;
+  const chip=(k,t,n)=>`<button class="btn sm" style="${CUF.f===k?'background:#0F172A;color:#fff;border-color:#0F172A':''}" onclick="CUF.f='${k}';cuDraw()">${t}${n!=null?` · ${n}`:''}</button>`;
+  $('#app').innerHTML=`<h1>${L('ลูกค้า','Customers')}</h1><p class="sub">${L('รายชื่อลูกค้าที่ใช้ตอนจ่ายออก — คนโหลดเพิ่มลูกค้าใหม่ได้ระหว่างสแกน ตรวจและเติมรายละเอียดได้ที่นี่','Customers used when issuing — the loader can add a new one while scanning; check and complete them here')}</p>
+   <div class="bar" style="flex-wrap:wrap"><input class="in" id="cuQ" placeholder="${L('ค้นหา รหัส / ชื่อ / ผู้ติดต่อ / โทร','search code / name / contact / phone')}" value="${esc(CUF.q)}" style="min-width:260px" oninput="CUF.q=this.value;cuDraw()">
+    ${chip('on',L('ใช้งาน','Active'),CUR.filter(c=>c.active).length)}${chip('loader',L('เพิ่มจากคนโหลด','From loader'),nl)}${chip('off',L('ปิดใช้งาน','Switched off'),CUR.filter(c=>!c.active).length)}${chip('all',L('ทั้งหมด','All'),CUR.length)}
+    <span style="flex:1"></span><button class="btn pri" onclick="cuEdit()">+ ${L('เพิ่มลูกค้า','Add customer')}</button></div>
+   ${nl?`<div class="msg m-warn">${L(`มีลูกค้า ${nl} รายที่คนโหลดเพิ่มระหว่างสแกน — กด "เพิ่มจากคนโหลด" เพื่อตรวจชื่อและเติมรายละเอียด`,`${nl} customer(s) were added by the loader while scanning — press "From loader" to check the name and add details`)}</div>`:''}
+   <div id="cuT"></div>`;
+  cuDraw();
 }
-async function cuSave(){try{await post('/api/fg/customers',{code:$('#cuC').value.trim(),name:$('#cuN').value.trim()});pgCust();}catch(e){alert(e.message);}}
+function cuDraw(){
+  const q=CUF.q.trim().toLowerCase();
+  const rows=CUR.filter(c=>(CUF.f==='all'||(CUF.f==='on'&&c.active)||(CUF.f==='off'&&!c.active)||(CUF.f==='loader'&&c.src==='loader'&&c.active))
+    &&(!q||[c.code,c.name,c.contact,c.phone,c.address,c.note].join(' ').toLowerCase().includes(q)));
+  xTable($('#cuT'),'cust',[XC('code',L('รหัส','Code'),{cls:'mono nw'}),
+    XC('name',L('ชื่อ','Name'),{fmt:c=>esc(c.name)+(c.src==='loader'?` <span class="pill" style="background:#FEF3C7;color:#92400E">${L('จากคนโหลด','from loader')}</span>`:'')}),
+    XC('contact',L('ผู้ติดต่อ','Contact')),XC('phone',L('โทร','Phone'),{cls:'nw'}),XC('address',L('ที่อยู่','Address')),XC('note',L('หมายเหตุ','Note')),
+    XC('created_by',L('เพิ่มโดย','Added by'),{val:c=>(c.created_by||'')+(c.created_at?' · '+c.created_at.slice(0,10):''),fmt:c=>c.created_by?esc(c.created_by)+`<div class="muted">${esc(fmtT(c.created_at))}</div>`:'-'}),
+    XC('active',L('ใช้งาน','Active'),{val:c=>c.active?'✓':'—'}),
+    XC('_e','',{nf:1,fmt:c=>`<button class="btn sm" onclick='cuEdit(${JSON.stringify(c.code)})'>${L('แก้ไข','Edit')}</button>`})],rows,{maxH:'calc(100vh - 290px)'});
+}
+function cuEdit(code){
+  const c=code==null?{code:'',name:'',contact:'',phone:'',address:'',note:'',active:1}:CUR.find(x=>x.code===code);if(!c)return;
+  const f=(id,lab,v,ph)=>`<label class="f">${lab}<input class="in" id="${id}" value="${esc(v||'')}" placeholder="${esc(ph||'')}"></label>`;
+  dlg(`<h2>${code==null?L('เพิ่มลูกค้า','Add customer'):esc(c.code)+' · '+esc(c.name)}</h2>
+   ${c.src==='loader'?`<div class="msg m-warn">${L('คนโหลดเพิ่มลูกค้ารายนี้ระหว่างสแกน','Added by the loader while scanning')}: ${esc(c.created_by||'')} · ${esc(fmtT(c.created_at))} — ${L('ตรวจชื่อ แล้วบันทึกเพื่อยืนยัน','check the name, then save to confirm it')}</div>`:''}
+   <div style="display:grid;gap:10px">
+    ${code==null?f('ceC',L('รหัส','Code')+' *','',L('เช่น AS2','e.g. AS2')):''}${f('ceN',L('ชื่อลูกค้า','Name')+' *',c.name)}
+    ${f('ceCt',L('ผู้ติดต่อ','Contact person'),c.contact)}${f('ceP',L('โทรศัพท์','Phone'),c.phone)}${f('ceA',L('ที่อยู่ / สถานที่ส่ง','Address / delivery place'),c.address)}${f('ceNo',L('หมายเหตุ','Note'),c.note)}
+    <label><input type="checkbox" id="ceAc" ${c.active?'checked':''}> ${L('ใช้งาน (แสดงให้คนโหลดเลือก)','Active (shown to the loader)')}</label>
+    <div id="ceE"></div><div class="btns" style="justify-content:flex-end"><button class="btn" onclick="closeDlg()">${L('ยกเลิก','Cancel')}</button><button class="btn pri" onclick="cuSave(${code==null?'null':esc(JSON.stringify(c.code))})">${L('บันทึก','Save')}</button></div></div>`);
+}
+async function cuSave(code){
+  const b={code:code||$('#ceC').value.trim(),name:$('#ceN').value.trim(),contact:$('#ceCt').value,phone:$('#ceP').value,address:$('#ceA').value,note:$('#ceNo').value,active:$('#ceAc').checked,new:code==null};
+  if(!b.code||!b.name){$('#ceE').innerHTML=err(L('ใส่รหัสและชื่อ','Enter a code and a name'));return;}
+  try{await post('/api/fg/customers',b);closeDlg();pgCust();}catch(e){$('#ceE').innerHTML=err(e);}
+}
 async function pgPeople(){
   let d;try{d=await api('/api/fg/people');}catch(e){$('#app').innerHTML=err(e);return;}
   const box=(k,t)=>`<div class="card" style="flex:1 1 300px"><h2>${t}</h2>${d.rows.filter(r=>r.kind===k).map(r=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--soft)"><span style="${r.active?'':'text-decoration:line-through;color:#94A3B8'}">${esc(r.name)}</span>

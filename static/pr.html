@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0F172A">
+<title>PR · BFL Smart Factory</title>
+<link rel="icon" type="image/png" href="/Logo192.png?v=576">
+<link rel="apple-touch-icon" sizes="180x180" href="/Logo180.png?v=576">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="/fnbar.js"></script>
+<style>
+/* Same look as FG Stock (fg.html) — keep the two in step */
+:root{--ink:#202020;--ink2:#475569;--line:#E2E8F0;--soft:#F1F5F9;--bg:#F1F5F9;--card:#fff;--blue:#1B75BC;--blue2:#D9E6F2;--orange:#F97316;--navy:#1E293B;
+  --ok:#166534;--okbg:#DCFCE7;--okc:#16A34A;--warn:#92400E;--warnbg:#FEF3C7;--bad:#991B1B;--badbg:#FEE2E2;--badc:#DC2626;--pur:#7C3AED}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,#E4E9F1 0%,#F1F5F9 360px) no-repeat #F1F5F9;color:var(--navy);font:15px/1.45 "Sarabun",system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--blue)}
+.hidden{display:none!important}
+header.top{position:sticky;top:0;z-index:5;background:var(--ink);color:#fff;display:flex;align-items:center;gap:10px;padding:8px 14px;min-height:56px}
+header.top .brand{font-weight:700;font-size:17px;display:flex;align-items:center;gap:8px}
+header.top .sp{flex:1}
+header.top .who{font-size:13px;color:#CBD5E1;text-align:right;line-height:1.2}
+.rchip{font-size:12px;font-weight:700;padding:4px 10px;border-radius:99px;color:#fff;white-space:nowrap}
+.tbtn{background:#333;border:0;color:#fff;border-radius:8px;padding:8px 10px;min-height:40px;cursor:pointer;font-size:13px}
+.layout{display:flex;min-height:calc(100vh - 56px)}
+nav.side{width:220px;flex:none;background:#202020;color:#E2E8F0;padding:10px;display:flex;flex-direction:column;gap:2px;
+  position:sticky;top:56px;align-self:flex-start;height:calc(100vh - 56px);overflow-y:auto;scrollbar-width:thin;scrollbar-color:#3a3a3a transparent}
+nav.side .grp{padding:14px 12px 4px;font-size:11px;letter-spacing:.06em;color:#94A3B8}
+nav.side button{display:flex;align-items:center;gap:10px;text-align:left;background:none;border:0;border-radius:9px;padding:10px 12px;cursor:pointer;color:#9AA0A6;font-weight:500;position:relative;font-size:14px;white-space:nowrap;min-height:42px}
+nav.side button>span:not(.bdg){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+nav.side button.on{background:#2a2a2a;color:var(--orange);font-weight:600}
+nav.side button.on::before{content:'';position:absolute;left:0;top:7px;bottom:7px;width:3px;border-radius:0 3px 3px 0;background:var(--orange)}
+nav.side button:hover{background:#2a2a2a;color:#E3E6EA}
+nav.side .bdg{margin-left:auto;background:#F59E0B;color:#0F172A;border-radius:99px;padding:0 8px;font-size:12px;font-weight:700}
+main{flex:1;min-width:0;padding:20px 24px 28px}
+nav.bot{display:none}
+.ic{width:20px;height:20px;flex:none}
+h1{font-size:22px;font-weight:600;margin:0 0 4px;line-height:1.3}
+.sub{color:var(--ink2);font-size:14px;margin:0 0 14px}
+h2{font-size:16px;margin:0 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.tile{border-radius:12px;padding:14px 16px;color:#fff;cursor:pointer;border:0;text-align:left}
+.tile .l{font-size:13px}.tile .v{font-size:28px;font-weight:700}.tile .s{font-size:12px;opacity:.92}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;color:#475569;font-weight:600;font-size:12.5px;padding:9px 8px;background:#F8FAFC;border-bottom:1px solid var(--line);white-space:nowrap;position:sticky;top:0;z-index:1}
+th.so{cursor:pointer}th.so:hover{color:var(--blue)}
+td{padding:9px 10px;border-top:1px solid var(--line);vertical-align:middle}
+tr.click{cursor:pointer}tr.click:hover td{background:#F8FAFC}
+.tw{overflow:auto;max-height:70vh;border:1px solid var(--line);border-radius:12px;background:#fff}
+.r{text-align:right;white-space:nowrap}.nw{white-space:nowrap}
+.mono{font-family:ui-monospace,Consolas,monospace}
+.muted{color:var(--ink2);font-size:12.5px}
+.pill{display:inline-block;padding:2px 9px;border-radius:6px;font-size:12px;font-weight:700;white-space:nowrap}
+.s-waiting_quotation{background:#E2E8F0;color:#334155}.s-pending_approval{background:var(--warnbg);color:var(--warn)}
+.s-approved{background:var(--okbg);color:var(--ok)}.s-cancelled{background:var(--badbg);color:var(--bad)}
+.s-sent_to_supplier{background:var(--blue2);color:#1E3A8A}.s-not_sent_to_supplier{background:#FFEDD5;color:#9A3412}
+.btn{border:1px solid #CBD5E1;background:#fff;border-radius:8px;padding:0 16px;min-height:40px;cursor:pointer;font-weight:500;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;color:#1E293B;text-decoration:none}
+.btn:hover:not(:disabled){border-color:var(--blue);color:var(--blue)}.btn.pri:hover:not(:disabled),.btn.ok:hover:not(:disabled),.btn.bad:hover:not(:disabled){color:#fff;filter:brightness(1.06)}
+.btn.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.ok{background:var(--okc);border-color:var(--okc);color:#fff}
+.btn.bad{background:var(--badc);border-color:var(--badc);color:#fff}
+.btn.badl{border-color:var(--badc);color:#B91C1C}
+.btn.sm{min-height:32px;padding:0 10px;font-size:13px}
+.btn:disabled{background:#E2E8F0;border-color:#E2E8F0;color:#64748B;cursor:not-allowed}
+.btns{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
+.bar{display:flex;flex-wrap:wrap;gap:10px 12px;align-items:flex-end;margin-bottom:14px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+label.f,div.f{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:500;color:#475569}
+.in{border:1px solid #CBD5E1;border-radius:8px;padding:0 10px;height:40px;min-height:40px;background:#fff;font-size:14px;color:var(--navy)}
+textarea.in{height:auto;padding:8px 10px}.in:focus{outline:2px solid #BFDBFE;border-color:var(--blue)}
+.in.sm{height:34px;min-height:34px;font-size:13.5px}
+input.in,select.in,textarea.in{width:100%}
+.bar .in{width:auto}
+.msg{border-radius:10px;padding:10px 12px;font-weight:600;margin:10px 0}
+.m-ok{background:var(--okbg);color:var(--ok)}.m-bad{background:var(--badbg);color:var(--bad)}.m-warn{background:var(--warnbg);color:var(--warn)}.m-info{background:var(--blue2);color:#1E3A8A}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tab{border:1px solid #CBD5E1;background:#fff;border-radius:8px;padding:0 14px;min-height:36px;height:36px;cursor:pointer;font-weight:600;font-size:13.5px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.tab.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.tab b{background:rgba(0,0,0,.08);border-radius:99px;padding:0 7px;font-size:12px}.tab.on b{background:rgba(255,255,255,.25)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.vgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin:10px 0}
+.vgrid>div{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 12px}.vgrid small{display:block;color:var(--ink2);font-size:12px}
+.vgrid b{font-size:15px;font-weight:600;word-break:break-word}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid #EEF2F6;font-size:14px}.kv:last-child{border-bottom:0}.kv span{color:var(--ink2)}.kv b{text-align:right}
+.kv.big b{font-size:19px;color:var(--blue)}
+.ov{position:fixed;inset:0;background:rgba(10,15,20,.55);z-index:20;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:90vh;overflow:auto;padding:18px}
+.modal.wide{max-width:960px}
+.items td{padding:5px 6px}.items .in{height:36px;min-height:36px}
+.items td.n{width:34px;text-align:center;color:var(--ink2)}
+.drop{border:2px dashed #CBD5E1;border-radius:12px;padding:12px 14px;background:#fff;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.drop.on{border-color:var(--blue);background:#EFF6FF}
+.fbox{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff;margin-bottom:8px}
+.fbox .t{flex:1;min-width:0}.fbox .t b{display:block}.fbox .t span{font-size:12.5px;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+.bars{display:grid;grid-template-columns:repeat(12,1fr);gap:6px;align-items:end;height:180px;padding-top:8px}
+.bars .b{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px}
+.bars .b i{display:block;width:100%;max-width:38px;background:var(--blue);border-radius:6px 6px 0 0;min-height:2px}
+.bars .b.cur i{background:var(--orange)}
+.bars .b small{font-size:11px;color:var(--ink2)}
+.hbar{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:13.5px}.hbar span{width:90px;flex:none;color:var(--ink2)}
+.hbar i{display:block;height:14px;background:var(--blue);border-radius:4px}.hbar b{white-space:nowrap;font-weight:600}
+.pager{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:10px}
+.tl{font-size:13px;border-left:2px solid var(--line);padding:0 0 10px 12px;position:relative}
+.tl:before{content:'';position:absolute;left:-5px;top:5px;width:8px;height:8px;border-radius:4px;background:#94A3B8}
+.tl b{font-weight:600}.tl span{color:var(--ink2);font-size:12px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#0F172A;color:#fff;border-radius:10px;padding:10px 16px;z-index:40;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.skel{color:var(--ink2)}
+@media (max-width:820px){
+  nav.side{display:none}
+  main{padding:12px 12px 90px}
+  nav.bot{display:flex;position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);z-index:6;padding-bottom:env(safe-area-inset-bottom)}
+  nav.bot button{flex:1;background:none;border:0;padding:8px 2px 10px;font-size:11px;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--ink2);min-height:56px;cursor:pointer}
+  nav.bot button.on{color:var(--blue);font-weight:700}
+  header.top .who{display:none}
+  .hide-m{display:none}
+  .tiles{grid-template-columns:repeat(2,1fr)}
+  .btn{min-height:44px}.in{height:44px;min-height:44px}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span style="background:#fff;border-radius:9px;padding:4px 7px;display:flex"><img src="/logo.png?v=2" alt="Bluefalo" style="height:24px;display:block"></span><span>PR</span> <span id="fac" style="color:var(--orange)"></span></div>
+  <div class="sp"></div>
+  <span class="rchip hidden" id="rchip"></span>
+  <div class="who" id="who"></div>
+  <button class="tbtn" id="langBtn" onclick="toggleLang()">EN</button>
+  <button class="tbtn" id="appsBtn" onclick="location.href='/?apps=1'" aria-label="Apps"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></button>
+  <button class="tbtn" id="outBtn" onclick="logout()" aria-label="Sign out"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg></button>
+</header>
+<div class="layout">
+  <nav class="side" id="side"></nav>
+  <main id="app"><div class="card skel">Loading…</div></main>
+</div>
+<nav class="bot" id="bot"></nav>
+
+<script>
+/* ════════ PR — purchase requests, inside the Smart Factory login ════════
+   One file, no build. Talks to /api/pr/*. Session = the CMMS cookie.
+   Was the stand-alone "PR Document Tracking" app (Flask). Rules live in server/pr.py. */
+let LANG=(()=>{try{return localStorage.getItem('bflfp_lang')||'TH'}catch(e){return 'TH'}})();
+const TH=()=>LANG==='TH';
+const L=(th,en)=>TH()?th:en;
+const T=pair=>pair?(TH()?pair[0]:pair[1]):'';
+let ME=null,CORE=null,PAGE='home',ARG=null,LISTQ={page:1,size:20,sort:'date',dir:'desc'},SUPS=null;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const can=c=>!!(ME&&ME.caps.includes(c));
+const money=v=>{const n=Number(v||0);return n.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});};
+const dmy=s=>{if(!s)return '';const m=String(s).match(/^(\d{4})-(\d{2})-(\d{2})(.*)$/);return m?`${m[3]}/${m[2]}/${m[1]}${m[4]?' '+m[4].trim().slice(0,5):''}`:s;};
+const today=()=>new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
+const pill=(k,map)=>k?`<span class="pill s-${esc(k)}">${esc(T((map||ME.statuses)[k])||k)}</span>`:'<span class="muted">—</span>';
+const coName=c=>{const x=(ME.companies||[]).find(o=>o.code===c);return x?x.name:c;};
+const depName=d=>{const x=(ME.departments||[]).find(o=>o.code===d);return x?(TH()?x.name_th:x.name_en)||d:d;};
+
+async function api(url,opt){
+  const r=await fetch(url,Object.assign({credentials:'same-origin',headers:{'Content-Type':'application/json'}},opt||{}));
+  let d=null;try{d=await r.json()}catch(e){}
+  if(r.status===401){location.href='/';throw new Error('login');}
+  if(!r.ok){const det=d&&d.detail;const e=new Error((det&&det.msg)||(typeof det==='string'?det:'')||('HTTP '+r.status));e.status=r.status;throw e;}
+  return d;
+}
+const post=(u,b)=>api(u,{method:'POST',body:JSON.stringify(b||{})});
+const put=(u,b)=>api(u,{method:'PUT',body:JSON.stringify(b||{})});
+const del=u=>api(u,{method:'DELETE'});
+function err(e){return `<div class="msg m-bad">${esc(e.message||e)}</div>`;}
+function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),2400);}
+async function logout(){try{await post('/api/logout');}catch(e){}location.href='/';}
+function readFile(f){return new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok({name:f.name,data:String(r.result)});r.onerror=()=>no(new Error(L('อ่านไฟล์ไม่ได้','Cannot read the file')));r.readAsDataURL(f);});}
+function checkFile(f){
+  if(!f)return L('ยังไม่ได้เลือกไฟล์','No file chosen');
+  if(!/\.(pdf|jpe?g|png)$/i.test(f.name))return L('รองรับเฉพาะ PDF, JPG, PNG','PDF, JPG or PNG only');
+  if(f.size>ME.max_file_mb*1048576)return L(`ไฟล์ต้องไม่เกิน ${ME.max_file_mb} MB`,`File must be ${ME.max_file_mb} MB or less`);
+  return '';
+}
+function modal(html,wide){close_();const o=document.createElement('div');o.className='ov';o.id='ov';o.innerHTML=`<div class="modal ${wide?'wide':''}">${html}</div>`;
+  o.addEventListener('mousedown',e=>{if(e.target===o)close_();});document.body.appendChild(o);const f=o.querySelector('input,select,textarea');if(f)setTimeout(()=>f.focus(),30);return o;}
+function close_(){const o=$('#ov');if(o)o.remove();}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')close_();});
+
+/* ════════ menu ════════ */
+const IC={
+ home:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
+ list:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>',
+ add:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M12 12v6M9 15h6"/></svg>',
+ appr:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>',
+ sup:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-6h6v6"/></svg>',
+ log:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+ users:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M22 21a6 6 0 0 0-4-5.6"/></svg>'};
+function pages(){return [
+  ['home',IC.home,L('แดชบอร์ด','Dashboard'),'view'],
+  ['list',IC.list,L('รายการ PR','PR list'),'view'],
+  ['new',IC.add,L('สร้าง PR','New PR'),'create'],
+  ['approve',IC.appr,L('รออนุมัติ','To approve'),'approve','q'],
+  ['sup',IC.sup,L('Supplier','Suppliers'),'suppliers_view'],
+  ['log',IC.log,L('ประวัติความเคลื่อนไหว','Activity log'),'view_log'],
+  ['users',IC.users,L('ผู้ใช้งาน PR','PR users'),'users']].filter(p=>can(p[3]));}
+let QN=0;
+function buildNav(){
+  $('#side').innerHTML=pages().map(p=>`<button id="nv-${p[0]}" onclick="go('${p[0]}')">${p[1]}<span>${esc(p[2])}</span>${p[4]==='q'?`<span class="bdg" id="qbdg">${QN||''}</span>`:''}</button>`).join('');
+  $('#bot').innerHTML=pages().filter(p=>['home','list','new','approve','sup'].includes(p[0])).slice(0,5)
+    .map(p=>`<button id="nb-${p[0]}" onclick="go('${p[0]}')">${p[1]}<span>${esc(p[2])}</span></button>`).join('');
+  mark();
+}
+function mark(){
+  const k=PAGE==='detail'||PAGE==='edit'?'list':PAGE;
+  document.querySelectorAll('nav.side button,nav.bot button').forEach(b=>b.classList.toggle('on',b.id==='nv-'+k||b.id==='nb-'+k));
+  const q=$('#qbdg');if(q)q.textContent=QN||'';
+}
+function go(p,arg,keep){
+  PAGE=p;ARG=arg==null?null:arg;mark();window.scrollTo(0,0);
+  const h='#'+p+(ARG!=null?'/'+ARG:'');if(!keep&&location.hash!==h)history.pushState(null,'',h);
+  const f={home:pgHome,list:pgList,new:()=>pgForm(null),edit:()=>pgForm(ARG),detail:()=>pgDetail(ARG),approve:pgApprove,sup:pgSup,log:pgLog,users:pgUsers}[p]||pgHome;
+  f();
+}
+window.addEventListener('popstate',()=>route());
+function route(){const m=(location.hash||'').replace('#','').split('/');const p=m[0]||'home';go(p,m[1]?+m[1]:null,true);}
+function toggleLang(){LANG=TH()?'EN':'TH';try{localStorage.setItem('bflfp_lang',LANG)}catch(e){}hdr();buildNav();route();}
+function hdr(){
+  $('#langBtn').textContent=TH()?'EN':'ไทย';
+  if(!ME)return;
+  $('#fac').textContent=ME.factory_code||'';$('#who').innerHTML=esc(ME.name);
+  const c=$('#rchip'),r=ME.roles[ME.pr_role];
+  if(r){c.textContent=T(r);c.style.background={user:'#64748B',pr_admin:'#0D9488',po_admin:'#7C3AED',approver:'#B45309',super_admin:'#F97316'}[ME.pr_role];c.classList.remove('hidden');}
+  $('#appsBtn').classList.toggle('hidden',!(CORE&&window.FnBar&&FnBar.list(CORE).length>1));
+}
+async function counts(){try{const d=await api('/api/pr/requests?status=pending_approval&size=5');QN=d.total;mark();}catch(e){}}
+
+/* ════════ dashboard ════════ */
+let YEAR=new Date().getFullYear(),DCO='';
+async function pgHome(){
+  const A=$('#app');A.innerHTML='<div class="card skel">Loading…</div>';
+  let s,ls;
+  try{[s,ls]=await Promise.all([api(`/api/pr/summary?year=${YEAR}&company=${encodeURIComponent(DCO)}`),api('/api/pr/requests?size=8&sort=updated')]);}catch(e){A.innerHTML=err(e);return;}
+  const st=ls.counts||{};QN=st.pending_approval||0;mark();
+  const mx=Math.max(1,...s.month.map(Number)),cm=new Date().getMonth(),mn=TH()?['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.']:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const hb=o=>{const v=Object.entries(o),m=Math.max(1,...v.map(x=>Number(x[1])));return v.length?v.map(([k,x])=>`<div class="hbar"><span>${esc(k)}</span><i style="width:${Math.max(2,Number(x)/m*60)}%"></i><b>${money(x)}</b></div>`).join(''):`<div class="muted">${L('ยังไม่มีข้อมูล','No data yet')}</div>`;};
+  const tile=(k,c)=>`<button class="tile" style="background:${c}" onclick="LISTQ={page:1,size:20,sort:'date',dir:'desc',status:'${k}'};go('list')"><div class="l">${esc(T(ME.statuses[k]))}</div><div class="v">${st[k]||0}</div><div class="s">${L('ทุกปี · กดเพื่อดู','all years · tap to open')}</div></button>`;
+  A.innerHTML=`<h1>${L('ใบขอซื้อ (PR)','Purchase requests (PR)')}</h1><p class="sub">${L('ติดตามเอกสารขอซื้อ ตั้งแต่ใบเสนอราคาจนถึงเลข PO','From quotation to PO number')}</p>
+  <div class="tiles">${tile('waiting_quotation','#64748B')}${tile('pending_approval','#D97706')}${tile('approved','#16A34A')}${tile('cancelled','#B91C1C')}</div>
+  <div class="bar"><label class="f">${L('ปี','Year')}<select class="in" onchange="YEAR=+this.value;pgHome()">${s.years.map(y=>`<option ${y===s.year?'selected':''}>${y}</option>`).join('')}</select></label>
+   <label class="f">${L('บริษัท','Company')}<select class="in" onchange="DCO=this.value;pgHome()"><option value="">${L('ทุกบริษัท','All companies')}</option>${ME.companies.map(c=>`<option value="${c.code}" ${c.code===DCO?'selected':''}>${esc(c.code)}</option>`).join('')}</select></label>
+   <div class="sp" style="flex:1"></div>${can('create')?`<button class="btn pri" onclick="go('new')">＋ ${L('สร้าง PR','New PR')}</button>`:''}</div>
+  <div class="grid2" style="margin-bottom:12px">
+   <div class="card"><div class="muted">${L('ยอดสุทธิทั้งปี (ไม่รวมยกเลิก)','Net total this year (cancelled not counted)')}</div><div style="font-size:28px;font-weight:700;color:var(--blue)">฿ ${money(s.total)}</div><div class="muted">${s.count} ${L('เอกสาร','documents')}</div></div>
+   <div class="card"><div class="muted">${L('อนุมัติแล้วแต่ยังไม่มีเลข PO','Approved, no PO number yet')}</div><div style="font-size:28px;font-weight:700;color:${s.approved_without_po?'#D97706':'var(--ok)'}">${s.approved_without_po}</div>
+     <a href="#" onclick="LISTQ={page:1,size:20,sort:'date',dir:'desc',status:'approved',po_status:'__none__'};go('list');return false">${L('ดูรายการ','Open the list')} →</a></div></div>
+  <div class="card" style="margin-bottom:12px"><h2>${L('ยอดสุทธิรายเดือน','Net total by month')} ${s.year}</h2>
+   <div class="bars">${s.month.map((v,i)=>`<div class="b ${s.year===new Date().getFullYear()&&i===cm?'cur':''}" title="${mn[i]}: ฿ ${money(v)}"><i style="height:${Number(v)/mx*150}px"></i><small>${mn[i]}</small></div>`).join('')}</div></div>
+  <div class="grid2" style="margin-bottom:12px">
+   <div class="card"><h2>${L('ตามบริษัท','By company')}</h2>${hb(s.by_company)}</div>
+   <div class="card"><h2>${L('ตามแผนก','By department')}</h2>${hb(s.by_department)}</div>
+   <div class="card"><h2>${L('ตามวัตถุประสงค์ (จำนวน)','By purpose (count)')}</h2>${Object.entries(s.by_purpose).map(([k,v])=>`<div class="kv"><span>${esc(T(ME.purposes[k])||k)}</span><b>${v}</b></div>`).join('')||`<div class="muted">${L('ยังไม่มีข้อมูล','No data yet')}</div>`}</div></div>
+  <div class="card"><h2>${L('แก้ไขล่าสุด','Recently changed')}</h2>${table(ls.rows,false)}</div>`;
+}
+
+/* ════════ list ════════ */
+function table(rows,sortable){
+  if(!rows.length)return `<div class="muted" style="padding:12px">${L('ไม่พบเอกสาร','No documents')}</div>`;
+  const th=(k,t,c)=>sortable?`<th class="so ${c||''}" onclick="sortBy('${k}')">${t}${LISTQ.sort===k?(LISTQ.dir==='asc'?' ▲':' ▼'):''}</th>`:`<th class="${c||''}">${t}</th>`;
+  return `<div class="tw"><table><thead><tr>${th('code',L('รหัสเอกสาร','Document'))}${th('date',L('วันที่','Date'))}${th('company',L('บริษัท','Co.'),'hide-m')}${th('department',L('แผนก','Dept'),'hide-m')}
+   <th>${L('งาน/เหตุผล','Reason')}</th>${th('supplier','Supplier','hide-m')}${th('total',L('ยอดสุทธิ','Net'),'r')}${th('status',L('สถานะ','Status'))}${th('pr','PR','hide-m')}${th('po','PO','hide-m')}</tr></thead><tbody>
+   ${rows.map(r=>`<tr class="click" onclick="go('detail',${r.id})"><td class="nw"><b>${esc(r.doc_code)}</b>${r.files&&r.files.length?` <span title="${esc(r.files.join(', '))}">📎</span>`:''}</td><td class="nw">${dmy(r.request_date)}</td>
+    <td class="hide-m">${esc(r.company)}</td><td class="hide-m">${esc(r.department)}</td>
+    <td style="max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.reason)}<div class="muted">${esc(r.requester_name)}</div></td>
+    <td class="hide-m" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.supplier_name)||'<span class="muted">—</span>'}</td>
+    <td class="r">${r.amount_entered?money(r.net_total):'<span class="muted">—</span>'}</td><td>${pill(r.status)}</td>
+    <td class="hide-m nw mono">${esc(r.pr_number)||'<span class="muted">—</span>'}</td><td class="hide-m nw mono">${esc(r.po_number)||'<span class="muted">—</span>'}${r.po_status?'<br>'+pill(r.po_status,ME.po_statuses):''}</td></tr>`).join('')}</tbody></table></div>`;
+}
+function sortBy(k){if(LISTQ.sort===k)LISTQ.dir=LISTQ.dir==='asc'?'desc':'asc';else{LISTQ.sort=k;LISTQ.dir=k==='date'||k==='total'?'desc':'asc';}LISTQ.page=1;pgList();}
+function qs(o){return Object.entries(o).filter(([k,v])=>v!==''&&v!=null).map(([k,v])=>`${k}=${encodeURIComponent(v)}`).join('&');}
+let LT=null;
+async function pgList(){
+  const A=$('#app');
+  if(!$('#lbar')){
+    const o=(m,cur,all)=>`<option value="">${all}</option>`+Object.entries(m).map(([k,v])=>`<option value="${k}" ${cur===k?'selected':''}>${esc(T(v))}</option>`).join('');
+    A.innerHTML=`<h1>${L('รายการ PR','PR list')}</h1><p class="sub">${L('ค้นหาจากรหัส งาน/เหตุผล ผู้ขอซื้อ Supplier รายการสินค้า เลข PR/PO','Search code, reason, requester, supplier, item, PR / PO number')}</p>
+    <div class="tabs" id="stabs"></div>
+    <div class="bar" id="lbar">
+     <label class="f" style="flex:1;min-width:200px">${L('ค้นหา','Search')}<input class="in" id="fq" style="width:100%" value="${esc(LISTQ.q||'')}" oninput="clearTimeout(LT);LT=setTimeout(()=>{LISTQ.q=this.value;LISTQ.page=1;pgList()},300)"></label>
+     <label class="f">${L('บริษัท','Company')}<select class="in" onchange="LISTQ.company=this.value;LISTQ.page=1;pgList()"><option value="">${L('ทั้งหมด','All')}</option>${ME.companies.map(c=>`<option ${LISTQ.company===c.code?'selected':''}>${c.code}</option>`).join('')}</select></label>
+     <label class="f">${L('แผนก','Dept')}<select class="in" onchange="LISTQ.department=this.value;LISTQ.page=1;pgList()"><option value="">${L('ทั้งหมด','All')}</option>${ME.departments.map(d=>`<option value="${d.code}" ${LISTQ.department===d.code?'selected':''}>${d.code}</option>`).join('')}</select></label>
+     <label class="f">${L('วัตถุประสงค์','Purpose')}<select class="in" onchange="LISTQ.purpose=this.value;LISTQ.page=1;pgList()">${o(ME.purposes,LISTQ.purpose,L('ทั้งหมด','All'))}</select></label>
+     <label class="f">${L('สถานะ PO','PO status')}<select class="in" onchange="LISTQ.po_status=this.value;LISTQ.page=1;pgList()">${o(ME.po_statuses,LISTQ.po_status,L('ทั้งหมด','All'))}<option value="__none__" ${LISTQ.po_status==='__none__'?'selected':''}>${L('ยังไม่มี','None yet')}</option></select></label>
+     <label class="f">${L('ตั้งแต่','From')}<input type="date" class="in" value="${LISTQ.date_from||''}" onchange="LISTQ.date_from=this.value;LISTQ.page=1;pgList()"></label>
+     <label class="f">${L('ถึง','To')}<input type="date" class="in" value="${LISTQ.date_to||''}" onchange="LISTQ.date_to=this.value;LISTQ.page=1;pgList()"></label>
+     <button class="btn" onclick="LISTQ={page:1,size:LISTQ.size,sort:'date',dir:'desc'};$('#lbar').remove();pgList()">${L('ล้าง','Clear')}</button>
+     <a class="btn" id="csv" href="#">⬇ CSV</a>
+     ${can('create')?`<button class="btn pri" onclick="go('new')">＋ ${L('สร้าง PR','New PR')}</button>`:''}</div><div id="lres"><div class="card skel">Loading…</div></div>`;
+  }
+  let d;try{d=await api('/api/pr/requests?'+qs(LISTQ));}catch(e){$('#lres').innerHTML=err(e);return;}
+  const c=d.counts||{},all=Object.values(c).reduce((a,b)=>a+b,0);QN=c.pending_approval||0;mark();
+  $('#stabs').innerHTML=[['',L('ทั้งหมด','All'),all]].concat(Object.keys(ME.statuses).map(k=>[k,T(ME.statuses[k]),c[k]||0]))
+    .map(([k,t,n])=>`<button class="tab ${(LISTQ.status||'')===k?'on':''}" onclick="LISTQ.status='${k}';LISTQ.page=1;pgList()">${esc(t)} <b>${n}</b></button>`).join('');
+  $('#csv').href='/api/pr/export.csv?'+qs(Object.assign({},LISTQ,{page:'',size:''}));
+  const pages=Math.max(1,Math.ceil(d.total/d.size));
+  $('#lres').innerHTML=table(d.rows,true)+`<div class="pager"><span class="muted">${d.total} ${L('เอกสาร','documents')} · ${L('หน้า','page')} ${d.page}/${pages}</span>
+   <span class="btns"><select class="in sm" onchange="LISTQ.size=+this.value;LISTQ.page=1;pgList()">${[10,20,50,100].map(n=>`<option ${n===d.size?'selected':''}>${n}</option>`).join('')}</select>
+   <button class="btn sm" ${d.page<=1?'disabled':''} onclick="LISTQ.page--;pgList()">‹</button><button class="btn sm" ${d.page>=pages?'disabled':''} onclick="LISTQ.page++;pgList()">›</button></span></div>`;
+}
+async function pgApprove(){LISTQ={page:1,size:50,sort:'date',dir:'asc',status:'pending_approval'};PAGE='list';const b=$('#lbar');if(b)b.remove();await pgList();PAGE='approve';mark();}
+
+/* ════════ new / edit ════════ */
+let FORM=null;
+async function loadSups(){if(!SUPS)SUPS=(await api('/api/pr/suppliers')).rows;return SUPS;}
+async function pgForm(id){
+  const A=$('#app');A.innerHTML='<div class="card skel">Loading…</div>';
+  let d=null;
+  try{await loadSups();if(id)d=await api('/api/pr/requests/'+id);}catch(e){A.innerHTML=err(e);return;}
+  if(d&&!d.can_edit){A.innerHTML=`<div class="msg m-warn">${L('เอกสารที่อนุมัติ/ยกเลิกแล้วถูกล็อก เฉพาะผู้อนุมัติแก้ไขได้','Approved / cancelled requests are locked — only the approver can change them')}</div>`;return;}
+  FORM={id:id||null,file:null,items:d?d.items.map(i=>({...i})):[{description:'',quantity:'',unit_price:'',note:''}],
+    company:d?d.company:(ME.company||ME.companies[0].code),department:d?d.department:(ME.departments.some(x=>x.code===ME.department)?ME.department:'ENG'),
+    request_date:d?d.request_date:today(),purpose:d?d.purpose:'Repair',purpose_other:d?d.purpose_other:'',reason:d?d.reason:'',
+    supplier_id:d?(d.supplier_id||''):'',vat_included:d?!!d.vat_included:true,amount:d&&!d.items.length&&d.amount_entered?d.subtotal:''};
+  const F=FORM,sel=(m,cur)=>Object.entries(m).map(([k,v])=>`<option value="${k}" ${cur===k?'selected':''}>${esc(T(v))}</option>`).join('');
+  A.innerHTML=`<h1>${d?L('แก้ไข','Edit')+' '+esc(d.doc_code):L('สร้างใบขอซื้อ (PR)','New purchase request')}</h1>
+  <p class="sub">${d?L('รหัสเอกสารและผู้ขอซื้อไม่เปลี่ยน','The document code and requester stay the same'):L('ผู้ขอซื้อ','Requester')+': <b>'+esc(ME.name)+'</b> · '+L('รหัสเอกสารออกให้อัตโนมัติเมื่อบันทึก','the document code is given when you save')}</p>
+  ${!d?`<div class="drop" id="drop"><div style="flex:1;min-width:220px"><b>${L('มีใบเสนอราคาแล้ว?','Have the quotation?')}</b><div class="muted">${L('เลือกไฟล์ PDF/รูป ระบบจะอ่านรายการ ราคา วันที่ VAT และ Supplier ให้ — ตรวจสอบก่อนบันทึก','Pick the PDF / photo — items, prices, date, VAT and supplier are read for you. Check before saving.')}</div><div id="scanMsg"></div></div>
+   <label class="btn">📄 ${L('เลือกใบเสนอราคา','Choose quotation')}<input type="file" id="qfile" accept=".pdf,.jpg,.jpeg,.png" class="hidden" onchange="pickQuote(this.files[0])"></label></div>`:''}
+  <div class="card" style="margin-top:12px"><div class="grid2">
+   <label class="f">${L('บริษัท','Company')} *<select class="in" id="f_co">${ME.companies.map(c=>`<option value="${c.code}" ${F.company===c.code?'selected':''}>${esc(c.code)} — ${esc(c.name)}</option>`).join('')}</select></label>
+   <label class="f">${L('แผนก','Department')} *<select class="in" id="f_dep">${ME.departments.map(x=>`<option value="${x.code}" ${F.department===x.code?'selected':''}>${esc(x.code)} — ${esc(TH()?x.name_th:x.name_en)}</option>`).join('')}</select></label>
+   <label class="f">${L('วันที่ขอซื้อ','Request date')} *<input type="date" class="in" id="f_date" value="${esc(F.request_date)}"></label>
+   <label class="f">${L('วัตถุประสงค์','Purpose')} *<select class="in" id="f_pur" onchange="$('#f_otw').classList.toggle('hidden',this.value!=='Other')">${sel(ME.purposes,F.purpose)}</select></label>
+   <label class="f ${F.purpose==='Other'?'':'hidden'}" id="f_otw">${L('ระบุวัตถุประสงค์','Other purpose')} *<input class="in" id="f_oth" maxlength="200" value="${esc(F.purpose_other)}"></label>
+   <label class="f">Supplier<div style="display:flex;gap:6px"><select class="in" id="f_sup"><option value="">${L('— ไม่ระบุ —','— none —')}</option>${SUPS.map(s=>`<option value="${s.id}" ${String(F.supplier_id)===String(s.id)?'selected':''}>${esc(s.company_name)}</option>`).join('')}</select>
+     <button type="button" class="btn" onclick="supDlg(null,true)" title="${L('เพิ่ม Supplier','Add supplier')}">＋</button></div></label></div>
+   <label class="f" style="margin-top:12px">${L('งานหรือเหตุผลในการขอซื้อ','Job / reason for buying')} *<textarea class="in" id="f_rea" rows="3" maxlength="2000">${esc(F.reason)}</textarea></label></div>
+  <div class="card" style="margin-top:12px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h2 style="margin:0">${L('รายการ','Items')}</h2>
+   <button class="btn sm" onclick="addItem()">＋ ${L('เพิ่มแถว','Add line')}</button></div>
+   <div class="tw" style="margin-top:8px;max-height:none"><table class="items"><thead><tr><th>#</th><th>${L('รายการ','Description')}</th><th style="width:110px">${L('จำนวน','Qty')}</th><th style="width:140px">${L('ราคา/หน่วย','Unit price')}</th><th class="r" style="width:130px">${L('รวม','Amount')}</th><th class="hide-m">${L('หมายเหตุ','Note')}</th><th></th></tr></thead><tbody id="items"></tbody></table></div>
+   <div id="amtw" class="${F.items.length?'hidden':''}" style="margin-top:10px"><label class="f" style="max-width:260px">${L('หรือยอดรวมก่อน VAT (เอกสารเดิมที่ไม่มีรายการ)','Or a total before VAT (old documents without lines)')}<input class="in" id="f_amt" inputmode="decimal" value="${esc(F.amount)}" oninput="FORM.amount=this.value;calc()"></label></div>
+   <div style="display:flex;justify-content:flex-end;margin-top:12px"><div style="min-width:300px">
+    <div class="kv"><span>${L('รวมก่อน VAT','Before VAT')}</span><b id="t_sub">0.00</b></div>
+    <div class="kv"><span><label style="display:flex;gap:6px;align-items:center;margin:0;cursor:pointer"><input type="checkbox" id="f_vat" ${F.vat_included?'checked':''} onchange="FORM.vat_included=this.checked;calc()"> VAT 7%</label></span><b id="t_vat">0.00</b></div>
+    <div class="kv big"><span>${L('ยอดสุทธิ','Net total')}</span><b id="t_net">0.00</b></div></div></div></div>
+  ${!d?`<div class="card" style="margin-top:12px"><h2>${L('ไฟล์ใบเสนอราคา','Quotation file')}</h2><div id="qsel" class="muted">${L('ยังไม่ได้แนบ — บันทึกได้ก่อน แล้วแนบภายหลัง (สถานะจะเป็น "รอใบเสนอราคา")','Not attached — you may save now and attach later (status stays "Waiting for quotation")')}</div></div>`:''}
+  <div id="ferr"></div>
+  <div class="btns" style="margin-top:14px"><button class="btn pri" id="saveBtn" onclick="saveForm()">💾 ${L('บันทึก','Save')}</button><button class="btn" onclick="history.back()">${L('ยกเลิก','Cancel')}</button></div>`;
+  drawItems();
+  if(!d){const dr=$('#drop');['dragover','dragenter'].forEach(e=>dr.addEventListener(e,ev=>{ev.preventDefault();dr.classList.add('on');}));
+    ['dragleave','drop'].forEach(e=>dr.addEventListener(e,ev=>{ev.preventDefault();dr.classList.remove('on');}));dr.addEventListener('drop',ev=>{const f=ev.dataTransfer.files[0];if(f)pickQuote(f);});}
+}
+function drawItems(){
+  const b=$('#items');if(!b)return;
+  b.innerHTML=FORM.items.map((it,i)=>`<tr><td class="n">${i+1}</td>
+   <td><input class="in" value="${esc(it.description)}" maxlength="500" oninput="FORM.items[${i}].description=this.value"></td>
+   <td><input class="in r" inputmode="decimal" value="${esc(it.quantity)}" oninput="FORM.items[${i}].quantity=this.value;calc()"></td>
+   <td><input class="in r" inputmode="decimal" value="${esc(it.unit_price)}" oninput="FORM.items[${i}].unit_price=this.value;calc()"></td>
+   <td class="r" id="lt${i}">0.00</td>
+   <td class="hide-m"><input class="in" value="${esc(it.note||'')}" maxlength="500" oninput="FORM.items[${i}].note=this.value"></td>
+   <td><button class="btn sm badl" title="${L('ลบแถว','Remove line')}" onclick="FORM.items.splice(${i},1);drawItems()">✕</button></td></tr>`).join('')
+   ||`<tr><td colspan="7" class="muted" style="padding:10px">${L('ไม่มีรายการ','No lines')}</td></tr>`;
+  const w=$('#amtw');if(w)w.classList.toggle('hidden',FORM.items.length>0);
+  calc();
+}
+function addItem(){FORM.items.push({description:'',quantity:'',unit_price:'',note:''});drawItems();const r=$('#items').lastElementChild;if(r)r.querySelector('input').focus();}
+const num=v=>{const n=parseFloat(String(v||'').replace(/,/g,''));return isFinite(n)?n:0;};
+const r2=n=>Math.round((n+Number.EPSILON)*100)/100;
+function calc(){
+  let sub=0;FORM.items.forEach((it,i)=>{const t=r2(num(it.quantity)*num(it.unit_price));sub+=t;const c=$('#lt'+i);if(c)c.textContent=money(t);});
+  if(!FORM.items.length)sub=num(FORM.amount);
+  const vat=FORM.vat_included?r2(sub*0.07):0;
+  $('#t_sub').textContent=money(sub);$('#t_vat').textContent=money(vat);$('#t_net').textContent=money(sub+vat);
+}
+async function pickQuote(f){
+  const e=checkFile(f);if(e){$('#scanMsg').innerHTML=err(e);return;}
+  FORM.file=f;$('#qsel').innerHTML=`📎 <b>${esc(f.name)}</b> <span class="muted">(${(f.size/1024).toFixed(0)} KB) — ${L('จะแนบเมื่อบันทึก','attached when you save')}</span>`;
+  $('#scanMsg').innerHTML=`<div class="msg m-info">⏳ ${L('กำลังอ่านใบเสนอราคา…','Reading the quotation…')}</div>`;
+  try{
+    const r=await post('/api/pr/scan',await readFile(f));
+    if(r.request_date)$('#f_date').value=r.request_date;
+    if(r.vat_included!==''&&r.vat_included!=null){FORM.vat_included=r.vat_included==='1';$('#f_vat').checked=FORM.vat_included;}
+    if(r.supplier_id){$('#f_sup').value=r.supplier_id;}
+    if(r.items&&r.items.length){FORM.items=r.items.map(i=>({description:i.description,quantity:i.quantity,unit_price:i.unit_price,note:i.note||''}));drawItems();}
+    const w=(r.warnings||[]).map(x=>`<div>• ${esc(x)}</div>`).join('');
+    const sup=!r.supplier_id&&r.supplier_name?`<div>• Supplier: <b>${esc(r.supplier_name)}</b> — ${L('ยังไม่มีในระบบ','not in the list yet')} <a href="#" onclick="supDlg({company_name:${esc(JSON.stringify(r.supplier_name))}},true);return false">${L('เพิ่ม','add it')}</a></div>`:'';
+    $('#scanMsg').innerHTML=`<div class="msg ${w?'m-warn':'m-ok'}">✓ ${L('อ่านแล้ว','Read')} (${r.method==='ocr'?'OCR':L('ข้อความใน PDF','PDF text')}) — ${r.items.length} ${L('รายการ','lines')}${r.grand_total?` · ${L('ยอดรวมในใบเสนอราคา','quotation total')} ${money(r.grand_total)}`:''}${sup}${w}</div>`;
+  }catch(e){$('#scanMsg').innerHTML=`<div class="msg m-warn">${esc(e.message)} — ${L('กรอกเองได้ ไฟล์ยังแนบให้เมื่อบันทึก','fill the form by hand; the file is still attached when you save')}</div>`;}
+}
+async function saveForm(){
+  const b={company:$('#f_co').value,department:$('#f_dep').value,request_date:$('#f_date').value,purpose:$('#f_pur').value,purpose_other:$('#f_oth').value,
+    reason:$('#f_rea').value,supplier_id:$('#f_sup').value||null,vat_included:$('#f_vat').checked,items:FORM.items,amount:FORM.items.length?'':(FORM.amount||'')};
+  const btn=$('#saveBtn');btn.disabled=true;$('#ferr').innerHTML='';
+  try{
+    let d=FORM.id?await put('/api/pr/requests/'+FORM.id,b):await post('/api/pr/requests',b);
+    if(FORM.file){try{d=await post(`/api/pr/requests/${d.id}/files/quotation`,await readFile(FORM.file));}catch(e){toast(L('บันทึกแล้ว แต่แนบไฟล์ไม่สำเร็จ: ','Saved, but the file failed: ')+e.message);}}
+    toast(L('บันทึก ','Saved ')+d.doc_code);counts();go('detail',d.id);
+  }catch(e){$('#ferr').innerHTML=err(e);btn.disabled=false;}
+}
+
+/* ════════ detail ════════ */
+let CUR=null;
+async function pgDetail(id){
+  const A=$('#app');A.innerHTML='<div class="card skel">Loading…</div>';
+  try{CUR=await api('/api/pr/requests/'+id);}catch(e){A.innerHTML=err(e);return;}
+  drawDetail();
+}
+function drawDetail(){
+  const d=CUR,A=$('#app');
+  const fileBox=(k,t,need)=>{const f=d.files[k],ok=can(need)&&(k!=='quotation'||d.can_edit);
+    return `<div class="fbox"><div style="font-size:22px">${f?'📄':'▫️'}</div><div class="t"><b>${t}</b><span>${f?esc(f.name)+' · '+dmy(f.at)+(f.by?' · '+esc(f.by):''):L('ยังไม่ได้แนบ','not attached')}</span></div>
+     ${f?`<a class="btn sm" target="_blank" href="/api/pr/requests/${d.id}/files/${k}">${L('เปิด','Open')}</a>`:''}
+     ${ok?`<label class="btn sm">${f?L('เปลี่ยน','Replace'):L('แนบ','Attach')}<input type="file" accept=".pdf,.jpg,.jpeg,.png" class="hidden" onchange="upFile('${k}',this.files[0])"></label>`:''}
+     ${ok&&f?`<button class="btn sm badl" onclick="rmFile('${k}')">${L('ลบ','Remove')}</button>`:''}</div>`;};
+  const act=[];
+  if(d.can_edit&&can('create'))act.push(`<button class="btn" onclick="go('edit',${d.id})">✏️ ${L('แก้ไข','Edit')}</button>`);
+  if(can('approve')){
+    if(d.status!=='approved')act.push(`<button class="btn ok" ${d.ready?'':'disabled title="'+L('ต้องมียอดรวมและใบเสนอราคา','needs amount + quotation')+'"'} onclick="setStatus('approved')">✓ ${L('อนุมัติ','Approve')}</button>`);
+    if(d.status!=='cancelled')act.push(`<button class="btn badl" onclick="cancelDlg()">✕ ${L('ยกเลิกเอกสาร','Cancel request')}</button>`);
+    if(d.status==='approved'||d.status==='cancelled')act.push(`<button class="btn" onclick="setStatus('reopen')">↺ ${L('เปิดใหม่','Reopen')}</button>`);
+  }
+  if(can('manage_pr'))act.push(`<button class="btn" onclick="trackDlg('pr')"># ${L('เลข PR','PR number')}</button>`);
+  if(can('manage_po'))act.push(`<button class="btn" onclick="trackDlg('po')"># ${L('เลข PO','PO number')}</button>`);
+  act.push(`<button class="btn" onclick="window.print()">🖨 ${L('พิมพ์','Print')}</button>`);
+  if(can('delete'))act.push(`<button class="btn bad" onclick="delReq()">🗑 ${L('ลบ','Delete')}</button>`);
+  const why=d.status==='waiting_quotation'?`<div class="msg m-info">${!d.amount_entered?L('ยังไม่มียอดรวม/รายการ — ','No amount / lines yet — '):''}${!(d.files.quotation||d.files.pr)?L('ยังไม่ได้แนบใบเสนอราคา','quotation not attached yet'):''}</div>`:'';
+  A.innerHTML=`<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn sm" onclick="history.length>1?history.back():go('list')">←</button>
+   <h1 style="margin:0">${esc(d.doc_code)}</h1>${pill(d.status)}</div>
+  <p class="sub" style="margin-top:6px">${esc(d.company)} · ${esc(depName(d.department))} · ${L('ผู้ขอซื้อ','Requester')} <b>${esc(d.requester_name)}</b> · ${dmy(d.request_date)}</p>
+  ${why}${d.status==='cancelled'&&d.status_note?`<div class="msg m-bad">${L('เหตุผลที่ยกเลิก','Cancelled because')}: ${esc(d.status_note)}</div>`:''}
+  <div class="btns" style="margin-bottom:12px">${act.join('')}</div><div id="derr"></div>
+  <div class="vgrid">
+   <div><small>${L('บริษัท','Company')}</small><b>${esc(d.company)}</b><div class="muted">${esc(coName(d.company))}</div></div>
+   <div><small>${L('วัตถุประสงค์','Purpose')}</small><b>${esc(T(ME.purposes[d.purpose])||d.purpose)}${d.purpose_other?' — '+esc(d.purpose_other):''}</b></div>
+   <div><small>Supplier</small><b>${esc(d.supplier_name)||'—'}</b></div>
+   <div><small>${L('เลข PR','PR number')}</small><b class="mono">${esc(d.pr_number)||'—'}</b> ${d.pr_status?pill(d.pr_status,ME.pr_statuses):''}<div class="muted">${dmy(d.pr_date)}${d.pr_cancel_reason?' · '+esc(d.pr_cancel_reason):''}</div></div>
+   <div><small>${L('เลข PO','PO number')}</small><b class="mono">${esc(d.po_number)||'—'}</b> ${d.po_status?pill(d.po_status,ME.po_statuses):''}<div class="muted">${dmy(d.po_date)}${d.po_cancel_reason?' · '+esc(d.po_cancel_reason):''}</div></div></div>
+  <div class="card" style="margin-bottom:12px"><h2>${L('งาน/เหตุผล','Job / reason')}</h2><div style="white-space:pre-wrap">${esc(d.reason)}</div></div>
+  <div class="card" style="margin-bottom:12px"><h2>${L('รายการ','Items')}</h2>
+   ${d.items.length?`<div class="tw" style="max-height:none"><table><thead><tr><th>#</th><th>${L('รายการ','Description')}</th><th class="r">${L('จำนวน','Qty')}</th><th class="r">${L('ราคา/หน่วย','Unit price')}</th><th class="r">${L('รวม','Amount')}</th><th>${L('หมายเหตุ','Note')}</th></tr></thead>
+    <tbody>${d.items.map(i=>`<tr><td>${i.position}</td><td>${esc(i.description)}</td><td class="r">${money(i.quantity)}</td><td class="r">${money(i.unit_price)}</td><td class="r">${money(i.line_total)}</td><td class="muted">${esc(i.note)}</td></tr>`).join('')}</tbody></table></div>`
+    :`<div class="muted">${d.amount_entered?L('เอกสารเดิม: มีเฉพาะยอดรวม','Old document: total only'):L('ยังไม่มีรายการ','No lines yet')}</div>`}
+   <div style="display:flex;justify-content:flex-end;margin-top:10px"><div style="min-width:280px">
+    <div class="kv"><span>${L('รวมก่อน VAT','Before VAT')}</span><b>${d.amount_entered?money(d.subtotal):'—'}</b></div>
+    <div class="kv"><span>VAT 7% ${d.vat_included?'':L('(ไม่คิด)','(not charged)')}</span><b>${money(d.vat)}</b></div>
+    ${Number(d.withholding_amount)?`<div class="kv"><span>${L('หัก ณ ที่จ่าย','Withholding')}</span><b>-${money(d.withholding_amount)}</b></div>`:''}
+    <div class="kv big"><span>${L('ยอดสุทธิ','Net total')}</span><b>${d.amount_entered?money(d.net_total):'—'}</b></div></div></div></div>
+  <div class="grid2"><div class="card"><h2>${L('ไฟล์แนบ','Files')}</h2>
+    ${fileBox('quotation',L('ใบเสนอราคา','Quotation'),'create')}${fileBox('pr',L('เอกสาร PR','PR document'),'manage_pr')}${fileBox('po',L('เอกสาร PO','PO document'),'manage_po')}</div>
+   <div class="card"><h2>${L('ความเคลื่อนไหว','History')}</h2>${d.log.map(l=>`<div class="tl"><b>${esc(l.summary)}</b><br><span>${dmy(l.created_at)} · ${esc(l.user_name)}</span></div>`).join('')||'<div class="muted">—</div>'}</div></div>`;
+}
+async function upFile(k,f){const e=checkFile(f);if(e){$('#derr').innerHTML=err(e);return;}
+  try{CUR=await post(`/api/pr/requests/${CUR.id}/files/${k}`,await readFile(f));drawDetail();toast(L('แนบไฟล์แล้ว','File attached'));counts();}catch(e){$('#derr').innerHTML=err(e);}}
+async function rmFile(k){if(!confirm(L('ลบไฟล์นี้?','Remove this file?')))return;
+  try{CUR=await del(`/api/pr/requests/${CUR.id}/files/${k}`);drawDetail();counts();}catch(e){$('#derr').innerHTML=err(e);}}
+async function setStatus(s,note){try{CUR=await post(`/api/pr/requests/${CUR.id}/status`,{status:s,note:note||''});close_();drawDetail();counts();toast(T(ME.statuses[CUR.status]));}catch(e){const t=$('#merr')||$('#derr');t.innerHTML=err(e);}}
+function cancelDlg(){modal(`<h2>${L('ยกเลิกเอกสาร','Cancel request')} ${esc(CUR.doc_code)}</h2><label class="f">${L('เหตุผลที่ยกเลิก','Reason')} *<textarea class="in" id="cnote" rows="3" maxlength="500"></textarea></label><div id="merr"></div>
+  <div class="btns" style="margin-top:12px"><button class="btn bad" onclick="setStatus('cancelled',$('#cnote').value)">${L('ยืนยันยกเลิก','Cancel it')}</button><button class="btn" onclick="close_()">${L('ปิด','Close')}</button></div>`);}
+function trackDlg(k){
+  const d=CUR,pfx=k==='po'?((ME.companies.find(c=>c.code===d.company)||{}).po_prefix||''):'';
+  const num=d[k+'_number']||'',short=k==='pr'?num.replace(/^PR/,''):num.replace(/^[A-Z]+-PO/,'');
+  const sts=k==='pr'?ME.pr_statuses:ME.po_statuses;
+  modal(`<h2>${k==='pr'?L('เลข PR','PR number'):L('เลข PO','PO number')} · ${esc(d.doc_code)}</h2>
+   <label class="f">${L('เลขที่','Number')} <div style="display:flex;align-items:center;gap:6px"><b class="mono">${k==='pr'?'PR':esc(pfx)+'-PO'}</b><input class="in mono" id="tnum" value="${esc(short)}" placeholder="${k==='pr'?'YYMM-XXXX':'XXXX-XXXX'}" style="text-transform:uppercase"></div></label>
+   ${k==='pr'?`<div class="muted" style="margin:6px 0">${L('ใส่เลข PR = อนุมัติเอกสารด้วย (ต้องมียอดรวม + ใบเสนอราคา) · ว่าง = รออนุมัติ','Entering the PR number approves the request too (amount + quotation needed) · empty = waiting')}</div>`:''}
+   <label class="f" style="margin-top:8px">${L('สถานะ','Status')}<select class="in" id="tst" onchange="$('#tcw').classList.toggle('hidden',this.value!=='cancelled')"><option value="">${k==='pr'?L('ตามเลข PR','follows the number'):'—'}</option>${Object.entries(sts).map(([v,t])=>`<option value="${v}" ${d[k+'_status']===v&&(k==='po'||v==='cancelled')?'selected':''}>${esc(T(t))}</option>`).join('')}</select></label>
+   <label class="f" style="margin-top:8px">${L('วันที่','Date')}<input type="date" class="in" id="tdt" value="${esc(d[k+'_date']||'')}"></label>
+   <label class="f ${d[k+'_status']==='cancelled'?'':'hidden'}" id="tcw" style="margin-top:8px">${L('เหตุผลที่ยกเลิก','Cancel reason')}<textarea class="in" id="tcr" rows="2" maxlength="500">${esc(d[k+'_cancel_reason']||'')}</textarea></label>
+   <div id="merr"></div><div class="btns" style="margin-top:12px"><button class="btn pri" onclick="saveTrack('${k}')">${L('บันทึก','Save')}</button><button class="btn" onclick="close_()">${L('ปิด','Close')}</button></div>`);
+}
+async function saveTrack(k){try{CUR=await post(`/api/pr/requests/${CUR.id}/tracking/${k}`,{number:$('#tnum').value,status:$('#tst').value,date:$('#tdt').value,cancel_reason:$('#tcr').value});close_();drawDetail();counts();toast(L('บันทึกแล้ว','Saved'));}catch(e){$('#merr').innerHTML=err(e);}}
+async function delReq(){if(!confirm(L(`ลบเอกสาร ${CUR.doc_code} และไฟล์แนบทั้งหมด? ย้อนกลับไม่ได้`,`Delete ${CUR.doc_code} and all its files? This cannot be undone.`)))return;
+  try{await del('/api/pr/requests/'+CUR.id);toast(L('ลบแล้ว','Deleted'));counts();go('list');}catch(e){$('#derr').innerHTML=err(e);}}
+
+/* ════════ suppliers ════════ */
+async function pgSup(){
+  const A=$('#app');A.innerHTML='<div class="card skel">Loading…</div>';
+  try{SUPS=null;await loadSups();}catch(e){A.innerHTML=err(e);return;}
+  A.innerHTML=`<h1>Supplier</h1><p class="sub">${L('ผู้ขาย / ผู้รับจ้าง ที่เลือกได้ในใบขอซื้อ','Sellers / contractors to pick on a request')}</p>
+  <div class="bar"><label class="f" style="flex:1">${L('ค้นหา','Search')}<input class="in" style="width:100%" oninput="supFilter(this.value)"></label><button class="btn pri" onclick="supDlg(null)">＋ ${L('เพิ่ม Supplier','Add supplier')}</button></div>
+  <div class="tw"><table><thead><tr><th>${L('ชื่อบริษัท','Company')}</th><th>${L('โทร','Phone')}</th><th class="hide-m">Email</th><th class="hide-m">LINE</th><th class="hide-m">${L('หมายเหตุ','Note')}</th><th class="r">${L('ใช้ใน PR','Used')}</th><th></th></tr></thead>
+  <tbody id="supb">${SUPS.map(s=>`<tr data-k="${esc((s.company_name+' '+s.phone+' '+s.email).toLowerCase())}"><td><b>${esc(s.company_name)}</b><div class="muted">${esc(s.address)}</div></td><td class="nw">${esc(s.phone)}</td><td class="hide-m">${esc(s.email)}</td><td class="hide-m">${esc(s.line_id)}</td><td class="hide-m muted">${esc(s.note)}</td><td class="r">${s.used}</td>
+   <td class="nw">${can('manage_suppliers')?`<button class="btn sm" onclick='supDlg(${JSON.stringify(s).replace(/'/g,"&#39;")})'>${L('แก้ไข','Edit')}</button> <button class="btn sm badl" onclick="supDel(${s.id})">${L('ลบ','Delete')}</button>`:''}</td></tr>`).join('')||`<tr><td colspan="7" class="muted">${L('ยังไม่มี Supplier','No suppliers yet')}</td></tr>`}</tbody></table></div>`;
+}
+function supFilter(q){q=q.toLowerCase();document.querySelectorAll('#supb tr[data-k]').forEach(r=>r.classList.toggle('hidden',q&&!r.dataset.k.includes(q)));}
+function supDlg(s,fromForm){
+  s=s||{};const f=(k,t,type)=>`<label class="f" style="margin-top:8px">${t}${type==='ta'?`<textarea class="in" id="s_${k}" rows="2">${esc(s[k]||'')}</textarea>`:`<input class="in" id="s_${k}" value="${esc(s[k]||'')}">`}</label>`;
+  modal(`<h2>${s.id?L('แก้ไข Supplier','Edit supplier'):L('เพิ่ม Supplier','Add supplier')}</h2>${f('company_name',L('ชื่อบริษัท','Company name')+' *')}${f('address',L('ที่อยู่','Address'),'ta')}
+   <div class="grid2">${f('phone',L('เบอร์โทร','Phone'))}${f('email','Email')}${f('line_id','ID LINE')}</div>${f('note',L('หมายเหตุ','Note'),'ta')}<div id="merr"></div>
+   <div class="btns" style="margin-top:12px"><button class="btn pri" onclick="supSave(${s.id||0},${!!fromForm})">${L('บันทึก','Save')}</button><button class="btn" onclick="close_()">${L('ปิด','Close')}</button></div>`);
+}
+async function supSave(id,fromForm){
+  const b={};['company_name','address','phone','email','line_id','note'].forEach(k=>b[k]=$('#s_'+k).value);
+  try{const r=id?await put('/api/pr/suppliers/'+id,b):await post('/api/pr/suppliers',b);close_();SUPS=null;
+    if(fromForm&&$('#f_sup')){await loadSups();const sel=$('#f_sup');sel.innerHTML=`<option value="">${L('— ไม่ระบุ —','— none —')}</option>`+SUPS.map(s=>`<option value="${s.id}">${esc(s.company_name)}</option>`).join('');sel.value=r.id;}
+    else pgSup();toast(L('บันทึกแล้ว','Saved'));}catch(e){$('#merr').innerHTML=err(e);}
+}
+async function supDel(id){if(!confirm(L('ลบ Supplier นี้? (เอกสารเดิมยังเก็บชื่อไว้)','Delete this supplier? (old requests keep the name)')))return;try{await del('/api/pr/suppliers/'+id);pgSup();}catch(e){alert(e.message);}}
+
+/* ════════ activity log ════════ */
+let LOGQ={page:1,q:'',action:''};
+async function pgLog(){
+  const A=$('#app');
+  if(!$('#logb')){A.innerHTML=`<h1>${L('ประวัติความเคลื่อนไหว','Activity log')}</h1><p class="sub">${L('ทุกการสร้าง แก้ไข อนุมัติ แนบไฟล์ และลบ — เก็บไว้แม้เอกสารถูกลบ','Every create, change, approval, file and delete — kept even after a request is deleted')}</p>
+   <div class="bar" id="logb"><label class="f" style="flex:1">${L('ค้นหา','Search')}<input class="in" style="width:100%" value="${esc(LOGQ.q)}" oninput="clearTimeout(LT);LT=setTimeout(()=>{LOGQ.q=this.value;LOGQ.page=1;pgLog()},300)"></label>
+   <label class="f">${L('การกระทำ','Action')}<select class="in" onchange="LOGQ.action=this.value;LOGQ.page=1;pgLog()"><option value="">${L('ทั้งหมด','All')}</option>${['CREATE','UPDATE','STATUS','TRACKING','FILE','DELETE','SUPPLIER','USER'].map(a=>`<option>${a}</option>`).join('')}</select></label></div><div id="logr"></div>`;}
+  let d;try{d=await api('/api/pr/log?'+qs(LOGQ));}catch(e){$('#logr').innerHTML=err(e);return;}
+  const pages=Math.max(1,Math.ceil(d.total/d.size));
+  $('#logr').innerHTML=`<div class="tw"><table><thead><tr><th>${L('เวลา','Time')}</th><th>${L('การกระทำ','Action')}</th><th>${L('เอกสาร','Document')}</th><th>${L('รายละเอียด','Details')}</th><th>${L('โดย','By')}</th></tr></thead><tbody>
+   ${d.rows.map(r=>`<tr class="${r.request_id?'click':''}" ${r.request_id?`onclick="go('detail',${r.request_id})"`:''}><td class="nw">${dmy(r.created_at)}</td><td><span class="pill" style="background:#E2E8F0">${esc(r.action)}</span></td><td class="nw">${esc(r.doc_code)}</td><td>${esc(r.summary)}</td><td class="nw">${esc(r.user_name)}</td></tr>`).join('')}</tbody></table></div>
+   <div class="pager"><span class="muted">${d.total} · ${L('หน้า','page')} ${d.page}/${pages}</span><span class="btns"><button class="btn sm" ${d.page<=1?'disabled':''} onclick="LOGQ.page--;pgLog()">‹</button><button class="btn sm" ${d.page>=pages?'disabled':''} onclick="LOGQ.page++;pgLog()">›</button></span></div>`;
+}
+
+/* ════════ users (who may use PR) ════════ */
+async function pgUsers(){
+  const A=$('#app');A.innerHTML='<div class="card skel">Loading…</div>';
+  let d;try{d=await api('/api/pr/users');}catch(e){A.innerHTML=err(e);return;}
+  const roles=Object.keys(ME.roles);
+  A.innerHTML=`<h1>${L('ผู้ใช้งาน PR','PR users')}</h1><p class="sub">${L('ใช้บัญชีเดียวกับ CMMS — เลือกบทบาท PR ให้แต่ละคน (ว่าง = ไม่เห็นเมนู PR). ตั้งได้ที่ CMMS › จัดการ › ผู้ใช้ ด้วย','Same accounts as the CMMS — pick a PR role per person (empty = no PR menu). Also set in CMMS › Manage › Users.')}</p>
+  <div class="card" style="margin-bottom:12px;font-size:13.5px"><b>User</b> ${L('สร้าง/แก้ไขเอกสารที่ยังไม่อนุมัติ','create / edit requests not yet approved')} · <b>PR Admin</b> ${L('+ เลข PR / ไฟล์ PR','+ PR number / PR file')} · <b>PO Admin</b> ${L('+ เลข PO / ไฟล์ PO / ข้อมูล Supplier','+ PO number / PO file / suppliers')} · <b>${esc(T(ME.roles.approver))}</b> ${L('+ อนุมัติ/ยกเลิก + ประวัติ','+ approve / cancel + activity log')} · <b>Super Admin</b> ${L('ทุกสิทธิ์ + ลบ + ผู้ใช้','everything + delete + users')}</div>
+  <div class="bar"><label class="f" style="flex:1">${L('ค้นหา','Search')}<input class="in" style="width:100%" oninput="const q=this.value.toLowerCase();document.querySelectorAll('#ub tr').forEach(r=>r.classList.toggle('hidden',q&&!r.dataset.k.includes(q)))"></label></div>
+  <div class="tw"><table><thead><tr><th>${L('ชื่อ','Name')}</th><th>${L('ชื่อผู้ใช้','Username')}</th><th class="hide-m">CMMS</th><th class="hide-m">${L('แผนก','Dept')}</th><th>${L('บทบาท PR','PR role')}</th></tr></thead><tbody id="ub">
+   ${d.users.map(u=>`<tr data-k="${esc((u.name+' '+u.username+' '+u.department).toLowerCase())}"><td><b>${esc(u.name)}</b></td><td class="mono">${esc(u.username)}</td><td class="hide-m">${esc(u.role)}</td><td class="hide-m">${esc(u.department)}</td>
+    <td>${u.role==='admin'?`<span class="muted">Super Admin (CMMS admin)</span>`:`<select class="in sm" onchange="setRole(${u.id},this)"><option value="">— ${L('ไม่มีสิทธิ์','no access')} —</option>${roles.map(r=>`<option value="${r}" ${u.pr_role===r?'selected':''}>${esc(T(ME.roles[r]))}</option>`).join('')}</select>`}</td></tr>`).join('')}</tbody></table></div>`;
+}
+async function setRole(id,el){try{await post('/api/pr/users/'+id,{pr_role:el.value});toast(L('บันทึกแล้ว','Saved'));}catch(e){alert(e.message);pgUsers();}}
+
+/* ════════ start ════════ */
+async function start(){
+  try{[ME,CORE]=await Promise.all([api('/api/pr/me'),api('/api/me').catch(()=>null)]);}
+  catch(e){if(e.status===401){location.href='/';return;}$('#app').innerHTML=err(e);return;}
+  hdr();
+  if(!ME.pr_role){$('#side').innerHTML='';$('#app').innerHTML=`<div class="card" style="max-width:520px;margin:40px auto"><h1>${L('ยังไม่มีสิทธิ์ใช้ PR','No PR access yet')}</h1>
+    <p class="sub">${L('ขอให้ผู้ดูแลระบบเลือกบทบาท PR ให้คุณที่ CMMS › จัดการ › ผู้ใช้','Ask the admin to give you a PR role in CMMS › Manage › Users')}</p><a class="btn" href="/">← CMMS</a></div>`;return;}
+  buildNav();route();counts();
+}
+start();
+</script>
+</body>
+</html>

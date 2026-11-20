@@ -952,6 +952,8 @@ async def create_job(req: Request):
         # raised with no machine has no plant, and every list treats that as all plants.
         c.execute("UPDATE jobs SET factory_id=? WHERE id=?", (fac, new_id))
         log_status(c, new_id, status, u["id"])
+        if b.get("due_date"):
+            log_due(c, new_id, u["id"], "", b.get("due_date"))
         c.commit()
         if jt == "BD" or int(b.get("priority", 1)) == 3:
             notify_users(role_ids(c, "technician", "planner", "manager", "engcenter", factory_id=fac),
@@ -993,6 +995,57 @@ async def delete_job(jid: int, req: Request):
         c.execute("DELETE FROM jobs WHERE id=?", (jid,))
         c.commit()
     return {"ok": True, "jobid": row["jobid"]}
+
+
+
+# b582: who set a job's due date. There is no column for it, so every change is written
+# into the job's own timeline as a system line with a fixed prefix, and the job page
+# reads the latest one back ("set by the planner · <name>").
+DUE_TAG = "📅 กำหนดเสร็จ / due date:"
+
+
+def log_due(c, jid, uid, old, new):
+    old = (old or "")[:10]
+    new = (new or "")[:10]
+    if old == new:
+        return
+    try:
+        nm = (c.execute("SELECT name FROM users WHERE id=?", (uid,)).fetchone() or {"name": ""})["name"]
+        from .chat import log_job_event as _lje
+        _lje(c, jid, uid, f"{DUE_TAG} {old or '—'} → {new or '—'} (โดย / by {nm})")
+    except Exception:
+        pass
+
+
+@router.get("/jobs/{jid}/cause-suggest")
+async def cause_suggest(jid: int, req: Request):
+    """b581: root causes to offer the technician on Complete — the ones already written
+    on this machine, then on the same reported symptom, most used first. Read-only; the
+    technician still picks or types the cause, nothing is filled in on their behalf."""
+    u = user_from(req)
+    fac = u.get("active_factory") or u.get("factory_id")
+    out, seen = [], set()
+    with closing(db()) as c:
+        j = job_row(c, jid)
+
+        def take(where, args, src):
+            for r in c.execute(
+                    "SELECT TRIM(root_cause) rc, COUNT(*) n, MAX(COALESCE(done_at,created_at)) last"
+                    " FROM jobs WHERE id<>? AND TRIM(COALESCE(root_cause,''))<>''"
+                    " AND (factory_id=? OR COALESCE(factory_id,0)=0) AND " + where +
+                    " GROUP BY TRIM(root_cause) ORDER BY n DESC, last DESC LIMIT 6",
+                    (jid, fac, *args)):
+                k = r["rc"].lower()
+                if k in seen:
+                    continue
+                seen.add(k)
+                out.append({"text": r["rc"], "n": r["n"], "src": src})
+
+        if j.get("machine_id"):
+            take("machine_id=?", (j["machine_id"],), "machine")
+        if j.get("problem_type"):
+            take("problem_type=?", (j["problem_type"],), "symptom")
+    return {"items": out[:8]}
 
 
 @router.patch("/jobs/{jid}")
@@ -1122,6 +1175,8 @@ async def update_job(jid: int, req: Request):
             raise HTTPException(409, "approve this request before planning it")
         c.execute(f"UPDATE jobs SET {','.join(k + '=?' for k in sets)} WHERE id=?",
                   (*sets.values(), jid))
+        if "due_date" in sets:
+            log_due(c, jid, u["id"], old["due_date"], sets["due_date"])
         # A corrected report is, for the shop floor, the report as of now: the planner
         # picking work off the queue should see the time the details were last right,
         # not when the first wrong version was typed. The original time is written into
@@ -1255,7 +1310,7 @@ async def job_detail(jid: int, req: Request):
         # every change of crew or day with the person who made it
         try:
             _ev = [dict(r) for r in c.execute(
-                "SELECT e.status, e.created_at, COALESCE(u.name,'') who FROM job_events e"
+                "SELECT e.status, e.created_at, COALESCE(u.name,'') who, COALESCE(u.role,'') role FROM job_events e"
                 " LEFT JOIN users u ON u.id=e.user_id WHERE e.job_id=? ORDER BY e.id", (jid,))]
         except Exception:
             _ev = []
@@ -1272,6 +1327,23 @@ async def job_detail(jid: int, req: Request):
             "completed": (_last("ServiceCompleted") or {}).get("who", ""),
             "approved": names.get(str(row.get("approver_id")), "") or (_last("Done") or {}).get("who", ""),
         }
+        # b582: who set the due date — the latest timeline line written by log_due; for a
+        # date set before that existed, the planner who last assigned the job
+        row["due_by"], row["due_by_at"] = "", ""
+        if row.get("due_date"):
+            try:
+                _d = c.execute("SELECT COALESCE(u.name,'') who, m.created_at FROM messages m"
+                               " LEFT JOIN users u ON u.id=m.author WHERE m.job_id=?"
+                               " AND m.kind='system' AND m.text LIKE ? ORDER BY m.id DESC LIMIT 1",
+                               (jid, DUE_TAG + "%")).fetchone()
+            except Exception:
+                _d = None
+            if _d and _d["who"]:
+                row["due_by"], row["due_by_at"] = _d["who"], _d["created_at"] or ""
+            else:
+                _a = next((e for e in reversed(_ev) if e["status"] == "Assigned"
+                           and e.get("role") in ("planner", "admin")), None)
+                row["due_by"] = (_a or {}).get("who", "")
         row["assign_log"] = [e for e in _ev if e["status"] in ("Assigned", "Hold", "Rework", "Cancelled", "WaitingAssignment")]
         # where each photo came from, so the screen can badge an uploaded one rather
         # than leaving the reader to assume every picture was taken at the machine
@@ -1622,6 +1694,10 @@ async def plan_jobs(req: Request):
                 if why:
                     raise HTTPException(409, why)
         qs = ",".join("?" * len(ids))
+        _olddue = {r["id"]: r["due_date"] for r in c.execute(
+            f"SELECT id, due_date FROM jobs WHERE id IN ({qs})", ids)}
+        for _jid in ids:
+            log_due(c, _jid, u["id"], _olddue.get(int(_jid) if str(_jid).isdigit() else _jid), due)
         c.execute(f"UPDATE jobs SET lead_tech=?, helpers=?, planned_date=?, due_date=?, planned_at=?, status=? WHERE id IN ({qs})",
                   (lead, helpers, pdate, due, now(), status, *ids))
         for _jid in ids:
@@ -2038,12 +2114,17 @@ async def seg_stop(req: Request):
             if action == "finish":
                 c.execute("UPDATE jobs SET done_at=? WHERE id=? AND done_at IS NULL",
                           (now(), seg["job_id"]))
+                # b581: a field the Complete dialog does not send is KEPT. This used to
+                # write '' into every one of them, so the root cause and problem were wiped
+                # on every job the moment the technician pressed Complete.
                 c.execute("""UPDATE jobs SET status='ServiceCompleted', progress=100,
-                    problem=?, root_cause=?, solution=?,
-                    fault_category=?, fault_component=?, maint_action=? WHERE id=?""",
-                    (b.get("problem", ""), b.get("root_cause", ""), b.get("solution", ""),
-                     b.get("fault_category", ""), b.get("fault_component", ""),
-                     b.get("maint_action", ""), seg["job_id"]))
+                    problem=COALESCE(?,problem), root_cause=COALESCE(?,root_cause),
+                    solution=COALESCE(?,solution), fault_category=COALESCE(?,fault_category),
+                    fault_component=COALESCE(?,fault_component),
+                    maint_action=COALESCE(?,maint_action) WHERE id=?""",
+                    (b.get("problem"), b.get("root_cause"), b.get("solution"),
+                     b.get("fault_category"), b.get("fault_component"),
+                     b.get("maint_action"), seg["job_id"]))
                 log_status(c, seg["job_id"], "ServiceCompleted", actor)
                 row = job_row(c, seg["job_id"])
                 # A finished PM sheet becomes a named record: the asset it was done on

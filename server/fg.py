@@ -253,6 +253,11 @@ def ensure(c):
         c.execute("UPDATE users SET fg_roles=COALESCE(fg_role,'') WHERE COALESCE(fg_role,'')<>''")
     if "fg_default" not in cols:
         c.execute("ALTER TABLE users ADD COLUMN fg_default TEXT DEFAULT ''")
+    # b575: customer details (checker PC) + who added it (the loader can add a customer while scanning)
+    ccols = _table_cols(c, "fg_customers")
+    for col in ("contact", "phone", "address", "note", "src", "created_by", "created_at", "updated_by", "updated_at"):
+        if col not in ccols:
+            c.execute(f"ALTER TABLE fg_customers ADD COLUMN {col} TEXT DEFAULT ''")
     if "fg_pages" not in cols:       # b570: FG Viewer — comma list of VIEW_PAGES this person may open
         c.execute("ALTER TABLE users ADD COLUMN fg_pages TEXT DEFAULT ''")
     if "fg_packsup" not in cols:     # b553: หัวหน้าแพค (pack supervisor / production manager) — approves scan overrides
@@ -1270,7 +1275,8 @@ async def scan_issue(req: Request):
 
 
 ISSUE_STEPS = {"correct": "pallet_correct", "not_correct": "pallet_not_correct", "full": "chose_full_pallet",
-               "part": "chose_part_pallet", "photo": "photo_taken", "back": "went_back", "cancel": "cancelled"}
+               "part": "chose_part_pallet", "photo": "photo_taken", "back": "went_back", "cancel": "cancelled",
+               "customer": "chose_customer", "same_customer": "same_customer_as_last"}     # b575
 
 
 @router.post("/issue-step")
@@ -2936,21 +2942,81 @@ async def customers(req: Request):
         return {"rows": [dict(r) for r in c.execute("SELECT * FROM fg_customers WHERE factory_id=? ORDER BY code", (fac,))]}
 
 
+CUST_DETAIL = ("contact", "phone", "address", "note")
+
+
 @router.post("/customers")
 async def customer_save(req: Request):
+    """Checker PC / admin: add or edit a customer (b575: + contact, phone, address, note; who / when)."""
     u, fac, _ = ctx(req, "master")
     b = await req.json()
-    code = (b.get("code") or "").strip()
+    code = (b.get("code") or "").strip().upper()
+    name = (b.get("name") or "").strip()
     if not code:
-        raise HTTPException(400, {"msg": "code required"})
+        raise HTTPException(400, {"msg": "ใส่รหัสลูกค้า (code required)"})
+    if not name:
+        raise HTTPException(400, {"msg": "ใส่ชื่อลูกค้า (name required)"})
+    who, t = _who(u), now()
+    det = {k: (str(b.get(k) or "")).strip()[:300] for k in CUST_DETAIL if k in b}
     with closing(conn()) as c:
-        if c.execute("SELECT 1 FROM fg_customers WHERE factory_id=? AND code=?", (fac, code)).fetchone():
-            c.execute("UPDATE fg_customers SET name=?,active=? WHERE factory_id=? AND code=?",
-                      ((b.get("name") or "").strip(), 1 if b.get("active", True) else 0, fac, code))
+        old = c.execute("SELECT id, name FROM fg_customers WHERE factory_id=? AND code=?", (fac, code)).fetchone()
+        if old and b.get("new"):          # "Add customer" with a code already in use: never overwrite that customer
+            raise HTTPException(409, {"msg": f"รหัส {code} มีแล้ว ({old['name']}) — ใช้รหัสอื่น (code already used)"})
+        if old:
+            # saving a customer the loader added = checked by the checker PC (the "from loader" mark goes)
+            sets = ["name=?", "active=?", "updated_by=?", "updated_at=?",
+                    "src=CASE WHEN src='loader' THEN 'checked' ELSE src END"] + [f"{k}=?" for k in det]
+            c.execute(f"UPDATE fg_customers SET {','.join(sets)} WHERE id=?",
+                      [name, 1 if b.get("active", True) else 0, who, t] + list(det.values()) + [old["id"]])
         else:
-            c.execute("INSERT INTO fg_customers(factory_id,code,name,active) VALUES(?,?,?,1)", (fac, code, (b.get("name") or "").strip()))
+            cols = ["factory_id", "code", "name", "active", "src", "created_by", "created_at"] + list(det)
+            c.execute(f"INSERT INTO fg_customers({','.join(cols)}) VALUES({','.join('?' * len(cols))})",
+                      [fac, code, name, 1, "master", who, t] + list(det.values()))
+        _log(c, fac, "customer", 0, "edit" if old else "add", f"{code} · {name}", who)
         c.commit()
-    return {"ok": True}
+    return {"ok": True, "code": code}
+
+
+def _cust_code(c, fac, name):
+    """b575: a code for a customer added by the loader — like the existing ones (AS0, AS1, BF0 …):
+    the first two A–Z letters of the name + the first free number; CU0, CU1 … for a Thai-only name."""
+    letters = re.sub(r"[^A-Z]", "", (name or "").upper())
+    pre = letters[:2] if len(letters) >= 2 else "CU"
+    used = {r["code"] for r in c.execute("SELECT code FROM fg_customers WHERE factory_id=? AND code LIKE ?", (fac, pre + "%"))}
+    i = 0
+    while f"{pre}{i}" in used:
+        i += 1
+    return f"{pre}{i}"
+
+
+@router.post("/customers/quick")
+async def customer_quick(req: Request):
+    """b575: the FG issuer (loader) adds a customer while scanning: name only (code optional, else made
+    for it). A name already in the list (same letters, any case / spacing) gives back that customer
+    instead of a duplicate. Marked src='loader' so the checker PC can review it in Customers."""
+    u, fac, _ = ctx(req, "view")
+    if not ({"issue", "master"} & caps_of(u)):
+        raise HTTPException(403, {"msg": "ไม่มีสิทธิ์ (no permission)"})
+    b = await req.json()
+    name = re.sub(r"\s+", " ", (b.get("name") or "").strip())[:120]
+    code = (b.get("code") or "").strip().upper()[:20]
+    if len(name) < 2:
+        raise HTTPException(400, {"msg": "ใส่ชื่อลูกค้า (type the customer name)"})
+    key = lambda v: re.sub(r"\s+", "", (v or "").lower())
+    with closing(conn()) as c:
+        for r in c.execute("SELECT code,name,active FROM fg_customers WHERE factory_id=?", (fac,)).fetchall():
+            if key(r["name"]) == key(name) or (code and r["code"].upper() == code):
+                if not r["active"]:
+                    c.execute("UPDATE fg_customers SET active=1 WHERE factory_id=? AND code=?", (fac, r["code"]))
+                    c.commit()
+                return {"ok": True, "code": r["code"], "name": r["name"], "existing": True}
+        code = code or _cust_code(c, fac, name)
+        who = _who(u)
+        c.execute("""INSERT INTO fg_customers(factory_id,code,name,active,src,created_by,created_at)
+                     VALUES(?,?,?,1,'loader',?,?)""", (fac, code, name, who, now()))
+        _log(c, fac, "customer", 0, "add", f"{code} · {name} (added while loading)", who)
+        c.commit()
+    return {"ok": True, "code": code, "name": name, "existing": False}
 
 
 @router.get("/people")
@@ -4093,6 +4159,46 @@ async def lot_dash_lots(req: Request):
                    FROM fg_packing WHERE factory_id=? AND src='slip' AND status<>'cancelled' AND COALESCE(lot_no,'')<>''
                    GROUP BY lot_no ORDER BY last DESC""", (fac,))]
     return {"lots": await asyncio.to_thread(_work)}
+
+
+@router.get("/lot-dash/month")
+async def lot_dash_month(req: Request, ym: str = ""):
+    """b578: Lot dashboard main list — every lot of one month as rows (one row per lot + product).
+    The month is the lot number's own date (YYMMDD… -> 20YY-MM-DD); a lot number that does not start with a
+    date falls back to the day it was first packed. Also returns every month that has lots (for the picker)."""
+    u, fac, _ = ctx(req, "view")
+
+    def _d(lot, first):
+        m = re.match(r"(\d{2})(\d{2})(\d{2})", lot or "")
+        if m:
+            y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+            if 1 <= mo <= 12 and 1 <= d <= 31:
+                return f"20{y:02d}-{mo:02d}-{d:02d}"
+        return (first or "")[:10]
+
+    def _work():
+        with closing(conn()) as c:
+            rows = c.execute("""SELECT lot_no, product_code pc, MAX(product_name) pn, COUNT(*) n, SUM(qty) bags,
+                       SUM(total_weight) kg, GROUP_CONCAT(DISTINCT pack_machine) mcs, GROUP_CONCAT(DISTINCT pd_line) lines,
+                       MAX(pkg_code) pkg, SUM(pc_status='approved') pcok, SUM(COALESCE(pc_status,'pending')='pending') pcw,
+                       SUM(pc_status='rejected') pcr, SUM(status='moved_to_fg') fgok, SUM(status='rejected_by_fg') fgr,
+                       MIN(packed_at) first, MAX(packed_at) last
+                FROM fg_packing WHERE factory_id=? AND src='slip' AND status<>'cancelled' AND COALESCE(lot_no,'')<>''
+                GROUP BY lot_no, product_code""", (fac,)).fetchall()
+        months, out = {}, []
+        for r in rows:
+            d = _d(r["lot_no"], r["first"])
+            if not d:
+                continue
+            months[d[:7]] = months.get(d[:7], 0) + 1
+            out.append({"date": d, "lot": r["lot_no"], "code": r["pc"] or "", "name": r["pn"] or "", "pallets": r["n"],
+                        "bags": r["bags"] or 0, "kg": round(r["kg"] or 0, 1), "mc": r["mcs"] or "", "line": r["lines"] or "",
+                        "pkg": r["pkg"] or "", "pcok": r["pcok"] or 0, "pcw": r["pcw"] or 0, "pcr": r["pcr"] or 0,
+                        "fgok": r["fgok"] or 0, "fgr": r["fgr"] or 0, "first": (r["first"] or "")[:16], "last": (r["last"] or "")[:16]})
+        want = ym if re.match(r"^\d{4}-\d{2}$", ym or "") else (max(months) if months else datetime.date.today().strftime("%Y-%m"))
+        sel = sorted((x for x in out if x["date"][:7] == want), key=lambda x: (x["date"], x["lot"]), reverse=True)
+        return {"ym": want, "months": [{"ym": k, "n": v} for k, v in sorted(months.items())], "rows": sel}
+    return await asyncio.to_thread(_work)
 
 
 @router.get("/pack-dash")

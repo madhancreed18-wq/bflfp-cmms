@@ -1,6 +1,171 @@
 # Changelog — BFLFP CMMS
 All notable changes. Format: version · date · changes. Newest on top.
 
+## CMMS b587 — 2026-11-20 (PR app: purchase requests inside the Smart Factory login)
+- The stand-alone "PR Document Tracking" app (Flask, its own users and SQLite file) is now the fourth app in
+  the same login: CMMS · Warehouse · FG Stock · **PR**. Page /pr.html, same look as FG Stock.
+- Requests with item lines and VAT 7 %. Document code DEPT-COMPANY-YYMM-NNN, numbered across the month.
+  Status moves from waiting for quotation → waiting for approval → approved / cancelled.
+  Quotation / PR / PO files (PDF, JPG, PNG up to 10 MB, content checked). PR number PRYYMM-XXXX
+  (entering it approves the request). PO number <plant>-POXXXX-XXXX. Suppliers. Dashboard (year, month,
+  company, department, purpose). CSV export. Activity log.
+- Quotation scan: pick a PDF or photo on "New PR" and the items, prices, date, VAT and supplier are filled in for
+  checking. Photos and scanned PDFs need Tesseract OCR (Thai) on the server.
+- Access: users.pr_role (user · PR Admin · PO Admin · Approver · Super Admin), set in Manage › Users
+  ("Purchase requests (PR) — role") or PR › PR users. CMMS admins are always PR Super Admin. Empty = no PR tile or tab.
+- Old data: python tools/import_pr_tracker.py --src "<PR-Document-Tracking folder>". Copies requests, items, files,
+  suppliers and the log. Safe to run again.
+- Server: new server/pr.py, server/pr_scanner.py; tables pr_requests, pr_items, pr_files, pr_suppliers, pr_log
+  and users.pr_role (created automatically). Files in data/pr/. app.py and auth.py (pr_role on /api/me) changed.
+- Front end: static/pr.html (new); fnbar.js (PR function, FnBar.url); index.html (Apps tile, PR role in Users).
+- Tests: tests/test_pr.py (new, 47 checks). tests/smoke.py gains a PR section. NOTE: smoke.py's existing
+  "BD created Reported" check fails before this build — a report now needs a symptom and the test does not send one.
+- requirements.txt: + pypdfium2, pytesseract. APP_VERSION 2.4.0. Docs: docs/PR-MODULE.md.
+
+## CMMS b586 — 2026-11-20 (minutes shown as "m" in Thai)
+- MTTR and every other figure drawn by fmin (dashboard KPI cards, machine KPI / history, targets)
+  now read "1 m" / "1ชม 5m" in Thai as well as English, instead of "1 น".
+- index.html only.
+
+## CMMS b585 — 2026-11-20 (Manpower: technicians available vs hours the work needs)
+- Assign-work board (desk and phone): a live bar under the pool chips —
+  "👷 Available 30 h · 4 technicians (1 off) · Needed 34 h · 12 jobs · SHORT 4 h ≈ 1 technician"
+  (green = enough, amber = over 85 %, red = short, grey = day off). It moves as jobs are put on crews.
+  Needed = the day's own work + anything placed on a crew; overdue work from earlier days is listed
+  separately until it is put on a crew. "Needed by type" splits PM / Mechanical / Electrical / …
+- 👥 Who's in: untick a technician who is off that day (leave, sick, training) — planner / admin.
+- ⏱ on every job card = estimated man-hours: planner's own figure (click ⏱ to type one, empty = back
+  to the estimate) → median real time of past jobs of the same kind on that machine (PM: same
+  frequency) → median for the job type → starting figure (PM 1 h, CM 2 h, BD 2 h, IMP 4 h).
+- Plan calendar: a 👷 need/available line on each working day from today on, red with −hours when short.
+- Dashboard: "Manpower — next 14 days" — available vs needed per day, short days counted, overdue noted.
+- A technician's day = their weekly hours (Admin → Users, 45 if not set) ÷ the plant's working days.
+- Server: new server/manpower.py (/api/manpower/board, /off, /est, /range); new tables mp_off, mp_est
+  (created automatically). app.py registers it.
+- Files: static/index.html, server/manpower.py (new), server/app.py.
+
+## CMMS b584 — 2026-11-20 (phone: hide PM jobs for managers outside Engineering)
+- Phone view for planner / manager (All jobs, To accept, Stages): new "PM" chip beside the title —
+  "🚫 PM 20 · hidden" or "👁 PM 20". One tap shows or hides every PM job; the counts and filters
+  above the list follow it. The choice is remembered on that phone, per user.
+- Default: PM jobs HIDDEN for a manager whose department is not ENG (production, warehouse, QA …);
+  shown for the planner, the engineering manager and admin.
+- index.html only.
+
+## CMMS b583 — 2026-11-20 (System settings › Database — read-only viewer, admin)
+- New admin page System settings › Database, laid out like SQL Server Management Studio:
+  · left: cmms.db size / WAL / SQLite version, every table and view with its row count, find box
+  · Data: the table's rows (newest first), search across every column, click a header to sort,
+    50–500 rows a page, ⬇ CSV of the whole table (opens in Excel)
+  · Columns: name, type, primary key, NOT NULL, default · Indexes & SQL: indexes + CREATE statement
+  · Query: run one SELECT / WITH / PRAGMA / EXPLAIN (Ctrl+Enter), up to 1,000 rows, examples
+- READ-ONLY: the server opens cmms.db in read-only mode with query_only, refuses anything but a
+  single read statement, and stops a query after 15 s (on a worker thread, so the app stays fast).
+- Passwords / hashes / tokens / keys show as •••••. Every query and export is written to the log.
+- Files: static/index.html, server/dbview.py (new), server/app.py.
+
+## CMMS b582 — 2026-11-20 (job page: who set the due date)
+- Due date box on the job page now reads "set by the planner · <name>".
+- Every change of a due date (creating a job, the assign dialog / board, the job page's Planner action,
+  any PATCH) writes a line into the job's timeline: "📅 กำหนดเสร็จ / due date: old → new (by name)".
+  The job page shows the name from the latest such line.
+- Jobs whose due date was set before this build: the planner (or admin) who last assigned the job is
+  shown; if none, no name.
+- Files: static/index.html, server/jobs.py.
+
+## CMMS b581 — 2026-11-20 (job page: issue + report side by side · root cause on Complete)
+- Job page: "Reported issue" and "Technician report" are one compact card, side by side (stacks on a
+  phone). Left: the issue in bold, then Symptom, Machine (or 🏷 Not listed + what was typed), Reported by.
+  Right: Problem and Root cause (shown only when filled in), Solution / report, Fault, Action. Empty
+  values are a grey dash; one line says when the technician has not written anything yet.
+- Technician's Complete dialog (CM and BD jobs): new "Root cause" box. Suggestions to tap: causes
+  already written for this machine, then for the same reported symptom (with how often), then a short
+  starter list for the trade (mechanical / electrical / instrument / general). Tapping fills the box;
+  the technician can edit or type their own. Optional.
+- Server: Complete no longer wipes problem / root cause / fault fields it was not sent (it wrote '' into
+  all of them before, so Root cause was always empty). New GET /api/jobs/{id}/cause-suggest.
+- Files: static/index.html, server/jobs.py.
+
+## CMMS b580 — 2026-11-20 (hover card: what the colours and tags on a job mean)
+- Rest the mouse on a job (All jobs table, History table, job cards, planner cards, Assign-work board)
+  and a small card appears with the job number as its title, explaining only what is shown on that job:
+  · blinking red ↔ yellow = past due (N days late) · blinking yellow = due today · steady amber = planned
+    day passed, no due date · grey = acknowledged today
+  · the ✓ next to the due date (acknowledge — stops the blink for everyone, today only) / "✓ seen" (undo)
+  · ↻N in Planned (moved N times, first planned date) · green ✓ in Completed (accepted, when)
+  · 🏷 Not listed (machine not in the asset register)
+  · board tags: → date (planned for a later day, not late), ↤ date (left over, still open), purple
+    no-date tag, DUE · freq (PM due by its cycle, dashed card), 🔒 started
+- Nothing to explain = no card. Mouse only (phones have no hover); hides on click, drag, scroll or keys.
+- index.html only.
+
+## FG Stock b579 — 2026-11-19 (lot dashboard: month calendar · filter menu · one search row)
+- Month is now one button ("📅 Oct 2026 · 21 lots") that opens a month-only calendar: ‹ year ›, 12 months
+  in a 3×4 grid with the lot count under each; months with no lots are greyed out.
+- Month, search bar, lot-day drop-down (YYMMDD) and refresh sit on one row.
+- The search bar has a "Filter" button (like the CMMS): pick a column (Product, Packing M/C, Line, PKG,
+  Pack check, Accepted by FG), tick one or more values (with counts). Each filter shows as a chip under
+  the bar — click to change, ✕ to remove, "Clear all". Search words apply on top of the filters.
+- fg.html only.
+
+## FG Stock b578 — 2026-11-19 (lot month table · lot confirm before save · packing dashboard print/image)
+- Lot dashboard opens on a month table of every lot (Excel-style column sort/filter): Year + Jan–Dec
+  month picker (lot count per month), Production-day drop-down of unique dates (YYMMDD, running
+  number dropped), centre search where every typed word must match (lot, product, FG code, machine,
+  line, PKG), totals tiles. Clicking a lot opens its dashboard, which has a "‹ All lots" button back.
+  New server endpoint GET /api/fg/lot-dash/month?ym=YYYY-MM.
+- Save slip now asks "Confirm the lot number" (lot, product, MFG → EXP, next slip #) on every save;
+  only after Yes does it ask how many slips to make.
+- Packing dashboard: "PDF / Print" (whole page on one A4 landscape, no side menu/buttons) and
+  "Image" (PNG download of the full page) using the selected date/shift/machine.
+
+## FG Stock ui b577 — 2026-11-19 (side menu stays put · one icon per page)
+- PC side menu no longer moves when the page is scrolled: it stays under the top bar and, when it is
+  longer than the screen, scrolls on its own (scrolling the menu does not scroll the page either).
+- Every side-menu page has its own icon (dashboard, clock, chart, layers, report, route, QR, list,
+  clipboard, scan, inbox/outbox, receive/release history, warehouse, ledger, calendar, sheet, folder,
+  database, unlock, printer, gear, tag, building, people …) instead of the same few repeated.
+  The phone's bottom bar uses the same icons.
+
+## BFL Smart Factory b576 — 2026-11-19 (new app icon)
+- App icon: the orange tile with the Bluefalo mark now reads SMART / FACTORY instead of CMMS (home-screen,
+  installed app, browser tab). All sizes rebuilt from the same design: Logo180/192/256/512/1024, the two
+  maskable icons (content inside the safe area), apple-touch-icon, icon-192/512 and favicon.ico (mark only —
+  text is unreadable that small). The stray sparkle in the old artwork's corner is gone.
+- Icon links and manifest carry ?v=576 so browsers fetch the new icons; FG Stock pages now name the icon too.
+  Manifest description: "BFL Smart Factory — Bluefalo Group maintenance (CMMS), FG stock and production".
+- The old icons are kept in "Claude outputs\old-cmms-icons" (copy them back into static\ to undo).
+
+## FG Stock b575 — 2026-11-19 (loader: customer asked once per load · Customers page with details)
+- FG issuer (Pallet Loader): right after a pallet is scanned, a popup asks the customer. First pallet: a list to
+  tap (type to filter); not listed → type the name → "Add new customer" (saved to the Customer list at once,
+  code made like the others: AS2, CU0 …; a name already in the list is reused, never doubled). Next pallets:
+  "Same customer: …" in one tap (keeps the release type too) or "Different customer". The load-details screen
+  shows the customer with a Change button instead of the typing box. The phone keeps the last customer 16 h.
+- Checker PC / admin › Customers: search, Add customer, Edit with contact, phone, address / delivery place and
+  note, switch off / on (off = not shown to the loader). Customers the loader added are marked "from loader"
+  with who / when; saving one on the checker PC confirms it. "Add" refuses a code already used.
+- Server: fg_customers gets contact, phone, address, note, src, created_by/at, updated_by/at; new
+  POST /api/fg/customers/quick (issuer or checker); every add / edit goes into the FG log.
+
+## ui b574 — 2026-11-19 (operator report: Repair or Improvement)
+- New report (operator): pressing Save first asks "What kind of job is this?" —
+  🔧 Repair (CM): the usual checks and "Can this machine still run?" → CM or BD, as before.
+  💡 Improvement (IMP): saved as an IMP job (IMP-YYMM-###), no symptom and no stopped question;
+  it needs a title or description saying what to improve. It goes to the planner's queue like any report.
+- Editing a saved report keeps its type and does not ask again.
+
+## CMMS b573 — 2026-11-17 (System settings › Backup)
+- New admin page ตั้งค่าระบบ › สำรองข้อมูล / System settings › Backup. "Back up now" makes ONE zip in data\backups
+  on the server: cmms.db (+ fg_access_archive.db) copied with SQLite's online backup — safe while people keep
+  working — plus uploads/, Report/, pm_plan.json, vapid_private.pem and a RESTORE.txt with the steps back.
+- Automatic backup every night at a chosen hour (off until switched on), keep the newest N (default 14),
+  optional second folder (USB / NAS / share as the server PC sees it) that gets a copy of each backup.
+- Download or delete any backup from the list. Admin only; file names are checked (no path tricks).
+  Refuses when the disk has less than 2x the database free. PostgreSQL set-ups are told to use pg_dump.
+- New server/backup.py (GET/POST /api/admin/backup, /settings, /file/{name}); CMMS_AUTO_BACKUP=0 turns the
+  nightly loop off.
+
 ## FG Stock b572 — 2026-11-15 (Access pallets no longer count for new slip numbers)
 - New pallet slips are numbered from the app's own slips only. Slips made from the old Access history
   (src='access') are no longer counted, so they don't push a new lot to #2.

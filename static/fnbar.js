@@ -15,19 +15,22 @@
     issuer: ['โหลดพาเลท', 'Pallet Loader', '#7C3AED'],
     checker: ['คลังสินค้า', 'Warehouse', '#0B6E99'],
     viewer: ['ดูข้อมูล FG', 'FG Viewer', '#64748B'],      // b570: read only, pages chosen per person
+    pr: ['ขอซื้อ (PR)', 'Purchase (PR)', '#0F766E'],     // b587: PR app (users.pr_role) — /pr.html
   };
   const ALL = ['packing', 'packcheck', 'receiver', 'issuer', 'checker'];   // admin gets these (not the Viewer)
   function list(me) {
     if (!me) return [];
     const fg = me.role === 'admin' || me.cmms_role === 'admin' || (me.fg_roles || []).includes('admin')
       ? ALL.slice() : (me.fg_roles || []).filter(r => ALL.includes(r) || r === 'viewer');
-    return (me.fg_only && fg.length ? [] : ['cmms']).concat(fg);
+    return (me.fg_only && fg.length ? [] : ['cmms']).concat(fg).concat(me.pr_role ? ['pr'] : []);
   }
   function current(me) {
     const fns = list(me);
     const m = location.search.match(/[?&]fn=([a-z]+)/);
     let f = m ? m[1] : '';
     if (!f) { try { f = sessionStorage.getItem('bflfp_fn') || ''; } catch (e) {} }
+    // b587: the FG page never runs the PR function — it lives on its own page
+    if (f === 'pr' && /\/fg\.html$/.test(location.pathname)) f = '';
     if (!fns.includes(f)) f = fns.includes(me.fg_default) ? me.fg_default : fns[0];
     try { sessionStorage.setItem('bflfp_fn', f); } catch (e) {}
     return f;
@@ -35,6 +38,7 @@
   function go(f, here) {
     try { sessionStorage.setItem('bflfp_fn', f); } catch (e) {}
     const onFg = /\/fg\.html$/.test(location.pathname);
+    if (f === 'pr') { location.href = '/pr.html'; return; }      // b587
     if (f === 'cmms') {
       try { sessionStorage.setItem('bflfp_app', 'cmms'); } catch (e) {}
       if (!onFg && here) return here(f);
@@ -80,5 +84,7 @@
     const a = el.querySelector('button.on');
     if (a && fns.length > 3) try { a.scrollIntoView({ inline: 'center', block: 'nearest' }); } catch (e) {}
   }
-  window.FnBar = { list, current, go, render, DEF };
+  // b587: where a function lives — the PR app has its own page
+  const url = f => f === 'cmms' ? '/?fn=cmms' : f === 'pr' ? '/pr.html' : '/fg.html?fn=' + f;
+  window.FnBar = { list, current, go, render, DEF, url };
 })();

@@ -135,6 +135,17 @@ def main():
         st, sl = op.req("GET", "/api/shiftlogs")
         check("shiftlog listed with reject auto", sl and sl[0]["reject"] == 1000)
 
+        print("== PR (purchase requests) ==")          # b587 — full flow in tests/test_pr.py
+        st, prm = ad.req("GET", "/api/pr/me")
+        check("PR: admin is PR super admin", st == 200 and prm.get("pr_role") == "super_admin")
+        st, prd = ad.req("POST", "/api/pr/requests", {
+            "company": prm["companies"][0]["code"], "department": "ENG", "request_date": "2026-01-15",
+            "purpose": "Repair", "reason": "smoke", "items": [{"description": "x", "quantity": "1", "unit_price": "100"}]})
+        check("PR: request created with code + VAT", st == 200 and prd.get("net_total") == "107.00"
+              and prd.get("doc_code", "").startswith("ENG-"), str(prd)[:120])
+        st, _ = op.req("GET", "/api/pr/requests")
+        check("PR: no PR role -> 403", st == 403)
+
         print("== BD lifecycle ==")
         st, bd = op.req("POST", "/api/jobs",
                         {"jobtype": "BD", "machine_id": 2, "descr": "smoke jam", "priority": 3})
