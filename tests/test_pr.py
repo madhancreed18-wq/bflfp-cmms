@@ -177,6 +177,9 @@ def run():
     check("search finds by item description", st == 200 and ls["total"] == 1, ls.get("total"))
     st, ls = u.req("GET", f"/api/pr/requests?status=approved&company={company}&sort=total&dir=asc")
     check("filter by status + company", st == 200 and ls["total"] == 1)
+    check("list carries PO status counts", ls.get("po_counts") == {"sent_to_supplier": 1}, ls.get("po_counts"))
+    st, ls = u.req("GET", "/api/pr/requests?po_status=sent_to_supplier")
+    check("PO count matches PO status filter", st == 200 and ls["total"] == 1, ls.get("total"))
     st, sm = u.req("GET", "/api/pr/summary?year=2026")
     check("dashboard: cancelled not counted", st == 200 and sm["count"] == 1 and sm["total"] == "3318.06",
           (sm.get("count"), sm.get("total")))

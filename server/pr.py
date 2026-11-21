@@ -415,6 +415,9 @@ async def list_requests(req: Request):
             p + [size, (page - 1) * size]).fetchall()]
         counts = {r["status"]: r["n"] for r in c.execute(
             "SELECT status, COUNT(*) n FROM pr_requests GROUP BY status").fetchall()}
+        po_counts = {r["po_status"]: r["n"] for r in c.execute(
+            "SELECT po_status, COUNT(*) n FROM pr_requests WHERE COALESCE(po_status,'')<>'' "
+            "GROUP BY po_status").fetchall()}
         ids = [r["id"] for r in rows]
         have = {}
         if ids:
@@ -423,7 +426,7 @@ async def list_requests(req: Request):
                 have.setdefault(f["request_id"], []).append(f["kind"])
     for r in rows:
         r["files"] = have.get(r["id"], [])
-    return {"rows": rows, "total": total, "page": page, "size": size, "counts": counts}
+    return {"rows": rows, "total": total, "page": page, "size": size, "counts": counts, "po_counts": po_counts}
 
 
 @router.get("/requests/{rid}")

@@ -42,8 +42,12 @@ h1{font-size:22px;font-weight:600;margin:0 0 4px;line-height:1.3}
 h2{font-size:16px;margin:0 0 10px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
-.tile{border-radius:12px;padding:14px 16px;color:#fff;cursor:pointer;border:0;text-align:left}
-.tile .l{font-size:13px}.tile .v{font-size:28px;font-weight:700}.tile .s{font-size:12px;opacity:.92}
+.tile{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--c);
+  border-radius:12px;padding:14px 16px;cursor:pointer;text-align:left;font:inherit;color:var(--ink);transition:box-shadow .15s,transform .15s}
+.tile:hover{box-shadow:0 4px 14px rgba(15,23,42,.08);transform:translateY(-1px)}
+.tile .ic{flex:none;width:40px;height:40px;border-radius:10px;display:grid;place-items:center;color:var(--c);background:color-mix(in srgb,var(--c) 12%,#fff)}
+.tile .ic svg{width:20px;height:20px}
+.tile .l{font-size:13px;color:var(--ink2)}.tile .v{font-size:24px;font-weight:700;line-height:1.2;color:var(--c)}
 table{width:100%;border-collapse:collapse;font-size:13.5px}
 th{text-align:left;color:#475569;font-weight:600;font-size:12.5px;padding:9px 8px;background:#F8FAFC;border-bottom:1px solid var(--line);white-space:nowrap;position:sticky;top:0;z-index:1}
 th.so{cursor:pointer}th.so:hover{color:var(--blue)}
@@ -237,9 +241,16 @@ async function pgHome(){
   const st=ls.counts||{};QN=st.pending_approval||0;mark();
   const mx=Math.max(1,...s.month.map(Number)),cm=new Date().getMonth(),mn=TH()?['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.']:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const hb=o=>{const v=Object.entries(o),m=Math.max(1,...v.map(x=>Number(x[1])));return v.length?v.map(([k,x])=>`<div class="hbar"><span>${esc(k)}</span><i style="width:${Math.max(2,Number(x)/m*60)}%"></i><b>${money(x)}</b></div>`).join(''):`<div class="muted">${L('ยังไม่มีข้อมูล','No data yet')}</div>`;};
-  const tile=(k,c)=>`<button class="tile" style="background:${c}" onclick="LISTQ={page:1,size:20,sort:'date',dir:'desc',status:'${k}'};go('list')"><div class="l">${esc(T(ME.statuses[k]))}</div><div class="v">${st[k]||0}</div><div class="s">${L('ทุกปี · กดเพื่อดู','all years · tap to open')}</div></button>`;
+  const ICO={doc:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
+    clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',ok:'<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',
+    x:'<circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/>',
+    box:'<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/>',send:'<path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/>'};
+  const po=ls.po_counts||{};
+  const card=(f,k,label,n,c,i)=>`<button class="tile" style="--c:${c}" title="${L('ทุกปี · กดเพื่อดู','all years · tap to open')}" onclick="LISTQ={page:1,size:20,sort:'date',dir:'desc',${f}:'${k}'};go('list')"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICO[i]}</svg></span><span><div class="l">${esc(label)}</div><div class="v">${n||0}</div></span></button>`;
+  const tile=(k,c,i)=>card('status',k,T(ME.statuses[k]),st[k],c,i);
+  const poTile=(k,c,i)=>card('po_status',k,'PO · '+T(ME.po_statuses[k]),po[k],c,i);
   A.innerHTML=`<h1>${L('ใบขอซื้อ (PR)','Purchase requests (PR)')}</h1><p class="sub">${L('ติดตามเอกสารขอซื้อ ตั้งแต่ใบเสนอราคาจนถึงเลข PO','From quotation to PO number')}</p>
-  <div class="tiles">${tile('waiting_quotation','#64748B')}${tile('pending_approval','#D97706')}${tile('approved','#16A34A')}${tile('cancelled','#B91C1C')}</div>
+  <div class="tiles">${tile('waiting_quotation','#475569','doc')}${tile('pending_approval','#1B75BC','clock')}${tile('approved','#15803D','ok')}${tile('cancelled','#B91C1C','x')}${poTile('not_sent_to_supplier','#B45309','box')}${poTile('sent_to_supplier','#7C3AED','send')}</div>
   <div class="bar"><label class="f">${L('ปี','Year')}<select class="in" onchange="YEAR=+this.value;pgHome()">${s.years.map(y=>`<option ${y===s.year?'selected':''}>${y}</option>`).join('')}</select></label>
    <label class="f">${L('บริษัท','Company')}<select class="in" onchange="DCO=this.value;pgHome()"><option value="">${L('ทุกบริษัท','All companies')}</option>${ME.companies.map(c=>`<option value="${c.code}" ${c.code===DCO?'selected':''}>${esc(c.code)}</option>`).join('')}</select></label>
    <div class="sp" style="flex:1"></div>${can('create')?`<button class="btn pri" onclick="go('new')">＋ ${L('สร้าง PR','New PR')}</button>`:''}</div>
