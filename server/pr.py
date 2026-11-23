@@ -97,6 +97,14 @@ PAYMENT_METHODS = {
     "petty_cash": ("เงินสดย่อย", "Petty cash"),
     "purchasing_cash": ("เงินสดแผนกจัดซื้อ", "Purchasing dept. cash"),
 }
+# Full company names printed on the paper form, and companies that are not a plant in `factories`.
+COMPANY_TH = {
+    "BFL": "บริษัท บลูฟาโล่ จำกัด",
+    "BFLFP": "บริษัท บลูฟาโล่ ฟู้ด โปรดักส์ จำกัด",
+    "BFLPC": "บริษัท บลูฟาโล่ เพ็ทแคร์ จำกัด",
+    "SMEC": "บริษัท สยามแมค เอ็นจิเนียริ่ง แอน คอนสตรัคชั่น จำกัด",
+}
+EXTRA_COMPANIES = [("SMEC", "Siam Mac Engineering and Construction")]
 FILE_KINDS = ("quotation", "pr", "po")
 # a PR company code per plant (factories.code). The PO prefix is the plant code itself.
 COMPANY_OF_PLANT = {"BFL": "BFL", "FP": "BFLFP", "PC": "BFLPC"}
@@ -143,7 +151,7 @@ def ensure(c):
         job_id INTEGER DEFAULT 0, legacy_id INTEGER DEFAULT 0,
         created_by INTEGER DEFAULT 0, created_at TEXT DEFAULT '', updated_at TEXT DEFAULT '')""")
     have = _table_cols(c, "pr_requests")
-    for col in ("payment_method", "pay_by"):
+    for col in ("payment_method", "pay_by", "book_no", "sheet_no"):
         if col not in have:
             c.execute(f"ALTER TABLE pr_requests ADD COLUMN {col} TEXT DEFAULT ''")
     c.execute("CREATE INDEX IF NOT EXISTS ix_pr_req_date ON pr_requests(request_date)")
@@ -214,8 +222,23 @@ def companies(c):
     for f in c.execute("SELECT id,code,name FROM factories ORDER BY id").fetchall():
         code = COMPANY_OF_PLANT.get(f["code"], f["code"])
         out.append({"code": code, "plant_id": f["id"], "plant": f["code"], "name": f["name"],
-                    "po_prefix": f["code"]})
+                    "name_th": COMPANY_TH.get(code, f["name"]), "po_prefix": f["code"]})
+    have = {x["code"] for x in out}
+    for code, name in EXTRA_COMPANIES:
+        if code not in have:
+            out.append({"code": code, "plant_id": None, "plant": "", "name": name,
+                        "name_th": COMPANY_TH.get(code, name), "po_prefix": ""})
     return out
+
+
+def requesters(c):
+    """Active users who can be named as the requester on the form."""
+    try:
+        rows = c.execute("SELECT id, name, username FROM users WHERE COALESCE(active,1)=1 "
+                         "ORDER BY name, username").fetchall()
+    except Exception:
+        return []
+    return [{"id": r["id"], "name": r["name"] or r["username"]} for r in rows]
 
 
 def departments(c):
@@ -356,6 +379,7 @@ async def me(req: Request):
     with closing(db()) as c:
         cos = companies(c)
         deps = departments(c)
+        people = requesters(c)
         dep = ""
         try:
             r = c.execute("SELECT COALESCE(department,'') d FROM users WHERE id=?", (u["id"],)).fetchone()
@@ -370,7 +394,7 @@ async def me(req: Request):
             "company": COMPANY_OF_PLANT.get(plant, plant), "department": dep.upper(),
             "companies": cos, "departments": deps,
             "statuses": STATUSES, "purposes": PURPOSES, "pr_statuses": PR_STATUSES,
-            "po_statuses": PO_STATUSES, "payment_methods": PAYMENT_METHODS, "roles": ROLE_LABELS, "vat_rate": str(VAT_RATE),
+            "po_statuses": PO_STATUSES, "payment_methods": PAYMENT_METHODS, "requesters": people, "roles": ROLE_LABELS, "vat_rate": str(VAT_RATE),
             "max_file_mb": MAX_FILE // (1024 * 1024)}
 
 
@@ -464,7 +488,7 @@ def _clean_head(c, b, u):
     purpose = b.get("purpose") or ""
     if purpose not in PURPOSES:
         raise _bad("กรุณาเลือกวัตถุประสงค์ (purpose)")
-    other = (b.get("purpose_other") or "").strip()[:200] if purpose == "Other" else ""
+    other = (b.get("purpose_other") or "").strip()[:200] if purpose in ("Other", "Project") else ""
     if purpose == "Other" and not other:
         raise _bad("กรุณาระบุวัตถุประสงค์อื่น ๆ (other purpose)")
     reason = (b.get("reason") or "").strip()
@@ -490,6 +514,18 @@ def _clean_head(c, b, u):
             date.fromisoformat(pay_by)
         except ValueError:
             raise _bad("วันที่ตั้งเบิกไม่ถูกต้อง (bad pay-by date)")
+    book_no = (b.get("book_no") or "").strip()[:20]
+    sheet_no = (b.get("sheet_no") or "").strip()[:20]
+    rq_id, rq_name = u["id"], _who(u)
+    if b.get("requester_id") not in (None, "", 0, "0"):
+        try:
+            r = c.execute("SELECT id, name, username FROM users WHERE id=? AND COALESCE(active,1)=1",
+                          (int(b["requester_id"]),)).fetchone()
+        except (TypeError, ValueError):
+            r = None
+        if not r:
+            raise _bad("กรุณาเลือกผู้ขอซื้อจากรายการ (requester)")
+        rq_id, rq_name = r["id"], r["name"] or r["username"]
     vat_included = 1 if b.get("vat_included", True) not in (False, 0, "0", "") else 0
     items = _items(b.get("items"))
     entered, sub, vat, grand = totals(items, vat_included, None if items else b.get("amount"))
@@ -501,7 +537,8 @@ def _clean_head(c, b, u):
             "purpose_other": other, "reason": reason, "supplier_id": sid, "supplier_name": sname,
             "vat_included": vat_included, "amount_entered": 1 if entered else 0, "subtotal": sub,
             "vat": vat, "grand_total": grand, "net_total": grand, "job_id": job_id,
-            "payment_method": payment_method, "pay_by": pay_by}, items
+            "payment_method": payment_method, "pay_by": pay_by, "book_no": book_no, "sheet_no": sheet_no,
+            "requester_id": rq_id, "requester_name": rq_name}, items
 
 
 def _save_items(c, rid, items):
@@ -526,13 +563,15 @@ async def create_request(req: Request):
                 rid = c.insert_id(
                     "INSERT INTO pr_requests(doc_code,company,department,requester_id,requester_name,supplier_id,"
                     "supplier_name,request_date,purpose,purpose_other,reason,amount_entered,subtotal,vat_included,"
-                    "vat,grand_total,net_total,status,pr_status,job_id,payment_method,pay_by,created_by,created_at,"
-                    "updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                    (code, head["company"], head["department"], u["id"], _who(u), head["supplier_id"],
+                    "vat,grand_total,net_total,status,pr_status,job_id,payment_method,pay_by,book_no,sheet_no,created_by,"
+                    "created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (code, head["company"], head["department"], head["requester_id"], head["requester_name"],
+                     head["supplier_id"],
                      head["supplier_name"], head["request_date"], head["purpose"], head["purpose_other"],
                      head["reason"], head["amount_entered"], head["subtotal"], head["vat_included"], head["vat"],
                      head["grand_total"], head["net_total"], "waiting_quotation", "pending_approval",
-                     head["job_id"], head["payment_method"], head["pay_by"], u["id"], t, t))
+                     head["job_id"], head["payment_method"], head["pay_by"], head["book_no"], head["sheet_no"],
+                     u["id"], t, t))
                 break
             except Exception as e:
                 if "UNIQUE" not in str(e).upper() and "DUPLICATE" not in str(e).upper():
@@ -560,8 +599,11 @@ async def update_request(req: Request, rid: int):
         if not _may_edit(old, caps):
             raise _bad("เอกสารที่อนุมัติ/ยกเลิกแล้วถูกล็อก — เฉพาะผู้อนุมัติแก้ไขได้ (locked: approver only)", 403)
         head, items = _clean_head(c, b, u)
+        if b.get("requester_id") in (None, "", 0, "0"):     # not sent: the requester stays as it was
+            head["requester_id"], head["requester_name"] = old.get("requester_id") or 0, old.get("requester_name") or ""
         changed = [k for k in ("company", "department", "request_date", "purpose", "purpose_other", "reason",
-                               "supplier_name", "vat_included", "net_total", "payment_method", "pay_by")
+                               "supplier_name", "vat_included", "net_total", "payment_method", "pay_by",
+                               "book_no", "sheet_no", "requester_name")
                    if str(old.get(k) or "") != str(head[k] or "")]
         old_items = [(i["description"], i["quantity"], i["unit_price"], i["note"]) for i in c.execute(
             "SELECT description,quantity,unit_price,note FROM pr_items WHERE request_id=? ORDER BY position", (rid,))]
@@ -569,11 +611,13 @@ async def update_request(req: Request, rid: int):
             changed.append("items")
         c.execute("UPDATE pr_requests SET company=?,department=?,request_date=?,purpose=?,purpose_other=?,reason=?,"
                   "supplier_id=?,supplier_name=?,vat_included=?,amount_entered=?,subtotal=?,vat=?,grand_total=?,"
-                  "net_total=?,job_id=?,payment_method=?,pay_by=?,updated_at=? WHERE id=?",
+                  "net_total=?,job_id=?,payment_method=?,pay_by=?,book_no=?,sheet_no=?,requester_id=?,requester_name=?,"
+                  "updated_at=? WHERE id=?",
                   (head["company"], head["department"], head["request_date"], head["purpose"], head["purpose_other"],
                    head["reason"], head["supplier_id"], head["supplier_name"], head["vat_included"],
                    head["amount_entered"], head["subtotal"], head["vat"], head["grand_total"], head["net_total"],
-                   head["job_id"] or old.get("job_id") or 0, head["payment_method"], head["pay_by"], now(), rid))
+                   head["job_id"] or old.get("job_id") or 0, head["payment_method"], head["pay_by"],
+                   head["book_no"], head["sheet_no"], head["requester_id"], head["requester_name"], now(), rid))
         _save_items(c, rid, items)
         _restatus(c, rid)
         if changed:
