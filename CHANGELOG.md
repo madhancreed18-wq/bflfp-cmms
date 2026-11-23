@@ -1,6 +1,23 @@
 # Changelog — BFLFP CMMS
 All notable changes. Format: version · date · changes. Newest on top.
 
+## CMMS b589 — 2026-11-23 (admin login stuck on a white login page — PR app tile)
+- Admins (and anyone with a PR role who gets the "choose an app" screen) were left on the login form with
+  a white background after pressing Login. Since the PR app was added, fnbar.js lists 'pr' as an app, but
+  the Apps screen had no name or icon for it and crashed half-way (it had already removed the blue login
+  background, but never drew the app grid).
+- Apps screen: a "Purchase Request (PR)" tile in every plant (shown whether FG Stock is on or off); opening
+  it goes to /pr.html. An app with no name no longer crashes the screen.
+- sw.js cache bumped so phones and PCs drop their saved copy. Files: static/index.html, static/sw.js.
+
+## CMMS b588 — 2026-11-23 (Assets: put many machines on a PM checklist at once)
+- Assets: tick rows → the blue bar now has "PM sheet: [checklist] Apply" — puts every ticked machine on
+  that checklist (e.g. WG3SCF01–12 → SCREW DISCHARGER); they leave "No checklist group" and get that
+  checklist's PM from their next due date. The PENDING placeholder is not offered.
+- Editing one row: the PM sheet (and every suggestion box) empties when clicked so the whole list shows —
+  a box holding "PENDING …" only suggested PENDING. Leave it empty and the old value comes back.
+- index.html only (includes b587). Login footer now shows the real build (UIBUILD had stayed at b547).
+
 ## CMMS b587 — 2026-11-22 (asset import: new machines wait for a checklist · criticality count)
 - Assets › Import: a machine the import ADDS no longer joins a PM checklist by name match. It waits as
   "pending checklist" in PM › "+ New group" (or the planner pins it to an existing group). Until then it

@@ -2012,7 +2012,7 @@ const patch=(u,b,o)=>api(u,{method:'PATCH',body:JSON.stringify(b),...(o||{})});
 const isNetErr=e=>{const m=(e&&e.message)||'';return m==='offline'||m==='timeout';};
 const esc=s=>(s||'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 const P=['','ปกติ','เร่ง','ด่วน!'];
-const UIBUILD='b547';
+const UIBUILD='b589';
 /* b391 — the sliding shape under the selected tab. Every screen redraws its tabs from
    scratch, so the shape is added after each draw: it starts where the previous tab was
    (remembered per tab set) and slides to the new one; the content after the tabs slides
@@ -2100,10 +2100,12 @@ const APPIC={   // BFL colours: blue #1B75BC / dark blue #0F3D6E / orange #F9731
  receiver:'<rect x="7" y="31" width="34" height="5" rx="1.5" fill="#0F3D6E"/><rect x="9" y="36" width="5" height="4" fill="#0F3D6E"/><rect x="21.5" y="36" width="5" height="4" fill="#0F3D6E"/><rect x="34" y="36" width="5" height="4" fill="#0F3D6E"/><rect x="11" y="19" width="26" height="12" rx="2" fill="#CFE2F5"/><path d="M24 4v14" stroke="#F97316" stroke-width="4" stroke-linecap="round"/><path d="M17 12l7 7 7-7" stroke="#F97316" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
  issuer:'<rect x="4" y="14" width="24" height="18" rx="2.5" fill="#CFE2F5"/><path d="M28 19h8l6 7v6H28z" fill="#1B75BC"/><circle cx="13" cy="34" r="4.5" fill="#0F3D6E"/><circle cx="35" cy="34" r="4.5" fill="#0F3D6E"/><path d="M10 23h11M17 19l4 4-4 4" stroke="#F97316" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
  viewer:'<rect x="6" y="9" width="36" height="30" rx="4" fill="#CFE2F5"/><path d="M12 32V24M19 32V18M26 32v-9M33 32V14" stroke="#1B75BC" stroke-width="3.4" stroke-linecap="round"/><circle cx="35" cy="35" r="8" fill="#F97316"/><path d="M30.5 35c2.8-3.6 6.2-3.6 9 0-2.8 3.6-6.2 3.6-9 0z" fill="#fff"/><circle cx="35" cy="35" r="1.6" fill="#0F3D6E"/>',
- checker:'<path d="M5 19L24 8l19 11v21H5z" fill="#CFE2F5"/><path d="M5 19L24 8l19 11" stroke="#0F3D6E" stroke-width="3" fill="none" stroke-linejoin="round"/><rect x="12" y="25" width="24" height="15" fill="#1B75BC"/><rect x="15" y="32" width="4" height="6" fill="#fff"/><rect x="22" y="29" width="4" height="9" fill="#fff"/><rect x="29" y="27" width="4" height="11" fill="#F97316"/>'
+ checker:'<path d="M5 19L24 8l19 11v21H5z" fill="#CFE2F5"/><path d="M5 19L24 8l19 11" stroke="#0F3D6E" stroke-width="3" fill="none" stroke-linejoin="round"/><rect x="12" y="25" width="24" height="15" fill="#1B75BC"/><rect x="15" y="32" width="4" height="6" fill="#fff"/><rect x="22" y="29" width="4" height="9" fill="#fff"/><rect x="29" y="27" width="4" height="11" fill="#F97316"/>',
+ pr:'<rect x="9" y="5" width="30" height="38" rx="3" fill="#CFE2F5"/><path d="M15 15h18M15 22h18M15 29h11" stroke="#1B75BC" stroke-width="3" stroke-linecap="round"/><circle cx="35" cy="36" r="8" fill="#F97316"/><path d="M35 31.5v9M32 34h4.5a1.8 1.8 0 010 3.6H33" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round"/>'
 };
-const APPNAME=f=>{const TH=LANG==='TH';return {cmms:['CMMS','CMMS'],packing:['แพคกิ้ง','Packing'],packcheck:['Checker แพคกิ้ง','Packing check'],
-  receiver:['ตรวจรับพาเลท (รับเข้า FG)','Pallet Checker (FG receiver)'],issuer:['โหลดพาเลท (จ่ายออก FG)','Pallet Loader (FG issuer)'],checker:['คลังสินค้า','Warehouse'],viewer:['ดูข้อมูล FG (ดูอย่างเดียว)','FG Viewer (read only)']}[f][TH?0:1];};
+const APPNAME=f=>{const TH=LANG==='TH';return ({cmms:['CMMS','CMMS'],packing:['แพคกิ้ง','Packing'],packcheck:['Checker แพคกิ้ง','Packing check'],
+  receiver:['ตรวจรับพาเลท (รับเข้า FG)','Pallet Checker (FG receiver)'],issuer:['โหลดพาเลท (จ่ายออก FG)','Pallet Loader (FG issuer)'],checker:['คลังสินค้า','Warehouse'],viewer:['ดูข้อมูล FG (ดูอย่างเดียว)','FG Viewer (read only)'],
+  pr:['ใบขอซื้อ (PR)','Purchase Request (PR)']}[f]||[f,f])[TH?0:1];};  /* b589: PR app; an unknown app no longer crashes the Apps screen */
 /* b482 — "Choose what to open" after sign-in for a non-admin with 2+ functions (e.g. CMMS + Pallet Checker).
    Big phone-friendly cards; the pick opens that function's own screens. Admins keep the plant grid. */
 const APPDESC=f=>{const TH=LANG==='TH';return {cmms:['แจ้งซ่อม ดูงานซ่อมบำรุง','Report problems, maintenance jobs'],packing:['ทำใบพาเลท QR พิมพ์ A6','Make and print A6 QR pallet slips'],
@@ -2182,7 +2184,7 @@ async function renderApps(){
    <button onclick="LANG=LANG==='TH'?'EN':'TH';try{localStorage.setItem('bflfp_lang',LANG)}catch(e){}renderApps()">${TH?'EN':'ไทย'}</button>
    <button onclick="logout()">${TH?'ออกจากระบบ':'Sign out'}</button></div>
    <div class="odwrap">${mine.map(p=>{
-     const list=['cmms'].filter(()=>fns.includes('cmms')).concat(p.fg?fg:[]);
+     const list=['cmms'].filter(()=>fns.includes('cmms')).concat(p.fg?fg.filter(f=>f!=='pr'):[]).concat(fns.includes('pr')?['pr']:[]);  // b589: PR does not depend on FG Stock
      return `<div class="odsec"><div class="odhd"><img src="${logo[p.id]||'/logo.png?v=2'}" alt=""><div><div class="t">${esc(p.code==='FP'?'BFLFP':p.code==='PC'?'BFLPC':p.code)} ${p.id===ME.factory_id?`<span class="cur">${TH?'โรงงานปัจจุบัน':'current'}</span>`:''}</div><div class="s">${esc(p.name)}</div></div>
        ${admin?`<button class="tg ${p.fg?'on':''}" onclick="plantFg(${p.id},${p.fg?0:1})" title="${TH?'เปิด/ปิด FG Stock ในโรงงานนี้':'Turn FG Stock on/off for this plant'}">FG Stock: ${p.fg?(TH?'เปิด':'on'):(TH?'ปิด':'off')}</button>`:''}</div>
        ${list.length?`<div class="odgrid">${list.map(f=>tile(f,p)).join('')}</div>`:`<div class="odnone">${TH?'ไม่มีแอปในโรงงานนี้':'No apps for you in this plant'}</div>`}</div>`;}).join('')}
@@ -2193,7 +2195,7 @@ async function openAppAt(f,fid){
   if(fid&&fid!==ME.factory_id){
     try{await post('/api/factory',{factory_id:fid});}catch(e){alert(e.message);return;}
     try{sessionStorage.setItem('bflfp_fn',f);}catch(e){}
-    location.href=f==='cmms'?'/?fn=cmms':'/fg.html?fn='+f;return;
+    location.href=f==='cmms'?'/?fn=cmms':f==='pr'?'/pr.html':'/fg.html?fn='+f;return;
   }
   openApp(f);
 }
@@ -10328,6 +10330,10 @@ function asDrawShell(){
      <span style="font-size:12px;color:#64748B">${TH?'กลุ่ม:':'Group:'}</span>
      <input id="asBulkGrp" list="asGrpList" placeholder="${TH?'กลุ่ม':'group'}" style="width:150px;height:28px;font-size:13px;padding:2px 7px">
      <button class="btn sm" onclick="asBulkGroup()">${TH?'ตั้ง':'Apply'}</button>
+     <span style="width:1px;height:18px;background:#cbd5e1;margin:0 4px"></span>
+     <span style="font-size:12px;color:#64748B">${TH?'ชีต PM:':'PM sheet:'}</span>
+     <select id="asBulkSheet" style="width:200px;height:28px;font-size:13px;padding:2px 5px"><option value="">${TH?'— เลือกเช็คลิสต์ —':'— pick a checklist —'}</option>${(ASHEETS||[]).filter(v=>!/^PENDING/.test(v)).map(v=>`<option>${esc(v)}</option>`).join('')}</select>
+     <button class="btn sm" onclick="asBulkSheet()">${TH?'ตั้ง':'Apply'}</button>
      <span style="flex:1"></span><button class="btn sm" onclick="asClear()">${TH?'ล้าง':'Clear'}</button>
    </div>
    <div class="card" style="padding:0;margin-top:10px;overflow:auto;max-height:calc(100vh - 250px)">
@@ -10367,6 +10373,10 @@ function asRowHtml(a){
         +(c.gpill?asGpill(a):(esc(String(a[c.k]??'').slice(0,24))||'<span style="color:#cbd5e1">—</span>'))+`</td>`;
       return `<td style="${ASTD}${frozen}"><input id="asin_${c.k}" value="${esc(String(ADRAFT[c.k]??''))}"`
         +(c.list?` list="${c.list}"`:'')+(c.ph?` placeholder="${c.ph}"`:'')
+        // b588: a filled-in box only suggests what matches its text, so the PM sheet box
+        // holding "PENDING …" offered nothing but PENDING. Empty it on focus to show every
+        // option; leave it empty and the old value comes back.
+        +(c.list?` onfocus="this.dataset.was=this.value;this.placeholder=this.value;this.value=''" onblur="if(!this.value){this.value=this.dataset.was||'';ADRAFT['${c.k}']=this.value;}"`:'')
         +` oninput="ADRAFT['${c.k}']=this.value" onkeydown="asKey(event)"`
         +` style="width:${c.ed||'110px'};${c.min?`min-width:${c.min};`:''}${c.mid?'text-align:center;':''}${ASIN}"></td>`;
     };
@@ -10437,6 +10447,23 @@ async function asBulkGroup(){
   if(!confirm((TH?'ตั้งกลุ่ม “':'Set group "')+v+(TH?'” ให้ ':'" for ')+ASEL.size+(TH?' เครื่อง?':' assets?')))return;
   for(const id of Array.from(ASEL)){try{await api('/api/pm/assets/'+id,{method:'PATCH',body:JSON.stringify({asset_group:v})});const a=AST.find(x=>x.id===id);if(a)a.asset_group=v;}catch(e){}}
   ASEL.clear();asRefreshGroups();asRows();
+}
+/* b588 — put the ticked assets on one PM checklist (e.g. WG3SCF01–12 → SCREW DISCHARGER).
+   Same call as editing one row, so each leaves "No checklist group" and gets that
+   checklist's PM from its next due date. */
+async function asBulkSheet(){
+  const TH=LANG==='TH';const v=((document.getElementById('asBulkSheet')||{}).value||'').trim();
+  if(!v){alert(TH?'เลือกเช็คลิสต์ก่อน':'Pick a checklist first');return;}
+  if(!confirm((TH?'ใส่ ':'Put ')+ASEL.size+(TH?' เครื่อง ในเช็คลิสต์ “':' assets on the checklist "')+v+(TH?'”?':'"?')))return;
+  let ok=0,bad=[];
+  for(const id of Array.from(ASEL)){
+    try{await api('/api/pm/assets/'+id,{method:'PATCH',body:JSON.stringify({pm_sheet:v})});ok++;
+      const a=AST.find(x=>x.id===id);if(a){a.pm_sheet=v;a.no_group=0;}}
+    catch(e){const a=AST.find(x=>x.id===id);bad.push(a?a.code:id);}
+  }
+  ASEL.clear();
+  if(bad.length)alert((TH?'ไม่สำเร็จ: ':'Not changed: ')+bad.join(', '));
+  try{await renderAssets();}catch(e){asRows();}
 }
 let ANEW=null;
 function asAddNew(){ANEW={code:'',name:'',category:'',asset_group:'',criticality:'B',line:'',floor:'',checklist:'auto'};ASUG={groups:[],template_id:null,name:''};asDrawAdd();asSuggest();}
