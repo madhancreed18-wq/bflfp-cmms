@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "pr-preview",
+      "runtimeExecutable": "C:\\xampp\\htdocs\\xampp\\bflfp-cmms\\.venv\\Scripts\\python.exe",
+      "runtimeArgs": ["C:\\Users\\BFL-01\\AppData\\Local\\Temp\\claude\\b7f3badc0e84c13c\\13a81abc-be43-45f2-9a96-87bda1ef4612\\scratchpad\\preview_server.py"],
+      "port": 8770
+    }
+  ]
+}

@@ -124,6 +124,16 @@ def run():
     check("3-decimal quantity refused", st == 400)
     st, bad = u.req("POST", "/api/pr/requests", {**body, "reason": ""})
     check("empty reason refused", st == 400)
+    check("payment fields empty by default", (d.get("payment_method"), d.get("pay_by")) == ("", ""),
+          (d.get("payment_method"), d.get("pay_by")))
+    st, bad = u.req("POST", "/api/pr/requests", {**body, "payment_method": "bitcoin"})
+    check("unknown payment method refused", st == 400)
+    st, bad = u.req("POST", "/api/pr/requests", {**body, "pay_by": "31/12/2026"})
+    check("bad pay-by date refused", st == 400)
+    st, x = u.req("PUT", f"/api/pr/requests/{d2['id']}", {**body, "items": [], "payment_method": "petty_cash",
+                                                         "pay_by": "2026-11-30"})
+    check("payment method + pay-by saved", st == 200 and (x.get("payment_method"), x.get("pay_by"))
+          == ("petty_cash", "2026-11-30"), msg(x) or (x.get("payment_method"), x.get("pay_by")))
 
     b64 = base64.b64encode(PDF).decode()
     st, bad = u.req("POST", f"/api/pr/requests/{rid}/files/quotation", {"name": "q.pdf", "data": base64.b64encode(b"hello").decode()})

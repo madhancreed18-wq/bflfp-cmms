@@ -91,6 +91,12 @@ PO_STATUSES = {
     "sent_to_supplier": ("ส่งให้ supplier แล้ว", "Sent to supplier"),
     "not_sent_to_supplier": ("ยังไม่ส่งให้ supplier", "Not sent to supplier"),
 }
+# การตั้งเบิก on the paper form (optional). pay_by = "ภายในวันที่".
+PAYMENT_METHODS = {
+    "advance": ("เงินทดรองจ่าย", "Cash advance"),
+    "petty_cash": ("เงินสดย่อย", "Petty cash"),
+    "purchasing_cash": ("เงินสดแผนกจัดซื้อ", "Purchasing dept. cash"),
+}
 FILE_KINDS = ("quotation", "pr", "po")
 # a PR company code per plant (factories.code). The PO prefix is the plant code itself.
 COMPANY_OF_PLANT = {"BFL": "BFL", "FP": "BFLFP", "PC": "BFLPC"}
@@ -136,6 +142,10 @@ def ensure(c):
         po_cancel_reason TEXT DEFAULT '',
         job_id INTEGER DEFAULT 0, legacy_id INTEGER DEFAULT 0,
         created_by INTEGER DEFAULT 0, created_at TEXT DEFAULT '', updated_at TEXT DEFAULT '')""")
+    have = _table_cols(c, "pr_requests")
+    for col in ("payment_method", "pay_by"):
+        if col not in have:
+            c.execute(f"ALTER TABLE pr_requests ADD COLUMN {col} TEXT DEFAULT ''")
     c.execute("CREATE INDEX IF NOT EXISTS ix_pr_req_date ON pr_requests(request_date)")
     c.execute("CREATE INDEX IF NOT EXISTS ix_pr_req_status ON pr_requests(status)")
     c.execute("""CREATE TABLE IF NOT EXISTS pr_items(
@@ -360,7 +370,7 @@ async def me(req: Request):
             "company": COMPANY_OF_PLANT.get(plant, plant), "department": dep.upper(),
             "companies": cos, "departments": deps,
             "statuses": STATUSES, "purposes": PURPOSES, "pr_statuses": PR_STATUSES,
-            "po_statuses": PO_STATUSES, "roles": ROLE_LABELS, "vat_rate": str(VAT_RATE),
+            "po_statuses": PO_STATUSES, "payment_methods": PAYMENT_METHODS, "roles": ROLE_LABELS, "vat_rate": str(VAT_RATE),
             "max_file_mb": MAX_FILE // (1024 * 1024)}
 
 
@@ -471,6 +481,15 @@ def _clean_head(c, b, u):
         if not s:
             raise _bad("กรุณาเลือก Supplier จากรายการ (supplier)")
         sid, sname = s["id"], s["company_name"]
+    payment_method = (b.get("payment_method") or "").strip()
+    if payment_method and payment_method not in PAYMENT_METHODS:
+        raise _bad("การตั้งเบิกไม่ถูกต้อง (bad payment method)")
+    pay_by = (b.get("pay_by") or "").strip()
+    if pay_by:
+        try:
+            date.fromisoformat(pay_by)
+        except ValueError:
+            raise _bad("วันที่ตั้งเบิกไม่ถูกต้อง (bad pay-by date)")
     vat_included = 1 if b.get("vat_included", True) not in (False, 0, "0", "") else 0
     items = _items(b.get("items"))
     entered, sub, vat, grand = totals(items, vat_included, None if items else b.get("amount"))
@@ -481,7 +500,8 @@ def _clean_head(c, b, u):
     return {"company": company, "department": department, "request_date": rd, "purpose": purpose,
             "purpose_other": other, "reason": reason, "supplier_id": sid, "supplier_name": sname,
             "vat_included": vat_included, "amount_entered": 1 if entered else 0, "subtotal": sub,
-            "vat": vat, "grand_total": grand, "net_total": grand, "job_id": job_id}, items
+            "vat": vat, "grand_total": grand, "net_total": grand, "job_id": job_id,
+            "payment_method": payment_method, "pay_by": pay_by}, items
 
 
 def _save_items(c, rid, items):
@@ -506,13 +526,13 @@ async def create_request(req: Request):
                 rid = c.insert_id(
                     "INSERT INTO pr_requests(doc_code,company,department,requester_id,requester_name,supplier_id,"
                     "supplier_name,request_date,purpose,purpose_other,reason,amount_entered,subtotal,vat_included,"
-                    "vat,grand_total,net_total,status,pr_status,job_id,created_by,created_at,updated_at) "
-                    "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    "vat,grand_total,net_total,status,pr_status,job_id,payment_method,pay_by,created_by,created_at,"
+                    "updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (code, head["company"], head["department"], u["id"], _who(u), head["supplier_id"],
                      head["supplier_name"], head["request_date"], head["purpose"], head["purpose_other"],
                      head["reason"], head["amount_entered"], head["subtotal"], head["vat_included"], head["vat"],
                      head["grand_total"], head["net_total"], "waiting_quotation", "pending_approval",
-                     head["job_id"], u["id"], t, t))
+                     head["job_id"], head["payment_method"], head["pay_by"], u["id"], t, t))
                 break
             except Exception as e:
                 if "UNIQUE" not in str(e).upper() and "DUPLICATE" not in str(e).upper():
@@ -541,18 +561,19 @@ async def update_request(req: Request, rid: int):
             raise _bad("เอกสารที่อนุมัติ/ยกเลิกแล้วถูกล็อก — เฉพาะผู้อนุมัติแก้ไขได้ (locked: approver only)", 403)
         head, items = _clean_head(c, b, u)
         changed = [k for k in ("company", "department", "request_date", "purpose", "purpose_other", "reason",
-                               "supplier_name", "vat_included", "net_total") if str(old[k]) != str(head[k])]
+                               "supplier_name", "vat_included", "net_total", "payment_method", "pay_by")
+                   if str(old.get(k) or "") != str(head[k] or "")]
         old_items = [(i["description"], i["quantity"], i["unit_price"], i["note"]) for i in c.execute(
             "SELECT description,quantity,unit_price,note FROM pr_items WHERE request_id=? ORDER BY position", (rid,))]
         if old_items != [(i["description"], i["quantity"], i["unit_price"], i["note"]) for i in items]:
             changed.append("items")
         c.execute("UPDATE pr_requests SET company=?,department=?,request_date=?,purpose=?,purpose_other=?,reason=?,"
                   "supplier_id=?,supplier_name=?,vat_included=?,amount_entered=?,subtotal=?,vat=?,grand_total=?,"
-                  "net_total=?,job_id=?,updated_at=? WHERE id=?",
+                  "net_total=?,job_id=?,payment_method=?,pay_by=?,updated_at=? WHERE id=?",
                   (head["company"], head["department"], head["request_date"], head["purpose"], head["purpose_other"],
                    head["reason"], head["supplier_id"], head["supplier_name"], head["vat_included"],
                    head["amount_entered"], head["subtotal"], head["vat"], head["grand_total"], head["net_total"],
-                   head["job_id"] or old.get("job_id") or 0, now(), rid))
+                   head["job_id"] or old.get("job_id") or 0, head["payment_method"], head["pay_by"], now(), rid))
         _save_items(c, rid, items)
         _restatus(c, rid)
         if changed:
