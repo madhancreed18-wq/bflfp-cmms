@@ -1,26 +1,33 @@
 # Changelog — BFLFP CMMS
 All notable changes. Format: version · date · changes. Newest on top.
 
-## CMMS b587 — 2026-11-20 (PR app: purchase requests inside the Smart Factory login)
-- The stand-alone "PR Document Tracking" app (Flask, its own users and SQLite file) is now the fourth app in
-  the same login: CMMS · Warehouse · FG Stock · **PR**. Page /pr.html, same look as FG Stock.
-- Requests with item lines and VAT 7 %. Document code DEPT-COMPANY-YYMM-NNN, numbered across the month.
-  Status moves from waiting for quotation → waiting for approval → approved / cancelled.
-  Quotation / PR / PO files (PDF, JPG, PNG up to 10 MB, content checked). PR number PRYYMM-XXXX
-  (entering it approves the request). PO number <plant>-POXXXX-XXXX. Suppliers. Dashboard (year, month,
-  company, department, purpose). CSV export. Activity log.
-- Quotation scan: pick a PDF or photo on "New PR" and the items, prices, date, VAT and supplier are filled in for
-  checking. Photos and scanned PDFs need Tesseract OCR (Thai) on the server.
-- Access: users.pr_role (user · PR Admin · PO Admin · Approver · Super Admin), set in Manage › Users
-  ("Purchase requests (PR) — role") or PR › PR users. CMMS admins are always PR Super Admin. Empty = no PR tile or tab.
-- Old data: python tools/import_pr_tracker.py --src "<PR-Document-Tracking folder>". Copies requests, items, files,
-  suppliers and the log. Safe to run again.
-- Server: new server/pr.py, server/pr_scanner.py; tables pr_requests, pr_items, pr_files, pr_suppliers, pr_log
-  and users.pr_role (created automatically). Files in data/pr/. app.py and auth.py (pr_role on /api/me) changed.
-- Front end: static/pr.html (new); fnbar.js (PR function, FnBar.url); index.html (Apps tile, PR role in Users).
-- Tests: tests/test_pr.py (new, 47 checks). tests/smoke.py gains a PR section. NOTE: smoke.py's existing
-  "BD created Reported" check fails before this build — a report now needs a symptom and the test does not send one.
-- requirements.txt: + pypdfium2, pytesseract. APP_VERSION 2.4.0. Docs: docs/PR-MODULE.md.
+## CMMS b589 — 2026-11-23 (admin login stuck on a white login page — PR app tile)
+- Admins (and anyone with a PR role who gets the "choose an app" screen) were left on the login form with
+  a white background after pressing Login. Since the PR app was added, fnbar.js lists 'pr' as an app, but
+  the Apps screen had no name or icon for it and crashed half-way (it had already removed the blue login
+  background, but never drew the app grid).
+- Apps screen: a "Purchase Request (PR)" tile in every plant (shown whether FG Stock is on or off); opening
+  it goes to /pr.html. An app with no name no longer crashes the screen.
+- sw.js cache bumped so phones and PCs drop their saved copy. Files: static/index.html, static/sw.js.
+
+## CMMS b588 — 2026-11-23 (Assets: put many machines on a PM checklist at once)
+- Assets: tick rows → the blue bar now has "PM sheet: [checklist] Apply" — puts every ticked machine on
+  that checklist (e.g. WG3SCF01–12 → SCREW DISCHARGER); they leave "No checklist group" and get that
+  checklist's PM from their next due date. The PENDING placeholder is not offered.
+- Editing one row: the PM sheet (and every suggestion box) empties when clicked so the whole list shows —
+  a box holding "PENDING …" only suggested PENDING. Leave it empty and the old value comes back.
+- index.html only (includes b587). Login footer now shows the real build (UIBUILD had stayed at b547).
+
+## CMMS b587 — 2026-11-22 (asset import: new machines wait for a checklist · criticality count)
+- Assets › Import: a machine the import ADDS no longer joins a PM checklist by name match. It waits as
+  "pending checklist" in PM › "+ New group" (or the planner pins it to an existing group). Until then it
+  has no PM and does not move anyone else's PM day. Name matching sent 18 liquid VALVES to the liquid
+  AGITATOR checklist. Machines the import UPDATES keep the group they already have.
+- The import message now says how many machines changed criticality (A/B/C) and how many new machines
+  are waiting for a checklist.
+- Criticality is read live everywhere (KPI by class, critical-machine list, job list, hover card), so
+  after an import old periods are reported under the new class too; PM plan and jobs do not use it.
+- Files: server/asset_import.py, static/index.html.
 
 ## CMMS b586 — 2026-11-20 (minutes shown as "m" in Thai)
 - MTTR and every other figure drawn by fmin (dashboard KPI cards, machine KPI / history, targets)
