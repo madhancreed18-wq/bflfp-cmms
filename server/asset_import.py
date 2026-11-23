@@ -160,6 +160,7 @@ def import_xlsx(raw_bytes, factory_id, c):
             return _import_by_header(ws, wb, hrow, hmap, factory_id, c)
 
     read = inserted = updated = skipped = 0
+    new_codes = []
     for row in ws.iter_rows(min_row=6, values_only=True):     # rows 1-5 = title/header/example
         if row is None or len(row) < 3:
             skipped += 1
@@ -184,14 +185,17 @@ def import_xlsx(raw_bytes, factory_id, c):
             c.execute(f"INSERT INTO machines({','.join(cols)}) VALUES({ph})",
                       (*[rec[f] for f in FIELDS], factory_id, 1))
             inserted += 1
+            new_codes.append(code)
         read += 1
     wb.close()
     if not read:
         raise ValueError("ไม่พบรายการสินทรัพย์ในไฟล์นี้ (คาดว่าชีต Review รหัสเครื่องอยู่คอลัมน์ B "
                          "เริ่มแถวที่ 6) / no asset rows found — expected a Review sheet with the "
                          "asset code in column B from row 6")
+    pending = _park_new(c, factory_id, new_codes)
     c.commit()
-    return {"read": read, "inserted": inserted, "updated": updated, "skipped": skipped}
+    return {"read": read, "inserted": inserted, "updated": updated, "skipped": skipped,
+            "pending": pending}
 
 
 def _import_by_header(ws, wb, hrow, hmap, factory_id, c):
@@ -206,6 +210,7 @@ def _import_by_header(ws, wb, hrow, hmap, factory_id, c):
     name_ci = hmap.get("name")
     floor_ci = hmap.get("floor")
     read = inserted = updated = skipped = 0
+    new_codes, crit_changed = [], 0
     # Rows left out, and why — a bare count once told a planner that six of their rows
     # had gone somewhere without saying which. Only rows that really cannot be placed
     # land here now; a row with a name is given a code and imported instead.
@@ -256,6 +261,11 @@ def _import_by_header(ws, wb, hrow, hmap, factory_id, c):
         exists = c.execute("SELECT id FROM machines WHERE code=? AND factory_id=?",
                            (code, factory_id)).fetchone()
         if exists:
+            if "criticality" in rec:
+                _old = c.execute("SELECT COALESCE(criticality,'') k FROM machines WHERE id=?",
+                                 (exists["id"],)).fetchone()
+                if (_old["k"] or "").strip().upper() != (rec["criticality"] or "").strip().upper():
+                    crit_changed += 1
             cols = list(rec) + ["factory_id"]
             c.execute(f"UPDATE machines SET {','.join(k + '=?' for k in cols)} WHERE id=?",
                       (*[rec[f] for f in rec], factory_id, exists["id"]))
@@ -267,10 +277,37 @@ def _import_by_header(ws, wb, hrow, hmap, factory_id, c):
             c.execute(f"INSERT INTO machines({','.join(cols)}) VALUES({ph})",
                       (code, *[rec[f] for f in rec], factory_id))
             inserted += 1
+            new_codes.append(code)
         read += 1
     wb.close()
     if not read:
         raise ValueError("ไม่พบรายการสินทรัพย์ในไฟล์นี้ / no asset rows found under the header row")
+    pending = _park_new(c, factory_id, new_codes)
     c.commit()
     return {"read": read, "inserted": inserted, "updated": updated, "skipped": skipped,
-            "dropped": dropped, "noid": noid}
+            "dropped": dropped, "noid": noid, "pending": pending, "crit_changed": crit_changed}
+
+
+def _park_new(c, factory_id, codes):
+    """b587 — an asset that arrives by import has no PM checklist yet, so it waits as
+    "pending checklist" in PM › "+ New group" instead of being handed to whichever sheet
+    shares a word with its name. Matching by name sent 18 liquid VALVES to the liquid
+    AGITATOR checklist. A planner puts it in a group (an existing one or a new one); until
+    then it has no PM and does not move anyone else's PM day. An asset that is UPDATED
+    keeps the group it already has."""
+    if not codes:
+        return 0
+    try:
+        from . import pm as _pm
+        ids = set()
+        for i in range(0, len(codes), 400):
+            ch = codes[i:i + 400]
+            ids |= {r["id"] for r in c.execute(
+                "SELECT id FROM machines WHERE factory_id=? AND code IN (%s)" % ",".join("?" * len(ch)),
+                (factory_id, *ch))}
+        if ids:
+            _pm._nogroup_save(c, factory_id, _pm._nogroup(c, factory_id) | ids)
+            _pm._MATCH_CACHE.pop(factory_id, None)
+        return len(ids)
+    except Exception:
+        return 0
