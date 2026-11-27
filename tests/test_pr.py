@@ -88,6 +88,28 @@ def thai_text_checks():
           r2["items"][:1])
     check("scanned item keeps correct Thai", r["items"] and r["items"][0]["description"] == "ป้ายชื่อ",
           r["items"][:1])
+    # a hand-filled quotation form (dotted lines), as OCR reads it
+    form = ("ใบเสนอราคา\n"
+            "วันที่ .27.. เดือน ... พฤศจิกายน .... พ . ศ ...2569...\n"
+            "บริษัทห้างร้าน ...... ร้านคอมแอนด์โมบายเซอร์วิส ....... เลขที ...291.... ถนน\n"
+            "ขอเสนอราคา ... ซ่อมปรินเตอร์ดังมีรายการต่อไปนี\n"
+            "ที่ รายการ จำนวน ราคาหน่วยละ จำนวนเงิน\n"
+            "Canon 6030w แก้ไข 1 เครื่อง\n"
+            "ชุดความร้อน 1,500 1,500\n"
+            "รวมเป็นเงินทังสิน .........1 500................... บาท\n"
+            "4 vat 4 y\n")
+    r = parse_quotation(form)
+    check("form: dotted date read", r["request_date"] == "2026-11-27", r["request_date"])
+    check("form: total on a dotted line with a split thousands", r["grand_total"] == "1500.00", r["grand_total"])
+    check("form: stray 'vat' in OCR noise is no VAT", r["vat_included"] == "0", r["vat_included"])
+    check("form: seller name without the form label and dots", r["supplier_name"] == "ร้านคอมแอนด์โมบายเซอร์วิส",
+          r["supplier_name"])
+    check("form: model row joined to the priced row below",
+          r["items"] and r["items"][0]["description"] == "Canon 6030w แก้ไข - ชุดความร้อน", r["items"][:1])
+    r = parse_quotation("ที่ รายการ จำนวน ราคาหน่วยละ จำนวนเงิน\nล้างหัวพิมพ์ 1.200 1.200\n"
+                        "รวมเป็นเงินทังสิน .........1.200................. บาท")
+    check("form: dot read for a thousands comma", r["items"] and r["items"][0]["unit_price"] == "1200.00"
+          and r["grand_total"] == "1200.00", (r["items"][:1], r["grand_total"]))
 
 
 def numbered_pending_checks():
@@ -112,8 +134,62 @@ def numbered_pending_checks():
           (got["C"], got["D"]))
 
 
+def backup_ocr_checks():
+    """OpenThai reads a scan first; Tesseract reads it too only when OpenThai misses the items,
+    the total or the date, and the better reading wins. The engines are stand-ins here."""
+    sys.path.insert(0, ROOT)
+    from server import pr_scanner as ps
+    good = "ใบเสนอราคา วันที่ 27/11/2026\nรายการ จำนวน ราคา\nสายพาน 2 500.00 1,000.00\nรวมทั้งสิ้น 1,000.00"
+    no_total = "ใบเสนอราคา วันที่ 27/11/2026\nรายการ จำนวน ราคา\nสายพาน"
+    no_date = "รายการ จำนวน ราคา\nสายพาน 2 500.00 1,000.00\nรวมทั้งสิ้น 1,000.00"
+    calls = []
+    keep = ps._ocr_with_retry, ps._openthai_text
+
+    def run_with(openthai, tesseract, primary=""):
+        calls.clear()
+
+        def fake_tesseract(images, cmd):
+            calls.append("tesseract")
+            if tesseract is None:
+                raise ps.ScannerUnavailable("no tesseract")
+            return tesseract, []
+
+        ps._ocr_with_retry = fake_tesseract
+        ps._openthai_text = lambda images: calls.append("openthai") or openthai
+        os.environ["PR_OCR_PRIMARY"] = primary
+        try:
+            return ps._read_scan([], "")
+        finally:
+            ps._ocr_with_retry, ps._openthai_text = keep
+            os.environ.pop("PR_OCR_PRIMARY", None)
+
+    text, method, _ = run_with(good, good)
+    check("OpenThai is the main OCR; Tesseract not run when it reads everything",
+          method == "ocr_openthai" and calls == ["openthai"], (method, calls))
+    text, method, _ = run_with(no_total, good)
+    check("Tesseract backup wins when OpenThai misses the total", method == "ocr", method)
+    text, method, _ = run_with(no_date, no_total)
+    check("OpenThai kept, with Tesseract's date line", method == "ocr_openthai"
+          and ps.parse_quotation(text)["request_date"] == "2026-11-27", (method, text[-40:]))
+    text, method, _ = run_with(no_total, no_total)
+    check("tie keeps the main OCR (OpenThai)", method == "ocr_openthai", method)
+    text, method, _ = run_with("", good)
+    check("OpenThai not installed -> Tesseract", method == "ocr" and text == good, method)
+    text, method, _ = run_with(no_total, None)
+    check("Tesseract not installed -> OpenThai reading kept", method == "ocr_openthai", method)
+    try:
+        run_with("", None)
+        check("no OCR at all -> ScannerUnavailable", False)
+    except ps.ScannerUnavailable:
+        check("no OCR at all -> ScannerUnavailable", True)
+    text, method, _ = run_with(good, good, primary="tesseract")
+    check("PR_OCR_PRIMARY=tesseract puts Tesseract first", method == "ocr" and calls == ["tesseract"],
+          (method, calls))
+
+
 def run():
     thai_text_checks()
+    backup_ocr_checks()
     numbered_pending_checks()
     adm = Client()
     st, me = adm.login("admin1")

@@ -1,0 +1,30 @@
+{
+  "rec": {
+    "drop_below": 0.8,
+    "junk_below": 0.9,
+    "junk_invalid": 0.05,
+    "min_chars": 2,
+    "color": "flatten",
+    "min_chars_digits": 1,
+    "min_chars_digits_height": 0.62,
+    "min_chars_latin": true
+  },
+  "rec2": {
+    "file": "rec2.onnx"
+  },
+  "join": {
+    "decimal_comma": true
+  },
+  "runtime": {
+    "ort_low_memory": true
+  },
+  "pre": {
+    "dewarp": false,
+    "dewarp_dir": "dewarp",
+    "dewarp_backend": "uvdoc"
+  },
+  "judge9": {
+    "file": "judge9.onnx",
+    "threshold": 0.95
+  }
+}

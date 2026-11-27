@@ -566,7 +566,7 @@ async function scanQuote(){
     if(r.items&&r.items.length){FORM.items=r.items.map(i=>({description:i.description,quantity:i.quantity,unit_price:i.unit_price,note:i.note||''}));drawItems();}
     const w=(r.warnings||[]).map(x=>`<div>• ${esc(x)}</div>`).join('')+(FORM.items.length>MAXL?`<div>• ${L(`มี ${FORM.items.length} รายการ เกินแบบฟอร์ม ${MAXL} รายการ`,`${FORM.items.length} lines — more than the ${MAXL} on the form`)}</div>`:'');
     const sup=!r.supplier_id&&r.supplier_name?`<div>• Supplier: <b>${esc(r.supplier_name)}</b> — ${L('ยังไม่มีในระบบ','not in the list yet')} <a href="#" onclick="supDlg({company_name:${esc(JSON.stringify(r.supplier_name))}},true);return false">${L('เพิ่ม','add it')}</a></div>`:'';
-    $('#scanMsg').innerHTML=`<div class="msg ${w?'m-warn':'m-ok'}">✓ ${L('อ่านแล้ว','Read')} (${r.method==='ocr'?'OCR':L('ข้อความใน PDF','PDF text')}) — ${r.items.length} ${L('รายการ','lines')}${r.grand_total?` · ${L('ยอดรวมในใบเสนอราคา','quotation total')} ${money(r.grand_total)}`:''}${sup}${w}</div>`;
+    $('#scanMsg').innerHTML=`<div class="msg ${w?'m-warn':'m-ok'}">✓ ${L('อ่านแล้ว','Read')} (${r.method==='ocr'?'OCR':r.method==='ocr_openthai'?'OCR · OpenThai':L('ข้อความใน PDF','PDF text')}) — ${r.items.length} ${L('รายการ','lines')}${r.grand_total?` · ${L('ยอดรวมในใบเสนอราคา','quotation total')} ${money(r.grand_total)}`:''}${sup}${w}</div>`;
   }catch(e){$('#scanMsg').innerHTML=`<div class="msg m-warn">${esc(e.message)} — ${L('กรอกเองได้ ไฟล์ยังแนบให้เมื่อบันทึก','fill the form by hand; the file is still attached when you save')}</div>`;}
   btn.disabled=false;const sl=$('#scanLbl');if(sl)sl.textContent=L('อ่านอีกครั้ง','Read again');
 }

@@ -1,0 +1,20 @@
+OpenThai2.0-OCR-Text (iApp Technology)
+
+This model includes or is derived from the following Apache-2.0 licensed work:
+
+  PP-OCRv6_tiny_det, PP-OCRv6_tiny_rec, th_PP-OCRv5_mobile_rec (character list)
+  Copyright (c) PaddlePaddle Authors
+  https://huggingface.co/PaddlePaddle
+  Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
+
+det.onnx is PP-OCRv6_tiny_det as distributed. rec.onnx is a fine-tune of
+PP-OCRv6_tiny_rec with a replaced Thai classifier, trained by iApp.
+
+judge9.onnx (2.2.1) was trained from scratch by iApp and is Apache-2.0.
+
+The optional dewarping (runtime/dewarp.py, 2.2) uses two Apache-2.0 models:
+  - dewarp/dewarp_mask.onnx (included): the page mask of the MonkeyOCRv2 document preprocessor,
+    exported to ONNX by iApp from preprocessor1.pth in https://huggingface.co/zenosai/MonkeyOCRv2-S-Parsing
+    (code: https://github.com/Yuliang-Liu/MonkeyOCRv2). Copyright the MonkeyOCRv2 authors.
+    Licensed under the Apache License, Version 2.0.
+  - PaddlePaddle UVDoc (https://huggingface.co/PaddlePaddle/UVDoc_onnx): not included, downloaded separately.

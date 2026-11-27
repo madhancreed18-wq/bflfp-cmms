@@ -48,6 +48,23 @@ Money is stored as text (`"1234.50"`) and added up with `Decimal`, never float.
 server. Install it to `C:\Program Files\Tesseract-OCR`, or set `TESSERACT_CMD`. Without Tesseract, text PDFs still read.
 Python packages: `pypdfium2` and `pytesseract` (in `requirements.txt`).
 
+**Main OCR: OpenThai OCR Text** (iApp, Apache-2.0, CPU only, about 15 MB), with Tesseract as its backup. OpenThai
+reads a scan first (the scan message says "OCR · OpenThai"). When its reading misses the items, the total or the
+date, Tesseract reads the page too and the better reading is used (OpenThai on a tie). A date line only the other
+reader found is added, because OpenThai skips hand-filled dotted lines. Set `PR_OCR_PRIMARY=tesseract` to put
+Tesseract first again. Without OpenThai installed, Tesseract reads alone, as before. To install, in the app folder
+with the app's `.venv`:
+
+```
+pip install openvino opencv-python-headless pyclipper numpy huggingface_hub
+python -c "from huggingface_hub import snapshot_download; snapshot_download('iapp/OpenThai2.2-OCR-Text-20261127', local_dir='models/OpenThai-OCR-Text')"
+```
+
+Or put the model elsewhere and set `OPENTHAI_OCR_DIR`. Restart the app.
+Use **OpenVINO, not onnxruntime**: OpenThai is only loaded when OpenVINO is installed, because onnxruntime
+crashes the process on Windows with an old Visual C++ runtime (14.28 on the office PC).
+The model folder `models/OpenThai-OCR-Text` is not in `.gitignore`; keep it out of commits.
+
 ## Developing the PR app: rules
 - Change only `server/pr.py`, `server/pr_scanner.py`, `static/pr.html` and `tests/test_pr.py`.
   The core touch points are listed below. Change them only in a reviewed PR.

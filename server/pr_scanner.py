@@ -9,11 +9,14 @@ treats every value it returns as a suggestion the user reviews before saving.
 
 from datetime import date
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+import importlib.util
 import io
 import os
 import re
 import shutil
 import statistics
+import sys
+import threading
 import unicodedata
 
 MAX_OCR_PAGES = 3
@@ -27,6 +30,11 @@ MIN_TEXT_LAYER_CHARS = 40
 MAX_GARBAGE_RATIO = 0.15
 NORMAL_SYMBOLS = set("®©°±×÷µ²³")
 WINDOWS_TESSERACT = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+# OpenThai OCR (iApp, Apache-2.0) reads scans first when installed; Tesseract is its backup.
+# PR_OCR_PRIMARY=tesseract swaps them. The model folder is OPENTHAI_OCR_DIR, or
+# models/OpenThai-OCR-Text in the app.
+OPENTHAI_DEFAULT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                    "models", "OpenThai-OCR-Text")
 
 
 class ScannerUnavailable(RuntimeError):
@@ -45,6 +53,124 @@ def find_tesseract(configured=""):
         if candidate and os.path.isfile(candidate):
             return candidate
     return ""
+
+
+def find_openthai(configured=""):
+    for candidate in (configured, os.environ.get("OPENTHAI_OCR_DIR", ""), OPENTHAI_DEFAULT_DIR):
+        if candidate and os.path.isfile(os.path.join(candidate, "runtime", "line_engine.py")):
+            return candidate
+    return ""
+
+
+_OPENTHAI = {"tried": False, "engine": None}
+_OPENTHAI_LOCK = threading.Lock()
+
+
+def _openthai_engine():
+    """The OpenThai line reader, loaded once; None when it is not installed.
+
+    It is used only with OpenVINO: its other backend, onnxruntime, crashes the whole process
+    on Windows with an old Visual C++ runtime, and that would take the server down with it.
+    """
+    with _OPENTHAI_LOCK:
+        if _OPENTHAI["tried"]:
+            return _OPENTHAI["engine"]
+        _OPENTHAI["tried"] = True
+        folder = find_openthai()
+        if not folder or importlib.util.find_spec("openvino") is None:
+            return None
+        try:
+            # Loaded under its own name: the model ships a package called just "runtime".
+            runtime = os.path.join(folder, "runtime")
+            spec = importlib.util.spec_from_file_location(
+                "openthai_runtime", os.path.join(runtime, "__init__.py"), submodule_search_locations=[runtime])
+            package = importlib.util.module_from_spec(spec)
+            sys.modules["openthai_runtime"] = package
+            spec.loader.exec_module(package)
+            from openthai_runtime.line_engine import LineOCR
+            _OPENTHAI["engine"] = LineOCR(folder, threads=min(4, os.cpu_count() or 1))
+        except Exception:
+            _OPENTHAI["engine"] = None
+        return _OPENTHAI["engine"]
+
+
+def _openthai_text(images):
+    """Read the pages with OpenThai. Its rows come back as pieces with boxes; a wide gap
+    between pieces on a row is a column break (3 spaces), as in layout_lines()."""
+    import numpy as np
+
+    engine = _openthai_engine()
+    if engine is None:
+        return ""
+    rows_out = []
+    for image in images:
+        result = engine.read(np.ascontiguousarray(np.asarray(image.convert("RGB"))[:, :, ::-1]))
+        rows = {}
+        for line in result.get("lines", []):
+            rows.setdefault(line["row"], []).append(line)
+        for key in sorted(rows):
+            parts = sorted(rows[key], key=lambda line: min(x for x, _ in line["box"]))
+            height = statistics.median(max(y for _, y in line["box"]) - min(y for _, y in line["box"])
+                                       for line in parts) or 1
+            text, right = "", None
+            for line in parts:
+                left = min(x for x, _ in line["box"])
+                if right is not None:
+                    text += "   " if left - right > 1.2 * height else " "
+                text += line["text"]
+                right = max(x for x, _ in line["box"])
+            rows_out.append(text)
+    return fix_thai("\n".join(rows_out))
+
+
+def _reading_quality(text):
+    """(items and total found, date found) for choosing between two readings of a page."""
+    lines = [line.strip() for line in normalize_text(text).splitlines() if line.strip()]
+    items = find_items(lines, MAX_ITEMS_READ)
+    subtotal = sum((Decimal(item["amount"]) for item in items), Decimal("0"))
+    total = find_grand_total(lines, subtotal, find_vat_mode(lines))
+    return bool(items) + bool(total), bool(find_date(lines))
+
+
+def _read_openthai(images, tesseract_cmd):
+    try:
+        text = _openthai_text(images)
+    except Exception as error:
+        raise ScannerUnavailable("OpenThai OCR อ่านไฟล์ไม่ได้") from error
+    if not text:
+        raise ScannerUnavailable("ยังไม่ได้ติดตั้ง OpenThai OCR")
+    return text, []
+
+
+def _read_scan(images, tesseract_cmd):
+    """Read scanned pages with the main OCR; when its reading misses the items, the total or
+    the date, the other OCR reads them too and the better reading wins (the main one on a tie).
+    A date line only the other found is added, since OpenThai skips hand-filled dotted lines.
+    Returns (text, method, warnings)."""
+    readers = [("ocr_openthai", _read_openthai), ("ocr", _ocr_with_retry)]
+    if os.environ.get("PR_OCR_PRIMARY", "").strip().lower() == "tesseract":
+        readers.reverse()
+    readings, missing = [], None
+    for method, read in readers:
+        try:
+            text, warnings = read(images, tesseract_cmd)
+        except ScannerUnavailable as error:
+            missing = missing or error
+            continue
+        quality = _reading_quality(text)
+        readings.append((quality, method, text, warnings))
+        if quality == (2, True):
+            break
+    if not readings:
+        raise missing
+    best = readings[0]
+    if len(readings) == 2 and readings[1][0] > best[0]:
+        best = readings[1]
+    quality, method, text, warnings = best
+    other = next((reading for reading in readings if reading is not best), None)
+    if other and other[0][1] and not quality[1]:
+        text += "\n" + "\n".join(line for line in other[2].splitlines() if DATE_LABEL.search(line))
+    return text, method, warnings
 
 
 def _ocr_images(images, tesseract_cmd):
@@ -218,6 +344,7 @@ def _ocr_with_retry(images, tesseract_cmd):
     Removing lines everywhere would also eat bold text on clean scans, so it is only the
     fallback for forms whose boxed rows Tesseract skipped.
     """
+    images = [_prepare_image(image) for image in images]
     text, warnings = _ocr_images(images, tesseract_cmd)
     if _has_items(text):
         return text, warnings
@@ -269,19 +396,17 @@ def extract_text(data, suffix, tesseract_cmd=""):
             usable = len(re.sub(r"\s", "", text)) >= MIN_TEXT_LAYER_CHARS
             if usable and garbage_ratio(text) < MAX_GARBAGE_RATIO:
                 return text, "text_layer", []
-            images = [_prepare_image(page.render(scale=OCR_DPI / 72).to_pil()) for page in pages]
+            images = [page.render(scale=OCR_DPI / 72).to_pil() for page in pages]
         finally:
             pdf.close()
         if usable:
             # The text layer is unreadable (broken font encoding); OCR the page instead,
             # but keep the text layer when OCR software is missing.
             try:
-                ocr_text, warnings = _ocr_with_retry(images, tesseract_cmd)
+                return _read_scan(images, tesseract_cmd)
             except ScannerUnavailable:
                 return text, "text_layer", []
-            return ocr_text, "ocr", warnings
-        text, warnings = _ocr_with_retry(images, tesseract_cmd)
-        return text, "ocr", warnings
+        return _read_scan(images, tesseract_cmd)
     try:
         from PIL import Image, UnidentifiedImageError
     except ImportError as error:
@@ -291,8 +416,7 @@ def extract_text(data, suffix, tesseract_cmd=""):
         image.load()
     except (UnidentifiedImageError, OSError) as error:
         raise ScanFailed("ไม่สามารถเปิดไฟล์รูปภาพได้ ไฟล์อาจเสียหาย") from error
-    text, warnings = _ocr_with_retry([_prepare_image(image)], tesseract_cmd)
-    return text, "ocr", warnings
+    return _read_scan([image], tesseract_cmd)
 
 
 # ------------------------------------------------------------------------ parsing
@@ -425,9 +549,29 @@ def normalize_text(text):
     text = re.sub(r"(?<![\d,])(\d{1,3}), (\d{3}\.\d{2})(?!\d)", r"\1,\2", text)  # "1, 880.00"
     # OCR often reads a thousands comma as a dot: "1.680.00".
     text = re.sub(r"(?<![\d.,])(\d{1,3})\.(\d{3}\.\d{2})(?![\d.])", r"\1,\2", text)
+    # Fill-in forms write the total on a dotted line, where OCR splits the thousands:
+    # ".........1 500......" or ".........1.200......" mean 1,500 and 1,200.
+    text = re.sub(r"(\.{2,}\s*)([1-9]\d{0,2})[ .](\d{3})(?=\s*\.{2,})", r"\1\2,\3", text)
+    text = "\n".join(_dot_thousands(line) for line in text.split("\n"))
+    # Dot leaders glued to a number hide it from NUMBER: ".....1,500....." -> " 1,500 ".
+    text = re.sub(r"\.{2,}(?=\d)|(?<=\d)\.{2,}", " ", text)
     # Single spaces stay single; wider gaps (column breaks from layout_lines) become 3 spaces.
     text = re.sub(r"[ \t\xa0]{3,}", "   ", text)
     return re.sub(r"(?<=\S)[ \t\xa0]{2}(?=\S)", " ", text)
+
+
+THOUSANDS_DOT = re.compile(r"(?<![\d.,])([1-9]\d{0,2})\.(\d{3})(?![\d.,])")
+
+
+def _dot_thousands(line):
+    """OCR reads a thousands comma as a dot: "1.200 1.200" on a price row means 1,200.
+
+    Only when a row holds two or more such figures and no figure with satang, so a
+    weight such as "1.500 kg" next to a price "450.00" is left alone.
+    """
+    if len(THOUSANDS_DOT.findall(line)) < 2 or re.search(r"\d\.\d{2}(?!\d)", line):
+        return line
+    return THOUSANDS_DOT.sub(r"\1,\2", line)
 
 
 def _make_date(day, month, year):
@@ -442,6 +586,15 @@ def _make_date(day, month, year):
         return None
 
 
+FORM_DATE_WORDS = re.compile(r"(?:เดือน|เคือน|พ\s*\.\s*ศ\s*\.?|ค\s*\.\s*ศ\s*\.?)")
+
+
+def _undot(line):
+    """A fill-in form's date without its labels and dot leaders: "27 พฤศจิกายน 2569"."""
+    line = FORM_DATE_WORDS.sub(" ", line)
+    return re.sub(r"\s*(?:\.\s*){2,}", " ", line)
+
+
 def find_date(lines):
     """The quotation date: prefer one on a line labelled วันที่/Date, else the first date."""
     found = []
@@ -452,7 +605,7 @@ def find_date(lines):
             value = _make_date(*match.groups())
             if value:
                 found.append((not labelled, index, value))
-        for match in WORD_DATE.finditer(line):
+        for match in [*WORD_DATE.finditer(line), *WORD_DATE.finditer(_undot(line))]:
             month_name = match.group(2).lower().rstrip(".")
             month = THAI_MONTHS.get(match.group(2)) or THAI_MONTHS.get(month_name + ".") \
                 or ENGLISH_MONTHS.get(month_name)
@@ -603,6 +756,15 @@ def _table_rows(lines):
 CONTINUATION = re.compile(r"^[,;)+/&]|^[a-z]")
 
 
+def _counted_heading(line):
+    """"Canon 6030w แก้ไข 1 เครื่อง" -> "Canon 6030w แก้ไข": a row naming the thing and its
+    count, with no price, that the priced row below it belongs to. Else ""."""
+    match = re.match(r"^(.*?\S)\s+\d{1,4}\s+(\S+)\s*$", line)
+    if not match or not UNIT_PREFIX.match(match.group(2)) or len(re.sub(r"\W", "", match.group(1))) < 3:
+        return ""
+    return _clean_description(match.group(1))
+
+
 def find_items(lines, limit):
     items = []
     previous = []  # description lines above the current row (it often wraps or sits above)
@@ -623,6 +785,9 @@ def find_items(lines, limit):
             description = previous[-1] if previous else ""
         elif previous and CONTINUATION.match(description):
             description = " ".join([*previous, description])
+        elif previous and (head := _counted_heading(previous[-1])):
+            # "Canon 6030w แก้ไข 1 เครื่อง" with the work and price on the row below.
+            description = f"{head} - {description}"
         previous = []
         note = ""
         if not _close(quantity * price, amount):
@@ -722,10 +887,13 @@ def normalize_name(name):
 
 
 NAME_END = re.compile(
-    r"\s{3}|\||เลขประจำตัว|เลขที่|เลขท|\btax\s*id|\btel\b|โทร(?:\.|ศัพท์|\s*:)|\d{2,}/|\bno\.|\bbranch\b",
+    r"\s{3}|\||\.{3,}|เลขประจำตัว|เลขที่|เลขท|\btax\s*id|\btel\b|โทร(?:\.|ศัพท์|\s*:)|\d{2,}/|\bno\.|\bbranch\b",
     re.IGNORECASE,
 )
 DOCUMENT_TITLE = Keywords(["ใบเสนอราคา", "หน้า"], r"quot|qutation|\bpage\b")
+
+
+FORM_COMPANY_LABEL = re.compile(r"^\s*บริษัท\s*/?\s*ห้าง\s*/?\s*ร้าน\s*(?:\.\s*){2,}")
 
 
 def find_supplier_name(lines):
@@ -735,6 +903,8 @@ def find_supplier_name(lines):
             # "บริษัทฯ ขอเสนอราคา..." is a sentence about the seller, not its name.
             if re.match(r"\s*(?:ทาง)?บริษัท\s*ฯ|\s*ทางบริษัท", line):
                 continue
+            # A fill-in form's label "บริษัท ห้าง ร้าน......" is not the name; what is written after it is.
+            line = FORM_COMPANY_LABEL.sub("", line)
             # Take the column holding the legal name, skipping logo junk printed beside it.
             segments = [part.strip(" :-/") for part in NAME_END.split(line) if part and part.strip(" :-/")]
             name = next((part for part in segments if SUPPLIER_LINE.search(part)), segments[0])
@@ -776,6 +946,14 @@ def parse_quotation(text, suppliers=(), max_items=10):
     if not vat_mode and all_items and grand_total and _close(subtotal, Decimal(grand_total)):
         # No VAT row and the total equals the items: a seller that does not charge VAT.
         vat_mode = "0"
+    elif vat_mode == "1" and all_items and grand_total and subtotal > 0 \
+            and _close(subtotal, Decimal(grand_total)) \
+            and not _close(subtotal * Decimal("1.07"), Decimal(grand_total)):
+        # The total is the items alone and the "VAT" found is not 7% of them (OCR noise
+        # such as "4 vat 4"): no VAT is charged.
+        vat = find_vat_amount(lines)
+        if not vat or not _close(subtotal * Decimal("0.07"), vat):
+            vat_mode = "0"
     result = {
         "request_date": find_date(lines),
         "vat_included": vat_mode,
