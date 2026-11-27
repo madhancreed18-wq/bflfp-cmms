@@ -119,7 +119,7 @@ FILE_TYPES = {
     ".jpeg": ("image/jpeg", b"\xff\xd8\xff"),
     ".png": ("image/png", b"\x89PNG\r\n\x1a\n"),
 }
-PR_SFX = re.compile(r"[0-9]{2}(0[1-9]|1[0-2])-[A-Z0-9]{4}")
+PR_SFX = re.compile(r"[0-9]{2}(0[1-9]|1[0-2])-[0-9]{4}")   # YYMM-XXXX, digits only
 PO_SFX = re.compile(r"[A-Z0-9]{4}-[A-Z0-9]{4}")
 SORTS = {"code": "doc_code", "date": "request_date", "company": "company", "department": "department",
          "requester": "requester_name", "supplier": "supplier_name", "total": "CAST(net_total AS REAL)",
@@ -672,7 +672,8 @@ async def set_status(req: Request, rid: int):
 
 
 def clean_tracking(kind, b, company_prefix, old):
-    """PR: PRYYMM-XXXX; a number = approved, none = pending_approval, or cancelled.
+    """PR: PRYYMM-XXXX (date filled in on save); a number = approved, none = pending_approval,
+    or cancelled.
     PO: <plant>-POXXXX-XXXX."""
     number = (b.get("number") or "").strip().upper().replace(" ", "")
     status = (b.get("status") or "").strip()
@@ -682,7 +683,7 @@ def clean_tracking(kind, b, company_prefix, old):
         if number.startswith("PR"):
             number = number[2:]
         if number and not PR_SFX.fullmatch(number):
-            raise _bad("เลข PR ต้องเป็น PR YYMM-XXXX เช่น PR2611-0042 (PR number: PRYYMM-XXXX)")
+            raise _bad("เลข PR ต้องเป็นตัวเลข PR YYMM-XXXX เช่น PR2611-0042 (PR number: PRYYMM-XXXX, digits)")
         number = f"PR{number}" if number else ""
         if status and status not in PR_STATUSES:
             raise _bad("สถานะเลข PR ไม่ถูกต้อง (PR status)")
@@ -691,8 +692,16 @@ def clean_tracking(kind, b, company_prefix, old):
         if status == "pending_approval" and number:
             raise _bad("สถานะรออนุมัติต้องไม่มีเลข PR (remove the number to set pending)")
         status = "cancelled" if status == "cancelled" else ("approved" if number else "pending_approval")
-        if status == "approved" and old.get("pr_status") != "approved" and not when:
-            when = date.today().isoformat()
+        # The PR date is not typed: it is the day the number (or the cancel) was saved, and
+        # stays as it was while the number / cancel is unchanged.
+        kept = old.get("pr_date") or ""
+        if number:
+            same = number == (old.get("pr_number") or "") and old.get("pr_status") == "approved"
+            when = kept if same and kept else date.today().isoformat()
+        elif status == "cancelled":
+            when = kept if old.get("pr_status") == "cancelled" and kept else date.today().isoformat()
+        else:
+            when = ""
     else:
         for pfx in sorted({company_prefix, "BFL", "FP", "PC"} - {""}, key=len, reverse=True):
             if number.startswith(f"{pfx}-PO"):

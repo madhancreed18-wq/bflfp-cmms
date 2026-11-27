@@ -216,12 +216,17 @@ def run():
     check("approver may still edit an approved request", st == 200 and x["status"] == "approved", msg(x))
 
     pa = Client(); pa.login("planner1")
-    st, x = pa.req("POST", f"/api/pr/requests/{rid}/tracking/pr", {"number": "2611-AB12"})
-    check("PR admin types YYMM-XXXX, stored PRYYMM-XXXX", st == 200 and x["pr_number"] == "PR2611-AB12"
+    st, x = pa.req("POST", f"/api/pr/requests/{rid}/tracking/pr", {"number": "2611-0012"})
+    check("PR admin types YYMM-XXXX, stored PRYYMM-XXXX", st == 200 and x["pr_number"] == "PR2611-0012"
           and x["pr_status"] == "approved" and x["pr_date"], (x.get("pr_number"), x.get("pr_status")))
+    today = time.strftime("%Y-%m-%d")
+    st, x = pa.req("POST", f"/api/pr/requests/{rid}/tracking/pr", {"number": "PR2611-0012", "date": "2020-01-01"})
+    check("PR date is filled in on save (typed date ignored)", st == 200 and x["pr_date"] == today, x.get("pr_date"))
     st, x = pa.req("POST", f"/api/pr/requests/{rid}/tracking/pr", {"number": "PR2613-0001"})
     check("bad PR month refused", st == 400)
-    st, x = pa.req("POST", f"/api/pr/requests/{d2['id']}/tracking/pr", {"number": "PR2611-AB12"})
+    st, x = pa.req("POST", f"/api/pr/requests/{rid}/tracking/pr", {"number": "PR2611-AB12"})
+    check("letters in the PR number refused", st == 400, x)
+    st, x = pa.req("POST", f"/api/pr/requests/{d2['id']}/tracking/pr", {"number": "PR2611-0012"})
     check("same PR number twice refused", st == 400)
     st, x = pa.req("POST", f"/api/pr/requests/{rid}/tracking/po", {"number": "1234-5678"})
     check("PR admin cannot set PO (403)", st == 403)
@@ -238,16 +243,16 @@ def run():
     st, x = u.req("PUT", f"/api/pr/suppliers/{sid}", {"company_name": "nope"})
     check("requester cannot edit supplier (403)", st == 403)
 
-    st, x = pa.req("POST", f"/api/pr/requests/{d2['id']}/tracking/pr", {"number": "PR2611-cd34"})
+    st, x = pa.req("POST", f"/api/pr/requests/{d2['id']}/tracking/pr", {"number": "pr2611-0034"})
     check("PR number typed with PR prefix also accepted, request approved without quotation",
-          st == 200 and x["pr_number"] == "PR2611-CD34" and x["status"] == "approved", (x.get("pr_number"), x.get("status")))
-    st, x = pa.req("POST", f"/api/pr/requests/{d2['id']}/tracking/pr", {"number": "2611-CD34", "status": "pending_approval"})
+          st == 200 and x["pr_number"] == "PR2611-0034" and x["status"] == "approved", (x.get("pr_number"), x.get("status")))
+    st, x = pa.req("POST", f"/api/pr/requests/{d2['id']}/tracking/pr", {"number": "2611-0034", "status": "pending_approval"})
     check("pending with a PR number refused", st == 400)
     st, x = pa.req("POST", f"/api/pr/requests/{d2['id']}/tracking/pr", {"number": "", "status": "approved"})
     check("approved without a PR number refused", st == 400)
     st, x = pa.req("POST", f"/api/pr/requests/{d2['id']}/tracking/pr", {"number": ""})
     check("clearing the PR number -> pending_approval", st == 200 and x["status"] == "pending_approval"
-          and x["pr_status"] == "pending_approval", (x.get("status"), x.get("pr_status")))
+          and x["pr_status"] == "pending_approval" and not x["pr_date"], (x.get("status"), x.get("pr_status"), x.get("pr_date")))
     st, x = pa.req("POST", f"/api/pr/requests/{d2['id']}/tracking/pr", {"status": "cancelled", "cancel_reason": "duplicate"})
     check("cancelling PR number cancels the request", st == 200 and x["status"] == "cancelled", x.get("status"))
 
