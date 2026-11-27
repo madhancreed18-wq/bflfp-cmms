@@ -70,10 +70,46 @@ def _ocr_images(images, tesseract_cmd):
     for image in images:
         # psm 6 keeps each printed row on one line, which is what the item parser needs.
         pages.append(pytesseract.image_to_string(image, lang=languages, config="--psm 6"))
-    return join_thai_letters("\n".join(pages)), warnings
+    return fix_thai(join_thai_letters("\n".join(pages))), warnings
 
 
 THAI_LETTER_GAP = re.compile(r"(?<=[฀-๿]) (?=[฀-๿])")
+
+# Thai fonts made for Windows/Mac draw shifted tone marks and tail-less letters from the
+# Private Use Area (U+F700-U+F71A). Their text layer copies out as these codes, which look
+# like garbage and match no word; map each one back to the ordinary Thai character.
+THAI_PUA = {
+    0xF700: "ฐ", 0xF701: "ิ", 0xF702: "ี", 0xF703: "ึ", 0xF704: "ื",
+    0xF705: "่", 0xF706: "้", 0xF707: "๊", 0xF708: "๋", 0xF709: "์",
+    0xF70A: "่", 0xF70B: "้", 0xF70C: "๊", 0xF70D: "๋", 0xF70E: "์",
+    0xF70F: "ญ", 0xF710: "ั", 0xF711: "ํ", 0xF712: "็",
+    0xF713: "่", 0xF714: "้", 0xF715: "๊", 0xF716: "๋", 0xF717: "์",
+    0xF718: "ุ", 0xF719: "ู", 0xF71A: "ฺ",
+}
+THAI_TONES = "่้๊๋"
+THAI_UPPER_LOWER = "ัิีึื็ุู"
+TONE_BEFORE_VOWEL = re.compile(f"([{THAI_TONES}์])([{THAI_UPPER_LOWER}])")
+NIKHAHIT_TONE_AA = re.compile(f"ํ([{THAI_TONES}]?)า")
+REPEATED_MARK = re.compile(f"([{THAI_TONES}{THAI_UPPER_LOWER}์ํ])\\1+")
+
+
+def fix_thai(text):
+    """Put Thai text read from a PDF or OCR back into the standard spelling.
+
+    - Private Use Area glyphs become the ordinary characters.
+    - Sara am written as nikhahit + sara aa ("จํากัด", "นํ้า") becomes one "ำ" after the tone.
+    - Two sara e ("เเ") typed for sara ae become "แ".
+    - A tone mark stored before the upper/lower vowel ("ก่ี") moves after it ("กี่").
+    - A mark repeated by overlapping text runs is kept once.
+    """
+    if not text:
+        return text or ""
+    text = text.translate(THAI_PUA)
+    text = NIKHAHIT_TONE_AA.sub(lambda m: m.group(1) + "ำ", text)
+    text = text.replace("เเ", "แ")
+    text = TONE_BEFORE_VOWEL.sub(r"\2\1", text)
+    text = REPEATED_MARK.sub(r"\1", text)
+    return unicodedata.normalize("NFC", text)
 
 
 def join_thai_letters(text):
@@ -229,7 +265,7 @@ def extract_text(data, suffix, tesseract_cmd=""):
             raise ScanFailed("ไม่สามารถเปิดไฟล์ PDF ได้ ไฟล์อาจเสียหายหรือมีรหัสผ่าน") from error
         try:
             pages = [pdf[index] for index in range(min(len(pdf), MAX_OCR_PAGES))]
-            text = "\n".join("\n".join(layout_lines(page.get_textpage())) for page in pages)
+            text = fix_thai("\n".join("\n".join(layout_lines(page.get_textpage())) for page in pages))
             usable = len(re.sub(r"\s", "", text)) >= MIN_TEXT_LAYER_CHARS
             if usable and garbage_ratio(text) < MAX_GARBAGE_RATIO:
                 return text, "text_layer", []
@@ -381,7 +417,7 @@ def to_decimal(token):
 
 
 def normalize_text(text):
-    text = (text or "").translate(THAI_DIGITS).replace("\u200b", "").replace("\ufffe", "")
+    text = fix_thai(text).translate(THAI_DIGITS).replace("\u200b", "").replace("\ufffe", "")
     # OCR often reads the Thai baht sign or a stray "฿" glued to numbers.
     text = text.replace("฿", " ")
     # Some text layers split the satang off a price: "2,000. 00".
@@ -509,7 +545,7 @@ def _description(line, matches, qty_i, price_i):
     else:
         before = line[:matches[qty_i].start()]
         middle = line[matches[qty_i].end():matches[price_i].start()]
-    before = ITEM_NUMBER_PREFIX.sub("", before).strip(" :-|.")
+    before = _keep_abbreviation_dot(ITEM_NUMBER_PREFIX.sub("", before))
     if NUMBER.fullmatch(before):  # only an item number
         before = ""
     # "no qty unit description price amount": the description follows the quantity.
@@ -526,7 +562,13 @@ OCR_BORDER = re.compile(r"(?:^|(?<=\s))[^\sA-Za-z0-9|]{0,2}\s*\|\s*")
 def _clean_description(text):
     if "|" not in text:
         return text
-    return re.sub(r" {2,}", " ", OCR_BORDER.sub(" ", text)).strip(" :-|.")
+    return _keep_abbreviation_dot(re.sub(r" {2,}", " ", OCR_BORDER.sub(" ", text)))
+
+
+def _keep_abbreviation_dot(text):
+    """Trim edge punctuation, but keep the dot of a Thai abbreviation ("30 ซม.", "ม.ค.")."""
+    text = text.strip(" :-|").lstrip(". ")
+    return re.sub(r"(?<![฀-๿])[ .]+$", "", text).strip(" :-|")
 
 
 def _money(value):

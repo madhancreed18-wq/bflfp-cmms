@@ -111,7 +111,89 @@ input.in,select.in,textarea.in{width:100%}
 .tl b{font-weight:600}.tl span{color:var(--ink2);font-size:12px}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#0F172A;color:#fff;border-radius:10px;padding:10px 16px;z-index:40;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.25)}
 .skel{color:var(--ink2)}
-@media (max-width:820px){
+/* ── new / edit form: looks like the paper form F-SP-PUR02-04 ── */
+.pf-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.pf-eye{font-size:11.5px;font-weight:700;letter-spacing:.16em;color:#7C8DB5;margin-bottom:6px}
+.pf-head h1{font-size:26px;font-weight:700;color:#0F172A;margin-bottom:6px}
+.pf-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px 26px;margin-bottom:16px}
+.pf-sec{display:flex;gap:14px;align-items:center;margin-bottom:18px}
+.pf-sec .ib{width:40px;height:40px;border-radius:10px;background:#EEF2FF;color:#2563EB;display:grid;place-items:center;flex:none;font-weight:700}
+.pf-sec b{display:block;font-size:15px;color:#0F172A}.pf-sec span{font-size:12px;color:var(--ink2)}
+.pf-lbl{font-size:12.5px;color:#475569;margin-bottom:6px}
+.pf-file{display:flex;gap:12px;align-items:stretch;flex-wrap:wrap}
+.pf-drop{flex:1;min-width:240px;display:flex;align-items:center;gap:14px;border:1.5px dashed #CBD5E1;border-radius:10px;padding:6px 8px;cursor:pointer;margin:0}
+.pf-drop.on{border-color:#2563EB;background:#EFF6FF}
+.pf-drop .cf{background:#EEF2FF;color:#1E3A8A;font-weight:600;border-radius:8px;padding:8px 14px;white-space:nowrap}
+.pf-drop .qn{color:#475569;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pf-hint{font-size:11.5px;color:#64748B;margin-top:8px}
+.btn.blue{background:#2563EB;border-color:#2563EB;color:#fff;min-height:46px;padding:0 22px;font-weight:600}
+.btn.blue:hover:not(:disabled){color:#fff;filter:brightness(1.08)}
+/* the paper part keeps the A5 landscape shape (210 x 148 mm) */
+/* a fixed "PR" inside the number box; only YYMM-XXXX is typed */
+.pfx{display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;background:#fff;min-height:44px;overflow:hidden}
+.pfx:focus-within{border-color:var(--blue);box-shadow:0 0 0 3px #DBEAFE}
+.pfx b{padding:0 4px 0 14px;color:#0F172A;font-size:15px}
+.pfx input{flex:1;min-width:0;border:0;outline:none;background:transparent;font-size:15px;padding:10px 12px 10px 2px;text-transform:uppercase}
+.paper{background:#fff;border:1px solid var(--line);border-radius:8px;padding:26px 34px 30px;margin:0 auto 16px;color:#1E293B;max-width:1120px;aspect-ratio:210/148;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+.pp-top{display:grid;grid-template-columns:170px auto 1fr auto;gap:26px;align-items:start;padding-bottom:16px;border-bottom:2px solid #93C5FD}
+.pp-no{display:grid;gap:12px;font-size:13px;padding-top:2px}
+.pp-no label{display:flex;align-items:baseline;gap:14px;margin:0;color:#334155;white-space:nowrap}
+.pp-no input{width:100%;min-width:0;border:0;border-bottom:1px dotted #94A3B8;background:transparent;color:#DC2626;font-size:22px;font-weight:700;padding:0 6px;outline:none}
+.pp-no input:focus{border-bottom-color:var(--blue)}
+.pp-no input::placeholder{font-size:13px;font-weight:400;color:#CBD5E1}
+.pp-logo img{height:66px;display:block}
+.pp-title{font-weight:600;font-size:15px}.pp-title small{font-weight:400;font-size:12px}
+.pp-cos{display:flex;flex-wrap:wrap;gap:8px 26px;margin-top:10px;font-size:13.5px}
+.pp-code{font-size:12px;color:#334155;white-space:nowrap}
+.pp-row{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;padding:13px 0;border-bottom:1px solid #EEF2F6;font-size:13.5px}
+.pp-row>b{font-size:14px}
+.pp-pur .ck span{text-transform:uppercase}
+.ck{display:inline-flex;align-items:center;gap:7px;cursor:pointer;white-space:nowrap;margin:0}
+.ck input{appearance:none;-webkit-appearance:none;width:17px;height:17px;border:1.5px solid #475569;border-radius:3px;margin:0;display:grid;place-items:center;cursor:pointer;background:#fff;flex:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.ck input:checked::after{content:'✓';font-size:14px;line-height:1;color:#1E293B;font-weight:700}
+.ck input:focus-visible{outline:2px solid #BFDBFE}
+.pp-line{border:0;border-bottom:1px dotted #94A3B8;background:transparent;padding:2px 4px;min-width:160px;flex:1;font-size:13.5px;outline:none;height:26px}
+.pp-dl{flex:0 0 180px;min-width:0;color:#334155}
+.pp-line:focus{border-bottom-color:var(--blue)}
+.pp-date{border:1.5px solid #1E293B;border-radius:2px;padding:0 6px;font-size:14px;font-weight:600;height:28px;background:#fff}
+.pp-items{width:100%;border-collapse:collapse;margin-top:16px;font-size:13.5px}
+.pp-items th{position:static;background:#F8FAFC;border:1px solid #1E293B;text-align:center;font-weight:500;font-size:11.5px;color:#475569;padding:7px}
+.pp-items td{border:1px solid #1E293B;padding:0;height:36px}
+.pp-items td.n{text-align:center;width:52px;color:#334155}
+.pp-items td input{width:100%;height:36px;border:0;padding:0 8px;background:transparent;outline:none;font-size:13.5px}
+.pp-items td input:focus{background:#EFF6FF}
+.pp-items th.x{border:0;border-bottom:1px solid #EEF2F6;background:#F8FAFC;width:38px}
+.pp-items td.x{border:0;border-bottom:1px solid #EEF2F6;background:none;width:38px;text-align:center}
+.pp-items td.x button{border:0;background:none;color:#94A3B8;cursor:pointer;font-size:15px}.pp-items td.x button:hover{color:var(--badc)}
+.pp-add{display:flex;align-items:center;gap:12px;margin-top:12px}
+.pp-sum{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-top:14px}
+.pp-tot{min-width:300px;margin-right:38px}
+.pp-tot>div{display:flex;justify-content:space-between;gap:24px;padding:4px 0;font-size:17px;color:#334155}
+.pp-tot .net{border-top:1.5px solid #1E293B;margin-top:10px;padding-top:14px;font-size:22px;font-weight:700;color:#0F172A}
+.pp-rea{display:block;margin-top:22px}.pp-rea b{display:block;font-size:14px;margin-bottom:8px}.pp-rea i{color:var(--badc);font-style:normal}
+.pp-sign{display:grid;grid-template-columns:repeat(3,1fr);gap:36px;margin-top:40px;font-size:13.5px}
+.pp-sign .ln{display:flex;align-items:flex-end;gap:6px}
+.pp-sign .ln i{flex:1;border-bottom:1px dotted #94A3B8;height:18px}
+.pp-sign .pn{display:flex;gap:6px;align-items:flex-end;justify-content:center;margin:26px 0 0 40px}
+.pp-sign .pn span{flex:1;text-align:center;border-bottom:1px dotted #94A3B8}.pp-sign .pn i{flex:1;border-bottom:1px dotted #94A3B8}
+.pp-sign select{flex:1;min-width:0;border:0;border-bottom:1px dotted #94A3B8;background:transparent;font-size:13.5px;padding:2px;outline:none;text-align:center;text-align-last:center}
+/* The printed paper: a copy of the form laid out at 1120px, scaled (--pz) onto one A5 landscape page. */
+#printArea{position:fixed;left:-20000px;top:0;width:1120px;pointer-events:none}
+#printArea .paper{width:1120px;max-width:none;aspect-ratio:auto;border:0;box-shadow:none;border-radius:0;padding:10px 16px;margin:0;zoom:var(--pz,1)}
+#printArea .noprint,#printArea .pp-items td.x,#printArea .pp-items th.x{display:none!important}
+#printArea .pp-sign select,#printArea .pp-date{appearance:none;-webkit-appearance:none}
+#printArea .pp-no input::placeholder,#printArea .pp-line::placeholder,#printArea textarea::placeholder{color:transparent}
+#printArea .pp-items td input{color:#0F172A}
+@media print{
+  @page{size:A5 landscape;margin:5mm}
+  header.top,nav.side,nav.bot,.noprint,.toast,#ferr{display:none!important}
+  body{background:#fff}main{padding:0}
+  body.pp-printing>*:not(#printArea){display:none!important}
+  body.pp-printing #printArea{position:static;left:auto;width:auto}
+}
+@media screen and (max-width:820px){
+  #app .pp-top{grid-template-columns:1fr auto}#app .pp-top>div:nth-child(3){grid-column:1/-1}
+  #app .pp-sign{grid-template-columns:1fr}#app .paper,.pf-card{padding:16px}#app .paper{aspect-ratio:auto}#app .pp-tot{margin-right:0}
   nav.side{display:none}
   main{padding:12px 12px 90px}
   nav.bot{display:flex;position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);z-index:6;padding-bottom:env(safe-area-inset-bottom)}
@@ -250,7 +332,7 @@ async function pgHome(){
   const tile=(k,c,i)=>card('status',k,T(ME.statuses[k]),st[k],c,i);
   const poTile=(k,c,i)=>card('po_status',k,'PO · '+T(ME.po_statuses[k]),po[k],c,i);
   A.innerHTML=`<h1>${L('ใบขอซื้อ (PR)','Purchase requests (PR)')}</h1><p class="sub">${L('ติดตามเอกสารขอซื้อ ตั้งแต่ใบเสนอราคาจนถึงเลข PO','From quotation to PO number')}</p>
-  <div class="tiles">${tile('waiting_quotation','#475569','doc')}${tile('pending_approval','#1B75BC','clock')}${tile('approved','#15803D','ok')}${tile('cancelled','#B91C1C','x')}${poTile('not_sent_to_supplier','#B45309','box')}${poTile('sent_to_supplier','#7C3AED','send')}</div>
+  <div class="tiles"><button class="tile" style="--c:#475569" title="${L('ทุกปี · กดเพื่อดู','all years · tap to open')}" onclick="LISTQ={page:1,size:20,sort:'date',dir:'desc'};go('list')"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICO.doc}</svg></span><span><div class="l">${L('เอกสารทั้งหมด','All requests')}</div><div class="v">${Object.values(st).reduce((a,n)=>a+(+n||0),0)}</div></span></button>${tile('pending_approval','#1B75BC','clock')}${tile('approved','#15803D','ok')}${tile('cancelled','#B91C1C','x')}${poTile('not_sent_to_supplier','#B45309','box')}${poTile('sent_to_supplier','#7C3AED','send')}</div>
   <div class="bar"><label class="f">${L('ปี','Year')}<select class="in" onchange="YEAR=+this.value;pgHome()">${s.years.map(y=>`<option ${y===s.year?'selected':''}>${y}</option>`).join('')}</select></label>
    <label class="f">${L('บริษัท','Company')}<select class="in" onchange="DCO=this.value;pgHome()"><option value="">${L('ทุกบริษัท','All companies')}</option>${ME.companies.map(c=>`<option value="${c.code}" ${c.code===DCO?'selected':''}>${esc(c.code)}</option>`).join('')}</select></label>
    <div class="sp" style="flex:1"></div>${can('create')?`<button class="btn pri" onclick="go('new')">＋ ${L('สร้าง PR','New PR')}</button>`:''}</div>
@@ -321,79 +403,168 @@ async function pgForm(id){
   let d=null;
   try{await loadSups();if(id)d=await api('/api/pr/requests/'+id);}catch(e){A.innerHTML=err(e);return;}
   if(d&&!d.can_edit){A.innerHTML=`<div class="msg m-warn">${L('เอกสารที่อนุมัติ/ยกเลิกแล้วถูกล็อก เฉพาะผู้อนุมัติแก้ไขได้','Approved / cancelled requests are locked — only the approver can change them')}</div>`;return;}
-  FORM={id:id||null,file:null,items:d?d.items.map(i=>({...i})):[{description:'',quantity:'',unit_price:'',note:''}],
-    company:d?d.company:(ME.company||ME.companies[0].code),department:d?d.department:(ME.departments.some(x=>x.code===ME.department)?ME.department:'ENG'),
-    request_date:d?d.request_date:today(),purpose:d?d.purpose:'Repair',purpose_other:d?d.purpose_other:'',reason:d?d.reason:'',
-    supplier_id:d?(d.supplier_id||''):'',vat_included:d?!!d.vat_included:true,amount:d&&!d.items.length&&d.amount_entered?d.subtotal:''};
-  const F=FORM,sel=(m,cur)=>Object.entries(m).map(([k,v])=>`<option value="${k}" ${cur===k?'selected':''}>${esc(T(v))}</option>`).join('');
-  A.innerHTML=`<h1>${d?L('แก้ไข','Edit')+' '+esc(d.doc_code):L('สร้างใบขอซื้อ (PR)','New purchase request')}</h1>
-  <p class="sub">${d?L('รหัสเอกสารและผู้ขอซื้อไม่เปลี่ยน','The document code and requester stay the same'):L('ผู้ขอซื้อ','Requester')+': <b>'+esc(ME.name)+'</b> · '+L('รหัสเอกสารออกให้อัตโนมัติเมื่อบันทึก','the document code is given when you save')}</p>
-  ${!d?`<div class="drop" id="drop"><div style="flex:1;min-width:220px"><b>${L('มีใบเสนอราคาแล้ว?','Have the quotation?')}</b><div class="muted">${L('เลือกไฟล์ PDF/รูป ระบบจะอ่านรายการ ราคา วันที่ VAT และ Supplier ให้ — ตรวจสอบก่อนบันทึก','Pick the PDF / photo — items, prices, date, VAT and supplier are read for you. Check before saving.')}</div><div id="scanMsg"></div></div>
-   <label class="btn">📄 ${L('เลือกใบเสนอราคา','Choose quotation')}<input type="file" id="qfile" accept=".pdf,.jpg,.jpeg,.png" class="hidden" onchange="pickQuote(this.files[0])"></label></div>`:''}
-  <div class="card" style="margin-top:12px"><div class="grid2">
-   <label class="f">${L('บริษัท','Company')} *<select class="in" id="f_co">${ME.companies.map(c=>`<option value="${c.code}" ${F.company===c.code?'selected':''}>${esc(c.code)} — ${esc(c.name)}</option>`).join('')}</select></label>
-   <label class="f">${L('แผนก','Department')} *<select class="in" id="f_dep">${ME.departments.map(x=>`<option value="${x.code}" ${F.department===x.code?'selected':''}>${esc(x.code)} — ${esc(TH()?x.name_th:x.name_en)}</option>`).join('')}</select></label>
-   <label class="f">${L('วันที่ขอซื้อ','Request date')} *<input type="date" class="in" id="f_date" value="${esc(F.request_date)}"></label>
-   <label class="f">${L('วัตถุประสงค์','Purpose')} *<select class="in" id="f_pur" onchange="$('#f_otw').classList.toggle('hidden',this.value!=='Other')">${sel(ME.purposes,F.purpose)}</select></label>
-   <label class="f ${F.purpose==='Other'?'':'hidden'}" id="f_otw">${L('ระบุวัตถุประสงค์','Other purpose')} *<input class="in" id="f_oth" maxlength="200" value="${esc(F.purpose_other)}"></label>
-   <label class="f">Supplier<div style="display:flex;gap:6px"><select class="in" id="f_sup"><option value="">${L('— ไม่ระบุ —','— none —')}</option>${SUPS.map(s=>`<option value="${s.id}" ${String(F.supplier_id)===String(s.id)?'selected':''}>${esc(s.company_name)}</option>`).join('')}</select>
-     <button type="button" class="btn" onclick="supDlg(null,true)" title="${L('เพิ่ม Supplier','Add supplier')}">＋</button></div></label></div>
-   <label class="f" style="margin-top:12px">${L('งานหรือเหตุผลในการขอซื้อ','Job / reason for buying')} *<textarea class="in" id="f_rea" rows="3" maxlength="2000">${esc(F.reason)}</textarea></label></div>
-  <div class="card" style="margin-top:12px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h2 style="margin:0">${L('รายการ','Items')}</h2>
-   <button class="btn sm" onclick="addItem()">＋ ${L('เพิ่มแถว','Add line')}</button></div>
-   <div class="tw" style="margin-top:8px;max-height:none"><table class="items"><thead><tr><th>#</th><th>${L('รายการ','Description')}</th><th style="width:110px">${L('จำนวน','Qty')}</th><th style="width:140px">${L('ราคา/หน่วย','Unit price')}</th><th class="r" style="width:130px">${L('รวม','Amount')}</th><th class="hide-m">${L('หมายเหตุ','Note')}</th><th></th></tr></thead><tbody id="items"></tbody></table></div>
-   <div id="amtw" class="${F.items.length?'hidden':''}" style="margin-top:10px"><label class="f" style="max-width:260px">${L('หรือยอดรวมก่อน VAT (เอกสารเดิมที่ไม่มีรายการ)','Or a total before VAT (old documents without lines)')}<input class="in" id="f_amt" inputmode="decimal" value="${esc(F.amount)}" oninput="FORM.amount=this.value;calc()"></label></div>
-   <div style="display:flex;justify-content:flex-end;margin-top:12px"><div style="min-width:300px">
-    <div class="kv"><span>${L('รวมก่อน VAT','Before VAT')}</span><b id="t_sub">0.00</b></div>
-    <div class="kv"><span><label style="display:flex;gap:6px;align-items:center;margin:0;cursor:pointer"><input type="checkbox" id="f_vat" ${F.vat_included?'checked':''} onchange="FORM.vat_included=this.checked;calc()"> VAT 7%</label></span><b id="t_vat">0.00</b></div>
-    <div class="kv big"><span>${L('ยอดสุทธิ','Net total')}</span><b id="t_net">0.00</b></div></div></div></div>
-  ${!d?`<div class="card" style="margin-top:12px"><h2>${L('ไฟล์ใบเสนอราคา','Quotation file')}</h2><div id="qsel" class="muted">${L('ยังไม่ได้แนบ — บันทึกได้ก่อน แล้วแนบภายหลัง (สถานะจะเป็น "รอใบเสนอราคา")','Not attached — you may save now and attach later (status stays "Waiting for quotation")')}</div></div>`:''}
+  FORM=formFrom(d,id);
+  const F=FORM;
+  const PRN='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>';
+  const SCN='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10"/></svg>';
+  const supOpts=()=>`<option value="">${L('เลือก Supplier (ถ้ามี)','Choose a supplier (optional)')}</option>`+SUPS.map(s=>`<option value="${s.id}" ${String(F.supplier_id)===String(s.id)?'selected':''}>${esc(s.company_name)}</option>`).join('');
+  A.innerHTML=`<div class="pf-head noprint"><div><div class="pf-eye">PURCHASE REQUEST FORM</div>
+    <h1>${d?L('แก้ไขเอกสาร','Edit request')+' '+esc(d.doc_code):L('เพิ่มข้อมูลด้วยใบเสนอราคา','Add from a quotation')}</h1>
+    <p class="sub" style="margin:0">${d?L('รหัสเอกสารและผู้ขอซื้อไม่เปลี่ยน','The document code and requester stay the same'):L(`กรอกข้อมูลตามใบขออนุมัติซื้อ ระบุรายการได้สูงสุด ${MAXL} รายการ ระบบจะคำนวณยอดเงินและสร้างรหัสเอกสารให้อัตโนมัติ`,`Fill in the purchase request form, up to ${MAXL} lines. Totals and the document code are made for you.`)}</p></div>
+   <div class="btns"><button class="btn" onclick="printPaper($('#app .paper'))">${PRN} ${L('พิมพ์ / PDF','Print / PDF')}</button><button class="btn" onclick="go('list')">← ${L('กลับรายการ','Back to list')}</button></div></div>
+  ${!d?`<div class="pf-card noprint"><div class="pf-sec"><div class="ib">${SCN}</div><div><b>${L('สแกนใบเสนอราคา','Scan the quotation')}</b><span>${L('เลือกไฟล์แล้วระบบจะอ่านรายการ จำนวน ราคา วันที่ VAT และ Supplier แล้วกรอกให้ทันที','Choose the file and the items, quantities, prices, date, VAT and supplier are filled in at once')}</span></div></div>
+   <div class="pf-lbl">${L('ไฟล์ใบเสนอราคา','Quotation file')}</div>
+   <div class="pf-file"><label class="pf-drop" id="drop"><span class="cf">Choose File</span><span id="qname" class="qn">${L('ยังไม่ได้เลือกไฟล์','No file chosen')}</span>
+     <input type="file" id="qfile" accept=".pdf,.jpg,.jpeg,.png" class="hidden" onchange="if(this.files[0])pickQuote(this.files[0]);this.value=''"></label>
+    <button class="btn blue" id="scanBtn" onclick="scanQuote()">${SCN} <span id="scanLbl">${L('อ่านข้อมูลอัตโนมัติ','Read automatically')}</span></button></div>
+   <div class="pf-hint">${L(`ลากไฟล์มาวางในกรอบนี้หรือกดเลือกไฟล์ ระบบจะอ่านและกรอกข้อมูลให้ทันที · รองรับ PDF, JPG, JPEG และ PNG ขนาดไม่เกิน ${ME.max_file_mb} MB · ไฟล์จะแนบกับเอกสาร PR เมื่อกดบันทึก`,`Drop the file here or choose one and the form is filled in at once · PDF, JPG, JPEG or PNG up to ${ME.max_file_mb} MB · the file is attached to the PR when you save`)}</div>
+   <div id="scanMsg"></div></div>`:''}
+  ${paperHTML(F)}
+  <div class="pf-card noprint"><div class="pf-sec"><div class="ib">＋</div><div><b>${L('ข้อมูลใบเสนอราคา','Quotation details')}</b><span>${L('Supplier ผู้ออกใบเสนอราคา','The supplier who issued the quotation')}</span></div></div>
+   <div class="pf-lbl">Supplier</div><div class="pf-file"><select class="in" id="f_sup" style="max-width:430px">${supOpts()}</select>
+    <button type="button" class="btn noprint" onclick="supDlg(null,true)">＋ ${L('เพิ่ม Supplier','Add supplier')}</button></div></div>
   <div id="ferr"></div>
-  <div class="btns" style="margin-top:14px"><button class="btn pri" id="saveBtn" onclick="saveForm()">💾 ${L('บันทึก','Save')}</button><button class="btn" onclick="history.back()">${L('ยกเลิก','Cancel')}</button></div>`;
+  <div class="btns noprint" style="justify-content:flex-end;margin-top:14px"><button class="btn" onclick="history.length>1?history.back():go('list')">${L('ยกเลิก','Cancel')}</button>
+   <button class="btn" onclick="printPaper($('#app .paper'))">${PRN} ${L('พิมพ์ / PDF','Print / PDF')}</button>
+   <button class="btn blue" id="saveBtn" onclick="saveForm()">✓ ${L('บันทึกเอกสาร PR','Save PR')}</button></div>`;
   drawItems();
   if(!d){const dr=$('#drop');['dragover','dragenter'].forEach(e=>dr.addEventListener(e,ev=>{ev.preventDefault();dr.classList.add('on');}));
     ['dragleave','drop'].forEach(e=>dr.addEventListener(e,ev=>{ev.preventDefault();dr.classList.remove('on');}));dr.addEventListener('drop',ev=>{const f=ev.dataTransfer.files[0];if(f)pickQuote(f);});}
 }
+const MAXL=10;
+const CK=(name,val,on,label,extra)=>`<label class="ck"><input type="checkbox" name="${name}" value="${esc(val)}" ${on?'checked':''} onchange="${extra||'oneOf(this)'}"><span>${label}</span></label>`;
+/* the form's values, from a saved request (d) or new */
+function formFrom(d,id){
+  return {id:id||null,file:null,items:d?d.items.map(i=>({...i})):[{description:'',quantity:'',unit_price:'',note:''}],
+    company:d?d.company:(ME.company||ME.companies[0].code),department:d?d.department:(ME.departments.some(x=>x.code===ME.department)?ME.department:'ENG'),
+    request_date:d?d.request_date:today(),purpose:d?d.purpose:'Repair',purpose_other:d?d.purpose_other:'',reason:d?d.reason:'',
+    supplier_id:d?(d.supplier_id||''):'',vat_included:d?!!d.vat_included:true,payment_method:d?(d.payment_method||''):'',pay_by:d?(d.pay_by||''):'',book_no:d?(d.book_no||''):'',sheet_no:d?(d.sheet_no||''):'',
+    requester_id:d?(d.requester_id||''):ME.id,requester_name:d?d.requester_name:ME.name,amount:d&&!d.items.length&&d.amount_entered?d.subtotal:''};
+}
+/* the paper part of the form (ใบขออนุมัติซื้อ), shared by the form and the printout */
+function paperHTML(F){
+  const ck=CK;
+  const pur=k=>ME.purposes[k]?ck('pur',k,F.purpose===k,esc(T(ME.purposes[k]))):'';
+  const reqs=(ME.requesters||[]).slice();
+  if(F.requester_name&&!reqs.some(x=>String(x.id)===String(F.requester_id)))reqs.unshift({id:'',name:F.requester_name});
+  return `<div class="paper">
+   <div class="pp-top">
+    <div class="pp-no"><label>${L('เล่มที่','Book')}<input id="f_book" maxlength="20" value="${esc(F.book_no)}" placeholder="—"></label>
+     <label>${L('เลขที่','No.')}<input id="f_sheet" maxlength="20" value="${esc(F.sheet_no)}" placeholder="—"></label></div>
+    <div class="pp-logo"><img src="/logo.png?v=2" alt="Bluefalo"></div>
+    <div><div class="pp-title">ใบขออนุมัติซื้อ <small>(PURCHASE REQUEST)</small></div>
+     <div class="pp-cos">${ME.companies.map(c=>ck('co',c.code,F.company===c.code,esc(TH()?(c.name_th||c.name):c.name))).join('')}</div></div>
+    <div class="pp-code">F-SP-PUR02-04 Rev.05</div></div>
+   <div class="pp-row"><b>${L('วันที่สั่งซื้อ','Order date')}</b><input type="date" class="pp-date" id="f_date" value="${esc(F.request_date)}">
+    <b style="margin-left:14px">${L('การตั้งเบิก :','Payment :')}</b>${Object.entries(ME.payment_methods||{}).map(([k,v])=>ck('pay',k,F.payment_method===k,esc(T(v)))).join('')}
+    ${ck('pbk','1',!!F.pay_by,L('ภายในวันที่','Within'),"if(!this.checked)$('#f_pby').value=''")}<input type="date" class="pp-line pp-dl" id="f_pby" value="${esc(F.pay_by)}" oninput="$('input[name=pbk]').checked=!!this.value"></div>
+   <div class="pp-row pp-pur"><b>${L('วัตถุประสงค์ :','Purpose :')}</b>${pur('Stock')}${pur('Project')}
+    <input class="pp-line" id="f_prj" maxlength="200" placeholder="${L('ระบุโครงการ','project')}" value="${F.purpose==='Project'?esc(F.purpose_other):''}" oninput="purLine(this,'Project')">
+    ${pur('Repair')}${pur('Other')}
+    <input class="pp-line" id="f_oth" maxlength="200" placeholder="${L('ระบุ (กรณีอื่น ๆ)','details (for Other)')}" value="${F.purpose==='Other'?esc(F.purpose_other):''}" oninput="purLine(this,'Other')"></div>
+   <table class="pp-items"><thead><tr><th style="width:52px">${L('ลำดับ','No.')}</th><th>${L('รายการ','Description')}</th><th style="width:9%">${L('จำนวน','Qty')}</th><th style="width:12%">${L('ราคา/หน่วย','Unit price')}</th><th style="width:26%">${L('หมายเหตุ','Note')}</th><th class="x"></th></tr></thead><tbody id="items"></tbody></table>
+   <div class="pp-add noprint"><button class="btn sm" id="addBtn" onclick="addItem()">＋ ${L('เพิ่มรายการ','Add line')}</button><span id="lcount" class="muted"></span></div>
+   <div id="amtw" class="${F.items.length?'hidden':''} noprint" style="margin-top:10px"><label class="f" style="max-width:260px">${L('หรือยอดรวมก่อน VAT (เอกสารเดิมที่ไม่มีรายการ)','Or a total before VAT (old documents without lines)')}<input class="in" id="f_amt" inputmode="decimal" value="${esc(F.amount)}" oninput="FORM.amount=this.value;calc()"></label></div>
+   <div class="pp-sum"><div class="pp-row" style="border:0;align-self:flex-start"><b>VAT 7% :</b>${ck('vat','1',F.vat_included,L('บวก VAT 7%','Add VAT 7%'),'setVat(this)')}${ck('vat','0',!F.vat_included,L('ไม่บวก VAT','No VAT'),'setVat(this)')}</div>
+    <div class="pp-tot"><div><span>${L('ยอดรวมราคา','Total')}</span><span>฿ <span id="t_sub">0.00</span></span></div>
+     <div><span>${L('ภาษีมูลค่าเพิ่ม (VAT 7%)','VAT 7%')}</span><span>฿ <span id="t_vat">0.00</span></span></div>
+     <div class="net"><span>${L('ยอดสุทธิ','Net total')}</span><span>฿ <span id="t_net">0.00</span></span></div></div></div>
+   <label class="pp-rea"><b>${L('งานหรือเหตุผลในการขอซื้อ','Job / reason for buying')} <i>*</i></b><textarea class="in" id="f_rea" rows="3" maxlength="2000" placeholder="${L('ระบุงานหรือเหตุผลและความจำเป็นในการขอซื้อ...','Say what it is for and why it is needed...')}">${esc(F.reason)}</textarea></label>
+   <div class="pp-sign">
+    <div><div class="ln">${L('ผู้ขอซื้อ','Requested by')}<i></i></div><div class="pn">( <select id="f_req">${reqs.map(x=>`<option value="${x.id}" ${String(x.id)===String(F.requester_id)?'selected':''}>${esc(x.name)}</option>`).join('')}</select> )</div>
+     <div class="ln" style="margin-top:14px">${L('ฝ่าย/แผนก','Department')}<select id="f_dep">${ME.departments.map(x=>`<option value="${x.code}" ${F.department===x.code?'selected':''}>${esc(TH()?x.name_th:x.name_en)} (${esc(x.code)})</option>`).join('')}</select></div></div>
+    <div><div class="ln">${L('ผู้ตรวจสอบ','Checked by')}<i></i></div><div class="pn">( <i></i> )</div></div>
+    <div><div class="ln">${L('ผู้อนุมัติ','Approved by')}<i></i></div><div class="pn">( <i></i> )</div></div></div></div>`;
+}
+function itemRows(items,live){
+  return items.map((it,i)=>`<tr><td class="n">${i+1}</td>
+   <td><input value="${esc(it.description)}" maxlength="500" ${live?`oninput="FORM.items[${i}].description=this.value"`:''}></td>
+   <td><input class="r" inputmode="decimal" value="${esc(it.quantity)}" ${live?`oninput="FORM.items[${i}].quantity=this.value;calc()"`:''}></td>
+   <td><input class="r" inputmode="decimal" value="${esc(it.unit_price)}" ${live?`oninput="FORM.items[${i}].unit_price=this.value;calc()"`:''}></td>
+   <td><input value="${esc(it.note||'')}" maxlength="500" ${live?`oninput="FORM.items[${i}].note=this.value"`:''}></td>
+   <td class="x"><button title="${L('ลบแถว','Remove line')}" onclick="FORM.items.splice(${i},1);drawItems()">✕</button></td></tr>`).join('');
+}
+/* Print one paper on an A5 landscape page. The copy keeps what was typed (values, ticks,
+   choices), is laid out at 1120px and scaled so its whole height fits the page. */
+function printPaper(src){
+  if(!src)return;
+  let box=$('#printArea');if(!box){box=document.createElement('div');box.id='printArea';document.body.appendChild(box);}
+  const cp=src.cloneNode(true);
+  const a=src.querySelectorAll('input,select,textarea'),b=cp.querySelectorAll('input,select,textarea');
+  a.forEach((el,i)=>{const c=b[i];
+    if(el.type==='checkbox'){c.checked=el.checked;c.toggleAttribute('checked',el.checked);}
+    else if(el.tagName==='SELECT'){[...c.options].forEach((o,j)=>o.toggleAttribute('selected',j===el.selectedIndex));c.selectedIndex=el.selectedIndex;}
+    else if(el.tagName==='TEXTAREA'){c.textContent=el.value;c.value=el.value;c.rows=Math.max(2,el.value.split('\n').length);}
+    else{c.setAttribute('value',el.value);c.value=el.value;}
+    c.removeAttribute('id');c.removeAttribute('name');c.tabIndex=-1;});
+  cp.querySelectorAll('[id]').forEach(x=>x.removeAttribute('id'));
+  box.innerHTML='';box.appendChild(cp);box.style.setProperty('--pz',1);
+  const pw=200/25.4*96,ph=138/25.4*96;        // A5 landscape less 5 mm margins, in CSS px
+  const z=Math.min(pw/cp.offsetWidth,ph/cp.offsetHeight)*0.98;
+  box.style.setProperty('--pz',z.toFixed(4));
+  document.body.classList.add('pp-printing');
+  const done=()=>{document.body.classList.remove('pp-printing');box.innerHTML='';window.removeEventListener('afterprint',done);};
+  window.addEventListener('afterprint',done);
+  window.print();
+}
+/* detail page: print the saved request on the same paper form */
+function printDoc(){
+  const d=CUR,F=formFrom(d,d.id),tmp=document.createElement('div');
+  tmp.innerHTML=paperHTML(F);const pp=tmp.firstElementChild;
+  pp.querySelector('tbody').innerHTML=itemRows(d.items.length?d.items:[{description:'',quantity:'',unit_price:'',note:''}],false);
+  const set=(id,v)=>{const x=pp.querySelector('#'+id);if(x)x.textContent=money(v);};
+  set('t_sub',d.subtotal);set('t_vat',d.vat);set('t_net',d.net_total);
+  tmp.style.cssText='position:fixed;left:-20000px;top:0;width:1120px';document.body.appendChild(tmp);
+  printPaper(pp);tmp.remove();
+}
+function purLine(el,k){if(el.value){const o=$(`input[name=pur][value=${k}]`);if(o&&!o.checked){o.checked=true;oneOf(o);}}}
+function oneOf(el){if(el.checked)document.querySelectorAll(`input[name="${el.name}"]`).forEach(x=>{if(x!==el)x.checked=false;});}
+function setVat(el){el.checked=true;oneOf(el);FORM.vat_included=el.value==='1';calc();}
+const picked=n=>{const x=document.querySelector(`input[name="${n}"]:checked`);return x?x.value:'';};
 function drawItems(){
   const b=$('#items');if(!b)return;
-  b.innerHTML=FORM.items.map((it,i)=>`<tr><td class="n">${i+1}</td>
-   <td><input class="in" value="${esc(it.description)}" maxlength="500" oninput="FORM.items[${i}].description=this.value"></td>
-   <td><input class="in r" inputmode="decimal" value="${esc(it.quantity)}" oninput="FORM.items[${i}].quantity=this.value;calc()"></td>
-   <td><input class="in r" inputmode="decimal" value="${esc(it.unit_price)}" oninput="FORM.items[${i}].unit_price=this.value;calc()"></td>
-   <td class="r" id="lt${i}">0.00</td>
-   <td class="hide-m"><input class="in" value="${esc(it.note||'')}" maxlength="500" oninput="FORM.items[${i}].note=this.value"></td>
-   <td><button class="btn sm badl" title="${L('ลบแถว','Remove line')}" onclick="FORM.items.splice(${i},1);drawItems()">✕</button></td></tr>`).join('')
-   ||`<tr><td colspan="7" class="muted" style="padding:10px">${L('ไม่มีรายการ','No lines')}</td></tr>`;
-  const w=$('#amtw');if(w)w.classList.toggle('hidden',FORM.items.length>0);
+  b.innerHTML=itemRows(FORM.items,true)
+   ||`<tr><td colspan="5" class="muted" style="padding:10px;text-align:center">${L('ไม่มีรายการ','No lines')}</td><td class="x"></td></tr>`;
+  const n=FORM.items.length,c=$('#lcount');if(c){c.textContent=`${n} / ${MAXL}`;c.style.color=n>MAXL?'var(--badc)':'';}
+  const a=$('#addBtn');if(a)a.disabled=n>=MAXL;
+  const w=$('#amtw');if(w)w.classList.toggle('hidden',n>0);
   calc();
 }
-function addItem(){FORM.items.push({description:'',quantity:'',unit_price:'',note:''});drawItems();const r=$('#items').lastElementChild;if(r)r.querySelector('input').focus();}
+function addItem(){if(FORM.items.length>=MAXL)return;FORM.items.push({description:'',quantity:'',unit_price:'',note:''});drawItems();const r=$('#items').lastElementChild;if(r)r.querySelector('input').focus();}
 const num=v=>{const n=parseFloat(String(v||'').replace(/,/g,''));return isFinite(n)?n:0;};
 const r2=n=>Math.round((n+Number.EPSILON)*100)/100;
 function calc(){
-  let sub=0;FORM.items.forEach((it,i)=>{const t=r2(num(it.quantity)*num(it.unit_price));sub+=t;const c=$('#lt'+i);if(c)c.textContent=money(t);});
+  let sub=0;FORM.items.forEach(it=>{sub+=r2(num(it.quantity)*num(it.unit_price));});
   if(!FORM.items.length)sub=num(FORM.amount);
   const vat=FORM.vat_included?r2(sub*0.07):0;
   $('#t_sub').textContent=money(sub);$('#t_vat').textContent=money(vat);$('#t_net').textContent=money(sub+vat);
 }
-async function pickQuote(f){
+function pickQuote(f){
   const e=checkFile(f);if(e){$('#scanMsg').innerHTML=err(e);return;}
-  FORM.file=f;$('#qsel').innerHTML=`📎 <b>${esc(f.name)}</b> <span class="muted">(${(f.size/1024).toFixed(0)} KB) — ${L('จะแนบเมื่อบันทึก','attached when you save')}</span>`;
+  FORM.file=f;$('#qname').innerHTML=`📎 <b>${esc(f.name)}</b> <span class="muted">(${(f.size/1024).toFixed(0)} KB)</span>`;$('#scanMsg').innerHTML='';
+  scanQuote();   // read it and fill the form straight away; the button reads it again
+}
+async function scanQuote(){
+  const f=FORM.file;if(!f){$('#scanMsg').innerHTML=err(L('กรุณาเลือกไฟล์ใบเสนอราคาก่อน','Choose the quotation file first'));return;}
+  const btn=$('#scanBtn');if(btn.disabled)return;btn.disabled=true;
   $('#scanMsg').innerHTML=`<div class="msg m-info">⏳ ${L('กำลังอ่านใบเสนอราคา…','Reading the quotation…')}</div>`;
   try{
     const r=await post('/api/pr/scan',await readFile(f));
     if(r.request_date)$('#f_date').value=r.request_date;
-    if(r.vat_included!==''&&r.vat_included!=null){FORM.vat_included=r.vat_included==='1';$('#f_vat').checked=FORM.vat_included;}
+    if(r.vat_included!==''&&r.vat_included!=null){const v=$(`input[name=vat][value="${r.vat_included==='1'?'1':'0'}"]`);if(v)setVat(v);}
     if(r.supplier_id){$('#f_sup').value=r.supplier_id;}
     if(r.items&&r.items.length){FORM.items=r.items.map(i=>({description:i.description,quantity:i.quantity,unit_price:i.unit_price,note:i.note||''}));drawItems();}
-    const w=(r.warnings||[]).map(x=>`<div>• ${esc(x)}</div>`).join('');
+    const w=(r.warnings||[]).map(x=>`<div>• ${esc(x)}</div>`).join('')+(FORM.items.length>MAXL?`<div>• ${L(`มี ${FORM.items.length} รายการ เกินแบบฟอร์ม ${MAXL} รายการ`,`${FORM.items.length} lines — more than the ${MAXL} on the form`)}</div>`:'');
     const sup=!r.supplier_id&&r.supplier_name?`<div>• Supplier: <b>${esc(r.supplier_name)}</b> — ${L('ยังไม่มีในระบบ','not in the list yet')} <a href="#" onclick="supDlg({company_name:${esc(JSON.stringify(r.supplier_name))}},true);return false">${L('เพิ่ม','add it')}</a></div>`:'';
     $('#scanMsg').innerHTML=`<div class="msg ${w?'m-warn':'m-ok'}">✓ ${L('อ่านแล้ว','Read')} (${r.method==='ocr'?'OCR':L('ข้อความใน PDF','PDF text')}) — ${r.items.length} ${L('รายการ','lines')}${r.grand_total?` · ${L('ยอดรวมในใบเสนอราคา','quotation total')} ${money(r.grand_total)}`:''}${sup}${w}</div>`;
   }catch(e){$('#scanMsg').innerHTML=`<div class="msg m-warn">${esc(e.message)} — ${L('กรอกเองได้ ไฟล์ยังแนบให้เมื่อบันทึก','fill the form by hand; the file is still attached when you save')}</div>`;}
+  btn.disabled=false;const sl=$('#scanLbl');if(sl)sl.textContent=L('อ่านอีกครั้ง','Read again');
 }
 async function saveForm(){
-  const b={company:$('#f_co').value,department:$('#f_dep').value,request_date:$('#f_date').value,purpose:$('#f_pur').value,purpose_other:$('#f_oth').value,
-    reason:$('#f_rea').value,supplier_id:$('#f_sup').value||null,vat_included:$('#f_vat').checked,items:FORM.items,amount:FORM.items.length?'':(FORM.amount||'')};
+  const b={company:picked('co'),department:$('#f_dep').value,request_date:$('#f_date').value,purpose:picked('pur'),purpose_other:picked('pur')==='Project'?$('#f_prj').value:picked('pur')==='Other'?$('#f_oth').value:'',
+    reason:$('#f_rea').value,supplier_id:$('#f_sup').value||null,vat_included:FORM.vat_included,items:FORM.items,amount:FORM.items.length?'':(FORM.amount||''),
+    payment_method:picked('pay'),pay_by:picked('pbk')?$('#f_pby').value:'',book_no:$('#f_book').value,sheet_no:$('#f_sheet').value,
+    requester_id:$('#f_req')?$('#f_req').value:''};
   const btn=$('#saveBtn');btn.disabled=true;$('#ferr').innerHTML='';
   try{
     let d=FORM.id?await put('/api/pr/requests/'+FORM.id,b):await post('/api/pr/requests',b);
@@ -425,9 +596,9 @@ function drawDetail(){
   }
   if(can('manage_pr'))act.push(`<button class="btn" onclick="trackDlg('pr')"># ${L('เลข PR','PR number')}</button>`);
   if(can('manage_po'))act.push(`<button class="btn" onclick="trackDlg('po')"># ${L('เลข PO','PO number')}</button>`);
-  act.push(`<button class="btn" onclick="window.print()">🖨 ${L('พิมพ์','Print')}</button>`);
+  act.push(`<button class="btn" onclick="printDoc()">🖨 ${L('พิมพ์','Print')}</button>`);
   if(can('delete'))act.push(`<button class="btn bad" onclick="delReq()">🗑 ${L('ลบ','Delete')}</button>`);
-  const why=d.status==='waiting_quotation'?`<div class="msg m-info">${!d.amount_entered?L('ยังไม่มียอดรวม/รายการ — ','No amount / lines yet — '):''}${!(d.files.quotation||d.files.pr)?L('ยังไม่ได้แนบใบเสนอราคา','quotation not attached yet'):''}</div>`:'';
+  const why=d.status==='pending_approval'&&!d.ready?`<div class="msg m-info">${!d.amount_entered?L('ยังไม่มียอดรวม/รายการ — ','No amount / lines yet — '):''}${!(d.files.quotation||d.files.pr)?L('ยังไม่ได้แนบใบเสนอราคา','quotation not attached yet'):''}</div>`:'';
   A.innerHTML=`<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn sm" onclick="history.length>1?history.back():go('list')">←</button>
    <h1 style="margin:0">${esc(d.doc_code)}</h1>${pill(d.status)}</div>
   <p class="sub" style="margin-top:6px">${esc(d.company)} · ${esc(depName(d.department))} · ${L('ผู้ขอซื้อ','Requester')} <b>${esc(d.requester_name)}</b> · ${dmy(d.request_date)}</p>
@@ -437,6 +608,8 @@ function drawDetail(){
    <div><small>${L('บริษัท','Company')}</small><b>${esc(d.company)}</b><div class="muted">${esc(coName(d.company))}</div></div>
    <div><small>${L('วัตถุประสงค์','Purpose')}</small><b>${esc(T(ME.purposes[d.purpose])||d.purpose)}${d.purpose_other?' — '+esc(d.purpose_other):''}</b></div>
    <div><small>Supplier</small><b>${esc(d.supplier_name)||'—'}</b></div>
+   ${d.book_no||d.sheet_no?`<div><small>${L('เล่มที่ / เลขที่','Book / No.')}</small><b>${esc(d.book_no||'—')} / ${esc(d.sheet_no||'—')}</b></div>`:''}
+   ${d.payment_method||d.pay_by?`<div><small>${L('การตั้งเบิก','Payment')}</small><b>${esc(T((ME.payment_methods||{})[d.payment_method])||'—')}</b>${d.pay_by?`<div class="muted">${L('ภายในวันที่','Within')} ${dmy(d.pay_by)}</div>`:''}</div>`:''}
    <div><small>${L('เลข PR','PR number')}</small><b class="mono">${esc(d.pr_number)||'—'}</b> ${d.pr_status?pill(d.pr_status,ME.pr_statuses):''}<div class="muted">${dmy(d.pr_date)}${d.pr_cancel_reason?' · '+esc(d.pr_cancel_reason):''}</div></div>
    <div><small>${L('เลข PO','PO number')}</small><b class="mono">${esc(d.po_number)||'—'}</b> ${d.po_status?pill(d.po_status,ME.po_statuses):''}<div class="muted">${dmy(d.po_date)}${d.po_cancel_reason?' · '+esc(d.po_cancel_reason):''}</div></div></div>
   <div class="card" style="margin-bottom:12px"><h2>${L('งาน/เหตุผล','Job / reason')}</h2><div style="white-space:pre-wrap">${esc(d.reason)}</div></div>
@@ -464,14 +637,18 @@ function trackDlg(k){
   const d=CUR,pfx=k==='po'?((ME.companies.find(c=>c.code===d.company)||{}).po_prefix||''):'';
   const num=d[k+'_number']||'',short=k==='pr'?num.replace(/^PR/,''):num.replace(/^[A-Z]+-PO/,'');
   const sts=k==='pr'?ME.pr_statuses:ME.po_statuses;
+  const cur=k==='pr'?(d.pr_status==='cancelled'?'cancelled':(short?'approved':'pending_approval')):(d.po_status||'');
   modal(`<h2>${k==='pr'?L('เลข PR','PR number'):L('เลข PO','PO number')} · ${esc(d.doc_code)}</h2>
-   <label class="f">${L('เลขที่','Number')} <div style="display:flex;align-items:center;gap:6px"><b class="mono">${k==='pr'?'PR':esc(pfx)+'-PO'}</b><input class="in mono" id="tnum" value="${esc(short)}" placeholder="${k==='pr'?'YYMM-XXXX':'XXXX-XXXX'}" style="text-transform:uppercase"></div></label>
-   ${k==='pr'?`<div class="muted" style="margin:6px 0">${L('ใส่เลข PR = อนุมัติเอกสารด้วย (ต้องมียอดรวม + ใบเสนอราคา) · ว่าง = รออนุมัติ','Entering the PR number approves the request too (amount + quotation needed) · empty = waiting')}</div>`:''}
-   <label class="f" style="margin-top:8px">${L('สถานะ','Status')}<select class="in" id="tst" onchange="$('#tcw').classList.toggle('hidden',this.value!=='cancelled')"><option value="">${k==='pr'?L('ตามเลข PR','follows the number'):'—'}</option>${Object.entries(sts).map(([v,t])=>`<option value="${v}" ${d[k+'_status']===v&&(k==='po'||v==='cancelled')?'selected':''}>${esc(T(t))}</option>`).join('')}</select></label>
+   <label class="f">${L('เลขที่','Number')} ${k==='pr'?`<div class="pfx"><b class="mono">PR</b><input class="mono" id="tnum" value="${esc(short)}" placeholder="YYMM-XXXX" maxlength="12" autocomplete="off" oninput="prSync()"></div>`
+      :`<div style="display:flex;align-items:center;gap:6px"><b class="mono">${esc(pfx)}-PO</b><input class="in mono" id="tnum" value="${esc(short)}" placeholder="XXXX-XXXX" style="text-transform:uppercase"></div>`}</label>
+   ${k==='pr'?`<div class="muted" style="margin:6px 0">${L('พิมพ์เฉพาะ YYMM-XXXX ต่อจาก PR เช่น 2611-0042 · ใส่เลข = อนุมัติแล้ว · ว่าง = รออนุมัติ','Type YYMM-XXXX after PR, e.g. 2611-0042 · a number = approved · empty = waiting for approval')}</div>`:''}
+   <label class="f" style="margin-top:8px">${L('สถานะ','Status')}<select class="in" id="tst" onchange="$('#tcw').classList.toggle('hidden',this.value!=='cancelled')">${k==='po'?'<option value="">—</option>':''}${Object.entries(sts).map(([v,t])=>`<option value="${v}" ${cur===v?'selected':''}>${esc(T(t))}</option>`).join('')}</select></label>
    <label class="f" style="margin-top:8px">${L('วันที่','Date')}<input type="date" class="in" id="tdt" value="${esc(d[k+'_date']||'')}"></label>
-   <label class="f ${d[k+'_status']==='cancelled'?'':'hidden'}" id="tcw" style="margin-top:8px">${L('เหตุผลที่ยกเลิก','Cancel reason')}<textarea class="in" id="tcr" rows="2" maxlength="500">${esc(d[k+'_cancel_reason']||'')}</textarea></label>
+   <label class="f ${cur==='cancelled'?'':'hidden'}" id="tcw" style="margin-top:8px">${L('เหตุผลที่ยกเลิก','Cancel reason')}<textarea class="in" id="tcr" rows="2" maxlength="500">${esc(d[k+'_cancel_reason']||'')}</textarea></label>
    <div id="merr"></div><div class="btns" style="margin-top:12px"><button class="btn pri" onclick="saveTrack('${k}')">${L('บันทึก','Save')}</button><button class="btn" onclick="close_()">${L('ปิด','Close')}</button></div>`);
 }
+/* the PR status follows the number: typing one = approved, clearing it = waiting (cancelled stays) */
+function prSync(){const t=$('#tst');if(t.value==='cancelled')return;t.value=$('#tnum').value.trim()?'approved':'pending_approval';}
 async function saveTrack(k){try{CUR=await post(`/api/pr/requests/${CUR.id}/tracking/${k}`,{number:$('#tnum').value,status:$('#tst').value,date:$('#tdt').value,cancel_reason:$('#tcr').value});close_();drawDetail();counts();toast(L('บันทึกแล้ว','Saved'));}catch(e){$('#merr').innerHTML=err(e);}}
 async function delReq(){if(!confirm(L(`ลบเอกสาร ${CUR.doc_code} และไฟล์แนบทั้งหมด? ย้อนกลับไม่ได้`,`Delete ${CUR.doc_code} and all its files? This cannot be undone.`)))return;
   try{await del('/api/pr/requests/'+CUR.id);toast(L('ลบแล้ว','Deleted'));counts();go('list');}catch(e){$('#derr').innerHTML=err(e);}}
@@ -496,7 +673,7 @@ function supDlg(s,fromForm){
 async function supSave(id,fromForm){
   const b={};['company_name','address','phone','email','line_id','note'].forEach(k=>b[k]=$('#s_'+k).value);
   try{const r=id?await put('/api/pr/suppliers/'+id,b):await post('/api/pr/suppliers',b);close_();SUPS=null;
-    if(fromForm&&$('#f_sup')){await loadSups();const sel=$('#f_sup');sel.innerHTML=`<option value="">${L('— ไม่ระบุ —','— none —')}</option>`+SUPS.map(s=>`<option value="${s.id}">${esc(s.company_name)}</option>`).join('');sel.value=r.id;}
+    if(fromForm&&$('#f_sup')){await loadSups();const sel=$('#f_sup');sel.innerHTML=`<option value="">${L('เลือก Supplier (ถ้ามี)','Choose a supplier (optional)')}</option>`+SUPS.map(s=>`<option value="${s.id}">${esc(s.company_name)}</option>`).join('');sel.value=r.id;}
     else pgSup();toast(L('บันทึกแล้ว','Saved'));}catch(e){$('#merr').innerHTML=err(e);}
 }
 async function supDel(id){if(!confirm(L('ลบ Supplier นี้? (เอกสารเดิมยังเก็บชื่อไว้)','Delete this supplier? (old requests keep the name)')))return;try{await del('/api/pr/suppliers/'+id);pgSup();}catch(e){alert(e.message);}}

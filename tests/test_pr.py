@@ -72,7 +72,26 @@ def main():
     sys.exit(1 if bad else 0)
 
 
+def thai_text_checks():
+    """Thai read from PDFs / OCR comes back in the standard spelling."""
+    sys.path.insert(0, ROOT)
+    from server.pr_scanner import fix_thai, garbage_ratio, parse_quotation
+    for raw, want in (("บริษัท จ\u0e4d\u0e32กัด", "บริษัท จำกัด"), ("น\u0e4d\u0e49\u0e32ดื่ม", "น้ำดื่ม"),
+                      ("เเผ่น", "แผ่น"), ("ก\u0e48\u0e35", "กี่"), ("ศักด\u0e4c\u0e34", "ศักดิ์"),
+                      ("ป\uf70b\u0e32ย", "ป้าย"), ("ท\uf713\u0e35", "ที่")):
+        check(f"Thai fixed: {want}", fix_thai(raw) == want, repr(fix_thai(raw)))
+    check("Thai font glyphs no longer count as garbage", garbage_ratio(fix_thai("ป\uf70bาย ท\uf713ี")) == 0)
+    r = parse_quotation("ใบเสนอราคา\nลำดับ รายการ จำนวน ราคา จำนวนเงิน\n"
+                        "1 ป\uf70bายช\u0e37\u0e48อ   2   150.00   300.00\nรวมเป็นเงิน 300.00")
+    r2 = parse_quotation("ลำดับ รายการ จำนวน ราคา จำนวนเงิน\n1 สายพาน กว้าง 30 ซม.   1   1,250.00   1,250.00")
+    check("Thai abbreviation dot kept", r2["items"] and r2["items"][0]["description"] == "สายพาน กว้าง 30 ซม.",
+          r2["items"][:1])
+    check("scanned item keeps correct Thai", r["items"] and r["items"][0]["description"] == "ป้ายชื่อ",
+          r["items"][:1])
+
+
 def run():
+    thai_text_checks()
     adm = Client()
     st, me = adm.login("admin1")
     check("admin login", st == 200)
@@ -116,7 +135,7 @@ def run():
           (d.get("subtotal"), d.get("vat"), d.get("net_total")) == ("3100.99", "217.07", "3318.06"),
           (d.get("subtotal"), d.get("vat"), d.get("net_total")))
     check("empty item row skipped", len(d.get("items", [])) == 2)
-    check("no quotation -> waiting_quotation", d.get("status") == "waiting_quotation", d.get("status"))
+    check("new request starts pending_approval", d.get("status") == "pending_approval", d.get("status"))
     st, d2 = u.req("POST", "/api/pr/requests", {**body, "items": []})
     check("second request same month -> 002, no amount allowed", st == 200 and d2["doc_code"].endswith("-002")
           and d2["amount_entered"] == 0, msg(d2))
@@ -124,12 +143,38 @@ def run():
     check("3-decimal quantity refused", st == 400)
     st, bad = u.req("POST", "/api/pr/requests", {**body, "reason": ""})
     check("empty reason refused", st == 400)
+    check("payment fields empty by default", (d.get("payment_method"), d.get("pay_by")) == ("", ""),
+          (d.get("payment_method"), d.get("pay_by")))
+    st, bad = u.req("POST", "/api/pr/requests", {**body, "payment_method": "bitcoin"})
+    check("unknown payment method refused", st == 400)
+    st, bad = u.req("POST", "/api/pr/requests", {**body, "pay_by": "31/12/2026"})
+    check("bad pay-by date refused", st == 400)
+    st, x = u.req("PUT", f"/api/pr/requests/{d2['id']}", {**body, "items": [], "payment_method": "petty_cash",
+                                                         "pay_by": "2026-11-30"})
+    check("payment method + pay-by saved", st == 200 and (x.get("payment_method"), x.get("pay_by"))
+          == ("petty_cash", "2026-11-30"), msg(x) or (x.get("payment_method"), x.get("pay_by")))
+
+    # paper form: เล่มที่/เลขที่, 4th company, requester picked from a list, project name
+    smec = [c for c in m["companies"] if c["code"] == "SMEC"]
+    check("/me lists SMEC with its Thai name", smec and "สยามแมค" in smec[0]["name_th"], m["companies"])
+    check("/me lists requesters", any(r["id"] == ids["planner1"] for r in m.get("requesters", [])))
+    check("requester defaults to the signed-in user", d.get("requester_id") == ids["tech1"], d.get("requester_id"))
+    st, x = u.req("PUT", f"/api/pr/requests/{d2['id']}", {**body, "items": [], "book_no": "242", "sheet_no": "12073",
+                                                         "requester_id": ids["planner1"], "purpose": "Project",
+                                                         "purpose_other": "Line 3"})
+    check("book/sheet no, requester and project saved", st == 200 and (
+        x.get("book_no"), x.get("sheet_no"), x.get("requester_id"), x.get("purpose_other"))
+        == ("242", "12073", ids["planner1"], "Line 3"), msg(x))
+    st, x = u.req("PUT", f"/api/pr/requests/{d2['id']}", {**body, "items": [], "book_no": "242", "sheet_no": "12073"})
+    check("requester kept when not sent", st == 200 and x.get("requester_id") == ids["planner1"], x.get("requester_id"))
+    st, bad = u.req("PUT", f"/api/pr/requests/{d2['id']}", {**body, "items": [], "requester_id": 999999})
+    check("unknown requester refused", st == 400)
 
     b64 = base64.b64encode(PDF).decode()
     st, bad = u.req("POST", f"/api/pr/requests/{rid}/files/quotation", {"name": "q.pdf", "data": base64.b64encode(b"hello").decode()})
     check("fake PDF refused (content check)", st == 400)
     st, d = u.req("POST", f"/api/pr/requests/{rid}/files/quotation", {"name": "Q-SMEC 69-11-24.pdf", "data": b64})
-    check("attach quotation -> pending_approval", st == 200 and d["status"] == "pending_approval", d.get("status"))
+    check("attach quotation keeps pending_approval", st == 200 and d["status"] == "pending_approval", d.get("status"))
     st, raw = u.req("GET", f"/api/pr/requests/{rid}/files/quotation", raw=True)
     check("download quotation", st == 200 and raw.startswith(b"%PDF"))
     st, _ = u.req("POST", f"/api/pr/requests/{rid}/status", {"status": "approved"})
@@ -149,7 +194,7 @@ def run():
 
     pa = Client(); pa.login("planner1")
     st, x = pa.req("POST", f"/api/pr/requests/{rid}/tracking/pr", {"number": "2611-AB12"})
-    check("PR admin enters PR number (short form)", st == 200 and x["pr_number"] == "PR2611-AB12"
+    check("PR admin types YYMM-XXXX, stored PRYYMM-XXXX", st == 200 and x["pr_number"] == "PR2611-AB12"
           and x["pr_status"] == "approved" and x["pr_date"], (x.get("pr_number"), x.get("pr_status")))
     st, x = pa.req("POST", f"/api/pr/requests/{rid}/tracking/pr", {"number": "PR2613-0001"})
     check("bad PR month refused", st == 400)
@@ -170,6 +215,16 @@ def run():
     st, x = u.req("PUT", f"/api/pr/suppliers/{sid}", {"company_name": "nope"})
     check("requester cannot edit supplier (403)", st == 403)
 
+    st, x = pa.req("POST", f"/api/pr/requests/{d2['id']}/tracking/pr", {"number": "PR2611-cd34"})
+    check("PR number typed with PR prefix also accepted, request approved without quotation",
+          st == 200 and x["pr_number"] == "PR2611-CD34" and x["status"] == "approved", (x.get("pr_number"), x.get("status")))
+    st, x = pa.req("POST", f"/api/pr/requests/{d2['id']}/tracking/pr", {"number": "2611-CD34", "status": "pending_approval"})
+    check("pending with a PR number refused", st == 400)
+    st, x = pa.req("POST", f"/api/pr/requests/{d2['id']}/tracking/pr", {"number": "", "status": "approved"})
+    check("approved without a PR number refused", st == 400)
+    st, x = pa.req("POST", f"/api/pr/requests/{d2['id']}/tracking/pr", {"number": ""})
+    check("clearing the PR number -> pending_approval", st == 200 and x["status"] == "pending_approval"
+          and x["pr_status"] == "pending_approval", (x.get("status"), x.get("pr_status")))
     st, x = pa.req("POST", f"/api/pr/requests/{d2['id']}/tracking/pr", {"status": "cancelled", "cancel_reason": "duplicate"})
     check("cancelling PR number cancels the request", st == 200 and x["status"] == "cancelled", x.get("status"))
 

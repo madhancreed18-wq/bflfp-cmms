@@ -9,13 +9,13 @@ THE FLOW
   1. Anyone with a PR role writes a request: company, department, purpose, reason, supplier
      (optional), item lines (description · qty · unit price) and VAT 7 % yes/no. It gets a
      document code DEPT-COMPANY-YYMM-NNN (ENG-BFL-2611-001), numbered across the month.
-       no amount or no quotation yet  -> status waiting_quotation (รอใบเสนอราคา)
-       amount + quotation (or PR PDF) -> status pending_approval  (รออนุมัติ)
+       a new request starts as pending_approval (รออนุมัติ). waiting_quotation is only
+       kept so old rows still have a label; ensure() moves them to pending_approval.
   2. Approver approves or cancels (cancel needs a reason). Approve needs amount + quotation.
      An approved / cancelled request is locked: only the approver (and super admin) edits it.
-  3. PR Admin records the PR number PRYYMM-XXXX (+ PR PDF). Entering the PR number marks the
-     PR "approved" and, as in the old app, approves the request too (amount + quotation still
-     required). Cancelling the PR number cancels the request.
+  3. PR Admin records the PR number PRYYMM-XXXX (types YYMM-XXXX after the fixed "PR") (+ PR PDF). The PR status follows the number:
+     a number = approved, and the request becomes approved too; no number = pending_approval.
+     Cancelling the PR number cancels the request.
   4. PO Admin records the PO number <plant>-POXXXX-XXXX (+ PO PDF) and whether it went to the
      supplier.
 Money is kept as text "1234.50" and added up with Decimal, never float. Every change writes
@@ -91,6 +91,20 @@ PO_STATUSES = {
     "sent_to_supplier": ("ส่งให้ supplier แล้ว", "Sent to supplier"),
     "not_sent_to_supplier": ("ยังไม่ส่งให้ supplier", "Not sent to supplier"),
 }
+# การตั้งเบิก on the paper form (optional). pay_by = "ภายในวันที่".
+PAYMENT_METHODS = {
+    "advance": ("เงินทดรองจ่าย", "Cash advance"),
+    "petty_cash": ("เงินสดย่อย", "Petty cash"),
+    "purchasing_cash": ("เงินสดแผนกจัดซื้อ", "Purchasing dept. cash"),
+}
+# Full company names printed on the paper form, and companies that are not a plant in `factories`.
+COMPANY_TH = {
+    "BFL": "บริษัท บลูฟาโล่ จำกัด",
+    "BFLFP": "บริษัท บลูฟาโล่ ฟู้ด โปรดักส์ จำกัด",
+    "BFLPC": "บริษัท บลูฟาโล่ เพ็ทแคร์ จำกัด",
+    "SMEC": "บริษัท สยามแมค เอ็นจิเนียริ่ง แอน คอนสตรัคชั่น จำกัด",
+}
+EXTRA_COMPANIES = [("SMEC", "Siam Mac Engineering and Construction")]
 FILE_KINDS = ("quotation", "pr", "po")
 # a PR company code per plant (factories.code). The PO prefix is the plant code itself.
 COMPANY_OF_PLANT = {"BFL": "BFL", "FP": "BFLFP", "PC": "BFLPC"}
@@ -105,7 +119,6 @@ FILE_TYPES = {
     ".jpeg": ("image/jpeg", b"\xff\xd8\xff"),
     ".png": ("image/png", b"\x89PNG\r\n\x1a\n"),
 }
-PR_NO = re.compile(r"PR([0-9]{2}(0[1-9]|1[0-2])-[A-Z0-9]{4})")
 PR_SFX = re.compile(r"[0-9]{2}(0[1-9]|1[0-2])-[A-Z0-9]{4}")
 PO_SFX = re.compile(r"[A-Z0-9]{4}-[A-Z0-9]{4}")
 SORTS = {"code": "doc_code", "date": "request_date", "company": "company", "department": "department",
@@ -128,7 +141,7 @@ def ensure(c):
         purpose TEXT DEFAULT '', purpose_other TEXT DEFAULT '', reason TEXT DEFAULT '',
         amount_entered INTEGER DEFAULT 0, subtotal TEXT DEFAULT '0.00', vat_included INTEGER DEFAULT 1,
         vat TEXT DEFAULT '0.00', grand_total TEXT DEFAULT '0.00', withholding_amount TEXT DEFAULT '0.00',
-        net_total TEXT DEFAULT '0.00', status TEXT DEFAULT 'waiting_quotation', status_note TEXT DEFAULT '',
+        net_total TEXT DEFAULT '0.00', status TEXT DEFAULT 'pending_approval', status_note TEXT DEFAULT '',
         status_by TEXT DEFAULT '', status_at TEXT DEFAULT '',
         pr_number TEXT DEFAULT '', pr_status TEXT DEFAULT 'pending_approval', pr_date TEXT DEFAULT '',
         pr_cancel_reason TEXT DEFAULT '',
@@ -136,6 +149,15 @@ def ensure(c):
         po_cancel_reason TEXT DEFAULT '',
         job_id INTEGER DEFAULT 0, legacy_id INTEGER DEFAULT 0,
         created_by INTEGER DEFAULT 0, created_at TEXT DEFAULT '', updated_at TEXT DEFAULT '')""")
+    have = _table_cols(c, "pr_requests")
+    for col in ("payment_method", "pay_by", "book_no", "sheet_no"):
+        if col not in have:
+            c.execute(f"ALTER TABLE pr_requests ADD COLUMN {col} TEXT DEFAULT ''")
+    # PR numbers are stored as PRYYMM-XXXX (a short-lived version saved YYMM-XXXX; put the
+    # prefix back), and there is no "waiting for quotation" step: a request waits for approval.
+    c.execute("UPDATE pr_requests SET pr_number='PR'||pr_number "
+              "WHERE COALESCE(pr_number,'')<>'' AND pr_number NOT LIKE 'PR%'")
+    c.execute("UPDATE pr_requests SET status='pending_approval' WHERE status='waiting_quotation'")
     c.execute("CREATE INDEX IF NOT EXISTS ix_pr_req_date ON pr_requests(request_date)")
     c.execute("CREATE INDEX IF NOT EXISTS ix_pr_req_status ON pr_requests(status)")
     c.execute("""CREATE TABLE IF NOT EXISTS pr_items(
@@ -204,8 +226,23 @@ def companies(c):
     for f in c.execute("SELECT id,code,name FROM factories ORDER BY id").fetchall():
         code = COMPANY_OF_PLANT.get(f["code"], f["code"])
         out.append({"code": code, "plant_id": f["id"], "plant": f["code"], "name": f["name"],
-                    "po_prefix": f["code"]})
+                    "name_th": COMPANY_TH.get(code, f["name"]), "po_prefix": f["code"]})
+    have = {x["code"] for x in out}
+    for code, name in EXTRA_COMPANIES:
+        if code not in have:
+            out.append({"code": code, "plant_id": None, "plant": "", "name": name,
+                        "name_th": COMPANY_TH.get(code, name), "po_prefix": ""})
     return out
+
+
+def requesters(c):
+    """Active users who can be named as the requester on the form."""
+    try:
+        rows = c.execute("SELECT id, name, username FROM users WHERE COALESCE(active,1)=1 "
+                         "ORDER BY name, username").fetchall()
+    except Exception:
+        return []
+    return [{"id": r["id"], "name": r["name"] or r["username"]} for r in rows]
 
 
 def departments(c):
@@ -303,12 +340,11 @@ def _ready(c, rid, amount_entered):
 
 
 def _restatus(c, rid):
-    """waiting_quotation <-> pending_approval follows amount + quotation. Approved and
-    cancelled only change by hand."""
-    r = c.execute("SELECT status, amount_entered FROM pr_requests WHERE id=?", (rid,)).fetchone()
+    """An open request is pending_approval. Approved and cancelled only change by hand."""
+    r = c.execute("SELECT status FROM pr_requests WHERE id=?", (rid,)).fetchone()
     if not r or r["status"] in LOCKED:
         return r["status"] if r else ""
-    st = "pending_approval" if _ready(c, rid, r["amount_entered"]) else "waiting_quotation"
+    st = "pending_approval"
     if st != r["status"]:
         c.execute("UPDATE pr_requests SET status=? WHERE id=?", (st, rid))
     return st
@@ -346,6 +382,7 @@ async def me(req: Request):
     with closing(db()) as c:
         cos = companies(c)
         deps = departments(c)
+        people = requesters(c)
         dep = ""
         try:
             r = c.execute("SELECT COALESCE(department,'') d FROM users WHERE id=?", (u["id"],)).fetchone()
@@ -360,7 +397,7 @@ async def me(req: Request):
             "company": COMPANY_OF_PLANT.get(plant, plant), "department": dep.upper(),
             "companies": cos, "departments": deps,
             "statuses": STATUSES, "purposes": PURPOSES, "pr_statuses": PR_STATUSES,
-            "po_statuses": PO_STATUSES, "roles": ROLE_LABELS, "vat_rate": str(VAT_RATE),
+            "po_statuses": PO_STATUSES, "payment_methods": PAYMENT_METHODS, "requesters": people, "roles": ROLE_LABELS, "vat_rate": str(VAT_RATE),
             "max_file_mb": MAX_FILE // (1024 * 1024)}
 
 
@@ -454,7 +491,7 @@ def _clean_head(c, b, u):
     purpose = b.get("purpose") or ""
     if purpose not in PURPOSES:
         raise _bad("กรุณาเลือกวัตถุประสงค์ (purpose)")
-    other = (b.get("purpose_other") or "").strip()[:200] if purpose == "Other" else ""
+    other = (b.get("purpose_other") or "").strip()[:200] if purpose in ("Other", "Project") else ""
     if purpose == "Other" and not other:
         raise _bad("กรุณาระบุวัตถุประสงค์อื่น ๆ (other purpose)")
     reason = (b.get("reason") or "").strip()
@@ -471,6 +508,27 @@ def _clean_head(c, b, u):
         if not s:
             raise _bad("กรุณาเลือก Supplier จากรายการ (supplier)")
         sid, sname = s["id"], s["company_name"]
+    payment_method = (b.get("payment_method") or "").strip()
+    if payment_method and payment_method not in PAYMENT_METHODS:
+        raise _bad("การตั้งเบิกไม่ถูกต้อง (bad payment method)")
+    pay_by = (b.get("pay_by") or "").strip()
+    if pay_by:
+        try:
+            date.fromisoformat(pay_by)
+        except ValueError:
+            raise _bad("วันที่ตั้งเบิกไม่ถูกต้อง (bad pay-by date)")
+    book_no = (b.get("book_no") or "").strip()[:20]
+    sheet_no = (b.get("sheet_no") or "").strip()[:20]
+    rq_id, rq_name = u["id"], _who(u)
+    if b.get("requester_id") not in (None, "", 0, "0"):
+        try:
+            r = c.execute("SELECT id, name, username FROM users WHERE id=? AND COALESCE(active,1)=1",
+                          (int(b["requester_id"]),)).fetchone()
+        except (TypeError, ValueError):
+            r = None
+        if not r:
+            raise _bad("กรุณาเลือกผู้ขอซื้อจากรายการ (requester)")
+        rq_id, rq_name = r["id"], r["name"] or r["username"]
     vat_included = 1 if b.get("vat_included", True) not in (False, 0, "0", "") else 0
     items = _items(b.get("items"))
     entered, sub, vat, grand = totals(items, vat_included, None if items else b.get("amount"))
@@ -481,7 +539,9 @@ def _clean_head(c, b, u):
     return {"company": company, "department": department, "request_date": rd, "purpose": purpose,
             "purpose_other": other, "reason": reason, "supplier_id": sid, "supplier_name": sname,
             "vat_included": vat_included, "amount_entered": 1 if entered else 0, "subtotal": sub,
-            "vat": vat, "grand_total": grand, "net_total": grand, "job_id": job_id}, items
+            "vat": vat, "grand_total": grand, "net_total": grand, "job_id": job_id,
+            "payment_method": payment_method, "pay_by": pay_by, "book_no": book_no, "sheet_no": sheet_no,
+            "requester_id": rq_id, "requester_name": rq_name}, items
 
 
 def _save_items(c, rid, items):
@@ -506,13 +566,15 @@ async def create_request(req: Request):
                 rid = c.insert_id(
                     "INSERT INTO pr_requests(doc_code,company,department,requester_id,requester_name,supplier_id,"
                     "supplier_name,request_date,purpose,purpose_other,reason,amount_entered,subtotal,vat_included,"
-                    "vat,grand_total,net_total,status,pr_status,job_id,created_by,created_at,updated_at) "
-                    "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                    (code, head["company"], head["department"], u["id"], _who(u), head["supplier_id"],
+                    "vat,grand_total,net_total,status,pr_status,job_id,payment_method,pay_by,book_no,sheet_no,created_by,"
+                    "created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (code, head["company"], head["department"], head["requester_id"], head["requester_name"],
+                     head["supplier_id"],
                      head["supplier_name"], head["request_date"], head["purpose"], head["purpose_other"],
                      head["reason"], head["amount_entered"], head["subtotal"], head["vat_included"], head["vat"],
-                     head["grand_total"], head["net_total"], "waiting_quotation", "pending_approval",
-                     head["job_id"], u["id"], t, t))
+                     head["grand_total"], head["net_total"], "pending_approval", "pending_approval",
+                     head["job_id"], head["payment_method"], head["pay_by"], head["book_no"], head["sheet_no"],
+                     u["id"], t, t))
                 break
             except Exception as e:
                 if "UNIQUE" not in str(e).upper() and "DUPLICATE" not in str(e).upper():
@@ -540,19 +602,25 @@ async def update_request(req: Request, rid: int):
         if not _may_edit(old, caps):
             raise _bad("เอกสารที่อนุมัติ/ยกเลิกแล้วถูกล็อก — เฉพาะผู้อนุมัติแก้ไขได้ (locked: approver only)", 403)
         head, items = _clean_head(c, b, u)
+        if b.get("requester_id") in (None, "", 0, "0"):     # not sent: the requester stays as it was
+            head["requester_id"], head["requester_name"] = old.get("requester_id") or 0, old.get("requester_name") or ""
         changed = [k for k in ("company", "department", "request_date", "purpose", "purpose_other", "reason",
-                               "supplier_name", "vat_included", "net_total") if str(old[k]) != str(head[k])]
+                               "supplier_name", "vat_included", "net_total", "payment_method", "pay_by",
+                               "book_no", "sheet_no", "requester_name")
+                   if str(old.get(k) or "") != str(head[k] or "")]
         old_items = [(i["description"], i["quantity"], i["unit_price"], i["note"]) for i in c.execute(
             "SELECT description,quantity,unit_price,note FROM pr_items WHERE request_id=? ORDER BY position", (rid,))]
         if old_items != [(i["description"], i["quantity"], i["unit_price"], i["note"]) for i in items]:
             changed.append("items")
         c.execute("UPDATE pr_requests SET company=?,department=?,request_date=?,purpose=?,purpose_other=?,reason=?,"
                   "supplier_id=?,supplier_name=?,vat_included=?,amount_entered=?,subtotal=?,vat=?,grand_total=?,"
-                  "net_total=?,job_id=?,updated_at=? WHERE id=?",
+                  "net_total=?,job_id=?,payment_method=?,pay_by=?,book_no=?,sheet_no=?,requester_id=?,requester_name=?,"
+                  "updated_at=? WHERE id=?",
                   (head["company"], head["department"], head["request_date"], head["purpose"], head["purpose_other"],
                    head["reason"], head["supplier_id"], head["supplier_name"], head["vat_included"],
                    head["amount_entered"], head["subtotal"], head["vat"], head["grand_total"], head["net_total"],
-                   head["job_id"] or old.get("job_id") or 0, now(), rid))
+                   head["job_id"] or old.get("job_id") or 0, head["payment_method"], head["pay_by"],
+                   head["book_no"], head["sheet_no"], head["requester_id"], head["requester_name"], now(), rid))
         _save_items(c, rid, items)
         _restatus(c, rid)
         if changed:
@@ -566,7 +634,7 @@ async def update_request(req: Request, rid: int):
 
 @router.post("/requests/{rid}/status")
 async def set_status(req: Request, rid: int):
-    """Approver: approve / cancel / reopen (back to waiting or pending, by amount + quotation)."""
+    """Approver: approve / cancel / reopen (back to pending_approval)."""
     u, role, caps = ctx(req, "approve")
     b = await req.json()
     want = b.get("status") or ""
@@ -582,8 +650,8 @@ async def set_status(req: Request, rid: int):
         elif want != "reopen":
             raise _bad("สถานะไม่ถูกต้อง (bad status)")
         c.execute("UPDATE pr_requests SET status=?, status_note=?, status_by=?, status_at=?, updated_at=? WHERE id=?",
-                  ("waiting_quotation" if want == "reopen" else want, note, _who(u), now(), now(), rid))
-        st = _restatus(c, rid) if want == "reopen" else want
+                  ("pending_approval" if want == "reopen" else want, note, _who(u), now(), now(), rid))
+        st = "pending_approval" if want == "reopen" else want
         _log(c, rid, d["doc_code"], "STATUS",
              f"{d['doc_code']}: {STATUSES[d['status']][0]} → {STATUSES[st][0]}" + (f" ({note})" if note else ""),
              _who(u), {"from": d["status"], "to": st, "note": note})
@@ -594,7 +662,8 @@ async def set_status(req: Request, rid: int):
 
 
 def clean_tracking(kind, b, company_prefix, old):
-    """PR: PRYYMM-XXXX, the PR status follows the number. PO: <plant>-POXXXX-XXXX."""
+    """PR: PRYYMM-XXXX; a number = approved, none = pending_approval, or cancelled.
+    PO: <plant>-POXXXX-XXXX."""
     number = (b.get("number") or "").strip().upper().replace(" ", "")
     status = (b.get("status") or "").strip()
     when = (b.get("date") or "").strip()
@@ -603,10 +672,14 @@ def clean_tracking(kind, b, company_prefix, old):
         if number.startswith("PR"):
             number = number[2:]
         if number and not PR_SFX.fullmatch(number):
-            raise _bad("เลข PR ต้องเป็น PRYYMM-XXXX (PR number: PRYYMM-XXXX)")
+            raise _bad("เลข PR ต้องเป็น PR YYMM-XXXX เช่น PR2611-0042 (PR number: PRYYMM-XXXX)")
         number = f"PR{number}" if number else ""
         if status and status not in PR_STATUSES:
             raise _bad("สถานะเลข PR ไม่ถูกต้อง (PR status)")
+        if status == "approved" and not number:
+            raise _bad("กรุณาใส่เลข PR ก่อนเลือกอนุมัติแล้ว (PR number needed to approve)")
+        if status == "pending_approval" and number:
+            raise _bad("สถานะรออนุมัติต้องไม่มีเลข PR (remove the number to set pending)")
         status = "cancelled" if status == "cancelled" else ("approved" if number else "pending_approval")
         if status == "approved" and old.get("pr_status") != "approved" and not when:
             when = date.today().isoformat()
@@ -649,17 +722,13 @@ async def set_tracking(req: Request, rid: int, kind: str):
         if kind == "pr" and status != d["pr_status"]:
             # the paper flow: the PR number IS the approval
             if status == "approved":
-                if not _ready(c, rid, d["amount_entered"]):
-                    raise _bad("ต้องมียอดรวมและแนบใบเสนอราคาก่อนบันทึกเลข PR (amount + quotation first)")
                 doc_status = "approved"
             elif status == "cancelled":
                 doc_status = "cancelled"
-            elif d["status"] in LOCKED:
-                doc_status = "waiting_quotation"
+            else:
+                doc_status = "pending_approval"
         c.execute(f"UPDATE pr_requests SET {kind}_number=?, {kind}_status=?, {kind}_date=?, {kind}_cancel_reason=?, "
                   "status=?, updated_at=? WHERE id=?", (number, status, when, reason, doc_status, now(), rid))
-        if doc_status == "waiting_quotation":
-            _restatus(c, rid)
         _log(c, rid, d["doc_code"], "TRACKING",
              f"{d['doc_code']}: {kind.upper()} {number or '-'} · {status or '-'}" + (f" ({reason})" if reason else ""),
              _who(u), {"kind": kind, "number": number, "status": status, "date": when})
@@ -1089,7 +1158,9 @@ def import_legacy(src_db, src_uploads, log=print):
                  sup_map.get(g(r, "supplier_id"), 0) or 0, g(r, "supplier_name"), r["request_date"], r["purpose"],
                  g(r, "purpose_other"), r["reason"], entered, sub, int(g(r, "vat_included", 1) or 0), r["vat"],
                  r["grand_total"], g(r, "withholding_amount", "0.00"), g(r, "net_total", r["grand_total"]) or r["grand_total"],
-                 r["status"], g(r, "pr_number"), g(r, "pr_number_status") or "pending_approval",
+                 "pending_approval" if r["status"] == "waiting_quotation" else r["status"],
+                 re.sub(r"^(?:PR)?(?=.)", "PR", (g(r, "pr_number") or "").strip().upper()),
+                 g(r, "pr_number_status") or "pending_approval",
                  g(r, "pr_number_date"), g(r, "pr_cancel_reason"), g(r, "po_number"), g(r, "po_number_status"),
                  g(r, "po_number_date"), g(r, "po_cancel_reason"), r["id"], t1, t2))
             made["requests"] += 1
