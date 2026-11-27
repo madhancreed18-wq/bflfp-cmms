@@ -9,13 +9,13 @@ THE FLOW
   1. Anyone with a PR role writes a request: company, department, purpose, reason, supplier
      (optional), item lines (description · qty · unit price) and VAT 7 % yes/no. It gets a
      document code DEPT-COMPANY-YYMM-NNN (ENG-BFL-2611-001), numbered across the month.
-       no amount or no quotation yet  -> status waiting_quotation (รอใบเสนอราคา)
-       amount + quotation (or PR PDF) -> status pending_approval  (รออนุมัติ)
+       a new request starts as pending_approval (รออนุมัติ). waiting_quotation is only
+       kept so old rows still have a label; ensure() moves them to pending_approval.
   2. Approver approves or cancels (cancel needs a reason). Approve needs amount + quotation.
      An approved / cancelled request is locked: only the approver (and super admin) edits it.
-  3. PR Admin records the PR number PRYYMM-XXXX (+ PR PDF). Entering the PR number marks the
-     PR "approved" and, as in the old app, approves the request too (amount + quotation still
-     required). Cancelling the PR number cancels the request.
+  3. PR Admin records the PR number PRYYMM-XXXX (types YYMM-XXXX after the fixed "PR") (+ PR PDF). The PR status follows the number:
+     a number = approved, and the request becomes approved too; no number = pending_approval.
+     Cancelling the PR number cancels the request.
   4. PO Admin records the PO number <plant>-POXXXX-XXXX (+ PO PDF) and whether it went to the
      supplier.
 Money is kept as text "1234.50" and added up with Decimal, never float. Every change writes
@@ -119,7 +119,6 @@ FILE_TYPES = {
     ".jpeg": ("image/jpeg", b"\xff\xd8\xff"),
     ".png": ("image/png", b"\x89PNG\r\n\x1a\n"),
 }
-PR_NO = re.compile(r"PR([0-9]{2}(0[1-9]|1[0-2])-[A-Z0-9]{4})")
 PR_SFX = re.compile(r"[0-9]{2}(0[1-9]|1[0-2])-[A-Z0-9]{4}")
 PO_SFX = re.compile(r"[A-Z0-9]{4}-[A-Z0-9]{4}")
 SORTS = {"code": "doc_code", "date": "request_date", "company": "company", "department": "department",
@@ -142,7 +141,7 @@ def ensure(c):
         purpose TEXT DEFAULT '', purpose_other TEXT DEFAULT '', reason TEXT DEFAULT '',
         amount_entered INTEGER DEFAULT 0, subtotal TEXT DEFAULT '0.00', vat_included INTEGER DEFAULT 1,
         vat TEXT DEFAULT '0.00', grand_total TEXT DEFAULT '0.00', withholding_amount TEXT DEFAULT '0.00',
-        net_total TEXT DEFAULT '0.00', status TEXT DEFAULT 'waiting_quotation', status_note TEXT DEFAULT '',
+        net_total TEXT DEFAULT '0.00', status TEXT DEFAULT 'pending_approval', status_note TEXT DEFAULT '',
         status_by TEXT DEFAULT '', status_at TEXT DEFAULT '',
         pr_number TEXT DEFAULT '', pr_status TEXT DEFAULT 'pending_approval', pr_date TEXT DEFAULT '',
         pr_cancel_reason TEXT DEFAULT '',
@@ -154,6 +153,11 @@ def ensure(c):
     for col in ("payment_method", "pay_by", "book_no", "sheet_no"):
         if col not in have:
             c.execute(f"ALTER TABLE pr_requests ADD COLUMN {col} TEXT DEFAULT ''")
+    # PR numbers are stored as PRYYMM-XXXX (a short-lived version saved YYMM-XXXX; put the
+    # prefix back), and there is no "waiting for quotation" step: a request waits for approval.
+    c.execute("UPDATE pr_requests SET pr_number='PR'||pr_number "
+              "WHERE COALESCE(pr_number,'')<>'' AND pr_number NOT LIKE 'PR%'")
+    c.execute("UPDATE pr_requests SET status='pending_approval' WHERE status='waiting_quotation'")
     c.execute("CREATE INDEX IF NOT EXISTS ix_pr_req_date ON pr_requests(request_date)")
     c.execute("CREATE INDEX IF NOT EXISTS ix_pr_req_status ON pr_requests(status)")
     c.execute("""CREATE TABLE IF NOT EXISTS pr_items(
@@ -336,12 +340,11 @@ def _ready(c, rid, amount_entered):
 
 
 def _restatus(c, rid):
-    """waiting_quotation <-> pending_approval follows amount + quotation. Approved and
-    cancelled only change by hand."""
-    r = c.execute("SELECT status, amount_entered FROM pr_requests WHERE id=?", (rid,)).fetchone()
+    """An open request is pending_approval. Approved and cancelled only change by hand."""
+    r = c.execute("SELECT status FROM pr_requests WHERE id=?", (rid,)).fetchone()
     if not r or r["status"] in LOCKED:
         return r["status"] if r else ""
-    st = "pending_approval" if _ready(c, rid, r["amount_entered"]) else "waiting_quotation"
+    st = "pending_approval"
     if st != r["status"]:
         c.execute("UPDATE pr_requests SET status=? WHERE id=?", (st, rid))
     return st
@@ -569,7 +572,7 @@ async def create_request(req: Request):
                      head["supplier_id"],
                      head["supplier_name"], head["request_date"], head["purpose"], head["purpose_other"],
                      head["reason"], head["amount_entered"], head["subtotal"], head["vat_included"], head["vat"],
-                     head["grand_total"], head["net_total"], "waiting_quotation", "pending_approval",
+                     head["grand_total"], head["net_total"], "pending_approval", "pending_approval",
                      head["job_id"], head["payment_method"], head["pay_by"], head["book_no"], head["sheet_no"],
                      u["id"], t, t))
                 break
@@ -631,7 +634,7 @@ async def update_request(req: Request, rid: int):
 
 @router.post("/requests/{rid}/status")
 async def set_status(req: Request, rid: int):
-    """Approver: approve / cancel / reopen (back to waiting or pending, by amount + quotation)."""
+    """Approver: approve / cancel / reopen (back to pending_approval)."""
     u, role, caps = ctx(req, "approve")
     b = await req.json()
     want = b.get("status") or ""
@@ -647,8 +650,8 @@ async def set_status(req: Request, rid: int):
         elif want != "reopen":
             raise _bad("สถานะไม่ถูกต้อง (bad status)")
         c.execute("UPDATE pr_requests SET status=?, status_note=?, status_by=?, status_at=?, updated_at=? WHERE id=?",
-                  ("waiting_quotation" if want == "reopen" else want, note, _who(u), now(), now(), rid))
-        st = _restatus(c, rid) if want == "reopen" else want
+                  ("pending_approval" if want == "reopen" else want, note, _who(u), now(), now(), rid))
+        st = "pending_approval" if want == "reopen" else want
         _log(c, rid, d["doc_code"], "STATUS",
              f"{d['doc_code']}: {STATUSES[d['status']][0]} → {STATUSES[st][0]}" + (f" ({note})" if note else ""),
              _who(u), {"from": d["status"], "to": st, "note": note})
@@ -659,7 +662,8 @@ async def set_status(req: Request, rid: int):
 
 
 def clean_tracking(kind, b, company_prefix, old):
-    """PR: PRYYMM-XXXX, the PR status follows the number. PO: <plant>-POXXXX-XXXX."""
+    """PR: PRYYMM-XXXX; a number = approved, none = pending_approval, or cancelled.
+    PO: <plant>-POXXXX-XXXX."""
     number = (b.get("number") or "").strip().upper().replace(" ", "")
     status = (b.get("status") or "").strip()
     when = (b.get("date") or "").strip()
@@ -668,10 +672,14 @@ def clean_tracking(kind, b, company_prefix, old):
         if number.startswith("PR"):
             number = number[2:]
         if number and not PR_SFX.fullmatch(number):
-            raise _bad("เลข PR ต้องเป็น PRYYMM-XXXX (PR number: PRYYMM-XXXX)")
+            raise _bad("เลข PR ต้องเป็น PR YYMM-XXXX เช่น PR2611-0042 (PR number: PRYYMM-XXXX)")
         number = f"PR{number}" if number else ""
         if status and status not in PR_STATUSES:
             raise _bad("สถานะเลข PR ไม่ถูกต้อง (PR status)")
+        if status == "approved" and not number:
+            raise _bad("กรุณาใส่เลข PR ก่อนเลือกอนุมัติแล้ว (PR number needed to approve)")
+        if status == "pending_approval" and number:
+            raise _bad("สถานะรออนุมัติต้องไม่มีเลข PR (remove the number to set pending)")
         status = "cancelled" if status == "cancelled" else ("approved" if number else "pending_approval")
         if status == "approved" and old.get("pr_status") != "approved" and not when:
             when = date.today().isoformat()
@@ -714,17 +722,13 @@ async def set_tracking(req: Request, rid: int, kind: str):
         if kind == "pr" and status != d["pr_status"]:
             # the paper flow: the PR number IS the approval
             if status == "approved":
-                if not _ready(c, rid, d["amount_entered"]):
-                    raise _bad("ต้องมียอดรวมและแนบใบเสนอราคาก่อนบันทึกเลข PR (amount + quotation first)")
                 doc_status = "approved"
             elif status == "cancelled":
                 doc_status = "cancelled"
-            elif d["status"] in LOCKED:
-                doc_status = "waiting_quotation"
+            else:
+                doc_status = "pending_approval"
         c.execute(f"UPDATE pr_requests SET {kind}_number=?, {kind}_status=?, {kind}_date=?, {kind}_cancel_reason=?, "
                   "status=?, updated_at=? WHERE id=?", (number, status, when, reason, doc_status, now(), rid))
-        if doc_status == "waiting_quotation":
-            _restatus(c, rid)
         _log(c, rid, d["doc_code"], "TRACKING",
              f"{d['doc_code']}: {kind.upper()} {number or '-'} · {status or '-'}" + (f" ({reason})" if reason else ""),
              _who(u), {"kind": kind, "number": number, "status": status, "date": when})
@@ -1154,7 +1158,9 @@ def import_legacy(src_db, src_uploads, log=print):
                  sup_map.get(g(r, "supplier_id"), 0) or 0, g(r, "supplier_name"), r["request_date"], r["purpose"],
                  g(r, "purpose_other"), r["reason"], entered, sub, int(g(r, "vat_included", 1) or 0), r["vat"],
                  r["grand_total"], g(r, "withholding_amount", "0.00"), g(r, "net_total", r["grand_total"]) or r["grand_total"],
-                 r["status"], g(r, "pr_number"), g(r, "pr_number_status") or "pending_approval",
+                 "pending_approval" if r["status"] == "waiting_quotation" else r["status"],
+                 re.sub(r"^(?:PR)?(?=.)", "PR", (g(r, "pr_number") or "").strip().upper()),
+                 g(r, "pr_number_status") or "pending_approval",
                  g(r, "pr_number_date"), g(r, "pr_cancel_reason"), g(r, "po_number"), g(r, "po_number_status"),
                  g(r, "po_number_date"), g(r, "po_cancel_reason"), r["id"], t1, t2))
             made["requests"] += 1

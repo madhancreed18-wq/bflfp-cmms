@@ -135,7 +135,7 @@ def run():
           (d.get("subtotal"), d.get("vat"), d.get("net_total")) == ("3100.99", "217.07", "3318.06"),
           (d.get("subtotal"), d.get("vat"), d.get("net_total")))
     check("empty item row skipped", len(d.get("items", [])) == 2)
-    check("no quotation -> waiting_quotation", d.get("status") == "waiting_quotation", d.get("status"))
+    check("new request starts pending_approval", d.get("status") == "pending_approval", d.get("status"))
     st, d2 = u.req("POST", "/api/pr/requests", {**body, "items": []})
     check("second request same month -> 002, no amount allowed", st == 200 and d2["doc_code"].endswith("-002")
           and d2["amount_entered"] == 0, msg(d2))
@@ -174,7 +174,7 @@ def run():
     st, bad = u.req("POST", f"/api/pr/requests/{rid}/files/quotation", {"name": "q.pdf", "data": base64.b64encode(b"hello").decode()})
     check("fake PDF refused (content check)", st == 400)
     st, d = u.req("POST", f"/api/pr/requests/{rid}/files/quotation", {"name": "Q-SMEC 69-11-24.pdf", "data": b64})
-    check("attach quotation -> pending_approval", st == 200 and d["status"] == "pending_approval", d.get("status"))
+    check("attach quotation keeps pending_approval", st == 200 and d["status"] == "pending_approval", d.get("status"))
     st, raw = u.req("GET", f"/api/pr/requests/{rid}/files/quotation", raw=True)
     check("download quotation", st == 200 and raw.startswith(b"%PDF"))
     st, _ = u.req("POST", f"/api/pr/requests/{rid}/status", {"status": "approved"})
@@ -194,7 +194,7 @@ def run():
 
     pa = Client(); pa.login("planner1")
     st, x = pa.req("POST", f"/api/pr/requests/{rid}/tracking/pr", {"number": "2611-AB12"})
-    check("PR admin enters PR number (short form)", st == 200 and x["pr_number"] == "PR2611-AB12"
+    check("PR admin types YYMM-XXXX, stored PRYYMM-XXXX", st == 200 and x["pr_number"] == "PR2611-AB12"
           and x["pr_status"] == "approved" and x["pr_date"], (x.get("pr_number"), x.get("pr_status")))
     st, x = pa.req("POST", f"/api/pr/requests/{rid}/tracking/pr", {"number": "PR2613-0001"})
     check("bad PR month refused", st == 400)
@@ -215,6 +215,16 @@ def run():
     st, x = u.req("PUT", f"/api/pr/suppliers/{sid}", {"company_name": "nope"})
     check("requester cannot edit supplier (403)", st == 403)
 
+    st, x = pa.req("POST", f"/api/pr/requests/{d2['id']}/tracking/pr", {"number": "PR2611-cd34"})
+    check("PR number typed with PR prefix also accepted, request approved without quotation",
+          st == 200 and x["pr_number"] == "PR2611-CD34" and x["status"] == "approved", (x.get("pr_number"), x.get("status")))
+    st, x = pa.req("POST", f"/api/pr/requests/{d2['id']}/tracking/pr", {"number": "2611-CD34", "status": "pending_approval"})
+    check("pending with a PR number refused", st == 400)
+    st, x = pa.req("POST", f"/api/pr/requests/{d2['id']}/tracking/pr", {"number": "", "status": "approved"})
+    check("approved without a PR number refused", st == 400)
+    st, x = pa.req("POST", f"/api/pr/requests/{d2['id']}/tracking/pr", {"number": ""})
+    check("clearing the PR number -> pending_approval", st == 200 and x["status"] == "pending_approval"
+          and x["pr_status"] == "pending_approval", (x.get("status"), x.get("pr_status")))
     st, x = pa.req("POST", f"/api/pr/requests/{d2['id']}/tracking/pr", {"status": "cancelled", "cancel_reason": "duplicate"})
     check("cancelling PR number cancels the request", st == 200 and x["status"] == "cancelled", x.get("status"))
 
