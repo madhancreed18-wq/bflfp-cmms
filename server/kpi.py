@@ -45,6 +45,12 @@ PM_COUNTS = ("(j.status IN ('ServiceCompleted','Done') OR "
 from .auth import user_from
 from .push import notify_users
 
+
+def _jt(j, pt_cat=""):
+    """b594: the planner's department first, then the problem type's trade."""
+    from .elec import job_trade
+    return job_trade(j, pt_cat)
+
 router = APIRouter(prefix="/api")
 
 
@@ -1656,7 +1662,7 @@ async def kpi_pm_vs_cm(req: Request, bucket: str = "week", n: int = 12, cls: str
         ptc = {r["name"]: (r["category"] or "") for r in c.execute(
             "SELECT name, category FROM problem_types WHERE factory_id=?", (fac,))}
         rows = c.execute("""SELECT j.id, UPPER(j.jobtype) t, j.status, j.created_at, j.done_at, j.machine_id,
-                   j.problem_type, j.fault_category, m.code, m.name mname,
+                   j.problem_type, j.fault_category, j.trade, m.code, m.name mname,
                    UPPER(TRIM(COALESCE(m.criticality,''))) cr
               FROM jobs j JOIN machines m ON m.id=j.machine_id
              WHERE m.factory_id=? AND UPPER(j.jobtype) IN ('PM','CM','BD')
@@ -1677,7 +1683,7 @@ async def kpi_pm_vs_cm(req: Request, bucket: str = "week", n: int = 12, cls: str
                 if k in pm:
                     pm[k] += 1
             continue
-        trade = ptc.get(r["problem_type"] or "") or (r["fault_category"] or "")
+        trade = _jt(dict(r), ptc.get(r["problem_type"] or ""))
         if any(x.lower() in trade.lower() for x in NONMACH_TRADES):
             skipped += 1
             continue
@@ -1693,7 +1699,7 @@ async def kpi_pm_vs_cm(req: Request, bucket: str = "week", n: int = 12, cls: str
             continue
         if cls and r["cr"] != cls:
             continue
-        trade = ptc.get(r["problem_type"] or "") or (r["fault_category"] or "")
+        trade = _jt(dict(r), ptc.get(r["problem_type"] or ""))
         if any(x.lower() in trade.lower() for x in NONMACH_TRADES):
             continue
         d0 = date.fromisoformat(r["created_at"][:10])
@@ -1731,7 +1737,7 @@ def _pmcm_events(c, fac, since, cls=""):
         "SELECT name, category FROM problem_types WHERE factory_id=?", (fac,))}
     out = []
     for r in c.execute("""SELECT UPPER(j.jobtype) t, j.status, j.created_at, j.done_at, j.machine_id,
-               j.problem_type, j.fault_category, UPPER(TRIM(COALESCE(m.criticality,''))) cr
+               j.problem_type, j.fault_category, j.trade, UPPER(TRIM(COALESCE(m.criticality,''))) cr
           FROM jobs j JOIN machines m ON m.id=j.machine_id
          WHERE m.factory_id=? AND UPPER(j.jobtype) IN ('PM','CM','BD')
            AND j.status NOT IN """ + VOID_SQL + NOTKPI_J + """
@@ -1742,7 +1748,7 @@ def _pmcm_events(c, fac, since, cls=""):
             if r["status"] in ("Done", "ServiceCompleted") and r["done_at"] and r["done_at"][:10] >= since:
                 out.append(("PM", r["done_at"][:10], r["machine_id"]))
             continue
-        trade = ptc.get(r["problem_type"] or "") or (r["fault_category"] or "")
+        trade = _jt(dict(r), ptc.get(r["problem_type"] or ""))
         if any(x.lower() in trade.lower() for x in NONMACH_TRADES):
             continue
         if r["created_at"] and r["created_at"][:10] >= since:

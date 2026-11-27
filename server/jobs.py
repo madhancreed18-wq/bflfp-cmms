@@ -3,6 +3,14 @@ from datetime import datetime, date, timedelta
 from contextlib import closing
 
 from fastapi import APIRouter, Request, HTTPException
+from fastapi.responses import Response as _Resp
+import json as _json
+
+
+def _FastJSON(obj):
+    """b592: plain rows straight to JSON (no per-value encoder pass)."""
+    return _Resp(_json.dumps(obj, ensure_ascii=False, separators=(",", ":"), default=str),
+                 media_type="application/json")
 
 from .config import UPLOADS, BASE
 from .db import (db, now, today, day_range, job_row, role_ids, user_names, log_status,
@@ -382,7 +390,7 @@ SELFDONE_SQL = ("EXISTS (SELECT 1 FROM users ru WHERE (ru.id=" + _R + " OR ru.lo
                 " OR EXISTS (SELECT 1 FROM timelogs t WHERE t.job_id=j.id AND t.tech=ru.id)))")
 
 @router.get("/jobs")
-async def jobs(req: Request, view: str = "", d: str = "", q_text: str = "", fac: str = "",
+def jobs(req: Request, view: str = "", d: str = "", q_text: str = "", fac: str = "",       # b592: plain def — runs beside other requests
                d_from: str = "", d_to: str = ""):
     u = user_from(req)
     d = d or today()
@@ -634,12 +642,16 @@ async def jobs(req: Request, view: str = "", d: str = "", q_text: str = "", fac:
     try:
         from .elec import scope_of           # b421: CE planner / plant planner scopes
         with closing(db()) as _c2:
-            _ok = scope_of(_c2, u)
+            from .elec import as_ac as _asac
+            _ok = scope_of(_c2, _asac(req, u))
             if _ok:
                 rows = [r for r in rows if _ok(r)]
     except Exception:
         pass
-    return {"jobs": rows, "open_segment": dict(open_seg) if open_seg else None}
+    # b592: the list is ~1,000 rows x 66 columns (2 MB). FastAPI's generic encoder walked every
+    # value one by one and took longer than the query itself; these are plain database values,
+    # so they are written out directly.
+    return _FastJSON({"jobs": rows, "open_segment": dict(open_seg) if open_seg else None})
 
 
 @router.get("/jobs/export")
@@ -794,7 +806,8 @@ async def job_counts(req: Request, d: str = "", fac: str = ""):
     rstart = (_d.fromisoformat(d) - _td(days=9)).isoformat() + " 00:00:00"
     with closing(db()) as c:
         from .elec import scope_of        # b417/b421: the CE planner's and plant planner's scopes
-        _cok = scope_of(c, u)
+        from .elec import as_ac as _asac
+        _cok = scope_of(c, _asac(req, u))
 
         def cnt(where, a):
             w, aa = where, list(a)
@@ -1600,6 +1613,47 @@ async def job_media(jid: int, req: Request):
             c.execute("UPDATE jobs SET inspected_at=? WHERE id=?", (now(), jid))
         c.commit()
     return {"path": f"/uploads/{fn}"}
+
+
+@router.post("/jobs/{jid}/trade")
+async def set_trade(jid: int, req: Request):
+    """b594 — the planner sets the job's DEPARTMENT. Electrical & Control moves corrective work
+    to Central Electrical (its planners are told); anything else keeps it with the plant.
+    An empty value goes back to "worked out from the problem type"."""
+    u = require_role(req, "planner", "admin")
+    b = await req.json()
+    from .elec import DEPARTMENTS, canon_trade
+    t = (b.get("trade") or "").strip()
+    if t and t not in DEPARTMENTS:
+        raise HTTPException(400, "unknown department")
+    with closing(db()) as c:
+        _job_in_factory(c, jid, u)
+        old = job_row(c, jid)
+        c.execute("UPDATE jobs SET trade=?, trade_by=?, trade_at=? WHERE id=?",
+                  (t, u["id"] if t else None, now() if t else "", jid))
+        c.commit()
+        _log.info("[jobs] department %s -> %r by %s", old["jobid"], t, u.get("username"))
+        to_ce = canon_trade(t) == "Electrical" and (old.get("jobtype") or "").upper() != "PM"
+        to_ac = canon_trade(t) == "Air Condition" and (old.get("jobtype") or "").upper() != "PM"
+        if to_ac:                                   # b599: Central Air Conditioning
+            try:
+                pl = [r["id"] for r in c.execute(
+                    "SELECT id FROM users WHERE active=1 AND role='planner' AND COALESCE(team,'')='AC'")]
+                if pl:
+                    notify_users(pl, "❄️ งานแอร์ใหม่ / New air-conditioning job",
+                                 f"{old['jobid']} · {old.get('mcode') or ''} · {u.get('name') or ''}", f"/?job={jid}")
+            except Exception:
+                pass
+        if to_ce:
+            try:
+                pl = [r["id"] for r in c.execute(
+                    "SELECT id FROM users WHERE active=1 AND role='planner' AND COALESCE(team,'')='CE'")]
+                if pl:
+                    notify_users(pl, "⚡ งานไฟฟ้าใหม่ / New electrical job",
+                                 f"{old['jobid']} · {old.get('mcode') or ''} · {u.get('name') or ''}", f"/?job={jid}")
+            except Exception:
+                pass
+    return {"ok": True, "trade": t, "to_ce": to_ce, "to_ac": to_ac}
 
 
 @router.post("/jobs/{jid}/ack-due")

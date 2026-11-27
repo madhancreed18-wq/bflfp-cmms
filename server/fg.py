@@ -241,6 +241,10 @@ def ensure(c):
     c.execute("CREATE INDEX IF NOT EXISTS ix_fg_prl_pk ON fg_print_log(factory_id, packing_id)")
     c.execute("CREATE INDEX IF NOT EXISTS ix_fg_prl_at ON fg_print_log(factory_id, printed_at)")
     c.execute("CREATE INDEX IF NOT EXISTS ix_fg_log_at ON fg_log(factory_id, kind, created_at)")
+    # b591: "has this slip been scanned / revived before" is asked by slip (ref_id) on every scan and
+    # for every row of the scan history. Without this index each question read the plant's whole
+    # packing log — 7 s for one day's history on the server, and the whole app waited behind it.
+    c.execute("CREATE INDEX IF NOT EXISTS ix_fg_log_ref ON fg_log(factory_id, kind, ref_id, action)")
     cols = _table_cols(c, "users")
     if "fg_role" not in cols:
         c.execute("ALTER TABLE users ADD COLUMN fg_role TEXT DEFAULT ''")
@@ -962,7 +966,7 @@ async def me(req: Request):
 
 
 @router.get("/summary")
-async def summary(req: Request):
+def summary(req: Request):          # b591: plain def = runs beside other requests, never in front of them
     u, fac, fr = ctx(req, "view")
     d0 = _today()
     with closing(conn()) as c:
@@ -2604,7 +2608,7 @@ async def slips_scan(req: Request):
 
 
 @router.get("/scans")
-async def scans_day(req: Request, d: str = ""):
+def scans_day(req: Request, d: str = ""):      # b591: plain def (see summary)
     """b526: the pack checker's scan history for one day, from the server — every PC and phone
     (and admin) sees the same list. One row per slip: last scan time, how many times, who, how."""
     u, fac, _ = ctx(req, "view")

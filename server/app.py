@@ -59,6 +59,8 @@ def create_app():
     # b474 system health — times every API call, watches for stalls, alerts admins
     from . import monitor
     monitor.install(app)
+    from . import elec as _elec_ac
+    _elec_ac.install_ac_scope(app)          # b604: the ❄️ Air-con dashboard
 
     # b481: compress pages and API answers (index.html 1.7 MB -> ~0.3 MB, big FG lists ~10x smaller)
     from starlette.middleware.gzip import GZipMiddleware

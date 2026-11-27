@@ -131,6 +131,9 @@ T("jobs",
   Column("created_at", String(19)),
   Column("done_at", String(19)),
   Column("fault_category", String(60), server_default=text("''")),
+  Column("trade", String(30), server_default=text("''")),          # b594 department set by the planner
+  Column("trade_by", Integer),
+  Column("trade_at", String(19), server_default=text("''")),
   Column("fault_component", String(60), server_default=text("''")),
   Column("maint_action", String(60), server_default=text("''")),
   Column("rework_count", Integer, server_default=text("0")),
@@ -357,12 +360,40 @@ class Result:
         return self._res.rowcount
 
 
+# ── b604: a READ scope for one request ───────────────────────────────────────────
+# The ❄️ Air-con dashboard is the plant dashboard read over the Central Air Conditioning
+# team's work only. Rather than teach every KPI query a team filter, a request in that
+# view carries the team's job and machine ids, and every SELECT it runs reads `jobs` and
+# `machines` through that subset. Writes are never touched; other requests never see it.
+import contextvars as _cv
+SCOPE = _cv.ContextVar("cmms_read_scope", default=None)      # (job_ids, machine_ids) or None
+_SCOPE_TBL = re.compile(r"\b(FROM|JOIN)(\s+)(jobs|machines)\b(?!\.)(\s+(?:AS\s+)?([A-Za-z_][A-Za-z_0-9]*))?", re.I)
+_NOT_ALIAS = {"WHERE", "GROUP", "ORDER", "LEFT", "RIGHT", "INNER", "OUTER", "JOIN", "ON", "LIMIT",
+              "UNION", "HAVING", "CROSS", "NATURAL", "USING", "WINDOW", "EXCEPT", "INTERSECT"}
+
+
+def _scoped(sql):
+    sc = SCOPE.get()
+    if not sc or not re.match(r"^\s*(SELECT|WITH)\b", sql or "", re.I):
+        return sql
+    ids = {"jobs": ",".join(str(int(i)) for i in sc[0]) or "0",
+           "machines": ",".join(str(int(i)) for i in sc[1]) or "0"}
+
+    def rep(m):
+        kw, sp, tbl, tail, alias = m.group(1), m.group(2), m.group(3).lower(), m.group(4) or "", m.group(5)
+        sub = "(SELECT * FROM %s WHERE id IN (%s))" % (tbl, ids[tbl])      # one pass: not rescanned
+        if alias and alias.upper() not in _NOT_ALIAS:
+            return "%s%s%s%s" % (kw, sp, sub, tail)
+        return "%s%s%s AS %s%s" % (kw, sp, sub, tbl, tail)
+    return _SCOPE_TBL.sub(rep, sql)
+
+
 class Conn:
     def __init__(self):
         self._c = engine.connect()
 
     def _raw(self, sql, params=()):
-        sql2, p = _convert(sql, list(params))
+        sql2, p = _convert(_scoped(sql), list(params))
         return self._c.execute(text(sql2), p)
 
     def _job_insert(self, sql, params):

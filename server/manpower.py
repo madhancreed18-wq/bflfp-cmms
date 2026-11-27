@@ -53,9 +53,22 @@ def _ensure(c):
 
 
 # ── who is on the board, and what a day of theirs is worth ─────────────────────────
-def _techs(c, fac):
+def _techs(c, fac, u=None):
     """The same people the assign board offers: technician PEOPLE, plus technicians who
-    sign in as themselves with no separate person record."""
+    sign in as themselves with no separate person record.
+    b599: the Central Air Conditioning planner counts only AC technicians; everyone else's
+    count leaves them out."""
+    from .elec import is_ac_planner, ac_ids
+    acs = ac_ids(c, fac)
+    if u is not None and is_ac_planner(u):
+        return sorted([dict(r) for r in c.execute(
+            "SELECT id,name,username,department,COALESCE(week_hours,0) wh FROM users WHERE id IN (%s)"
+            % (",".join(str(int(i)) for i in acs) or "0"))],
+            key=lambda t: (t["name"] or t["username"] or "").lower())
+    return [t for t in _techs_plant(c, fac) if t["id"] not in acs]
+
+
+def _techs_plant(c, fac):
     from .teams import _handset_people
     out = {r["id"]: dict(r) for r in c.execute(
         "SELECT id,name,username,department,COALESCE(week_hours,0) wh FROM users"
@@ -160,7 +173,8 @@ def _trade(c, fac, cache, j):
     if fac not in cache:
         cache[fac] = {r["name"]: (r["category"] or "") for r in c.execute(
             "SELECT name, category FROM problem_types WHERE factory_id=?", (fac,))}
-    return cache[fac].get(pt) or (j.get("fault_category") or "") or "Other"
+    from .elec import job_trade
+    return job_trade(j, cache[fac].get(pt)) or "Other"      # b594: the planner's department first
 
 
 # ── the assign board: one day, live ────────────────────────────────────────────────
@@ -177,7 +191,7 @@ async def board(req: Request):
     with closing(db()) as c:
         _ensure(c)
         off_wd, hol = _calendar(c, fac)
-        techs = _techs(c, fac)
+        techs = _techs(c, fac, _as_ac(req, u))
         offs = {r["user_id"] for r in c.execute(
             "SELECT user_id FROM mp_off WHERE factory_id=? AND day=?", (fac, d))}
         hist = _history(c, fac)
@@ -250,7 +264,7 @@ async def day_range(req: Request, frm: str = "", to: str = ""):
     with closing(db()) as c:
         _ensure(c)
         off_wd, hol = _calendar(c, fac)
-        techs = _techs(c, fac)
+        techs = _techs(c, fac, _as_ac(req, u))
         offs = {}
         for r in c.execute("SELECT day, user_id FROM mp_off WHERE factory_id=? AND day BETWEEN ? AND ?",
                            (fac, frm, to)):
@@ -260,7 +274,7 @@ async def day_range(req: Request, frm: str = "", to: str = ""):
         work = {}                                 # day -> list of items
         jobs = [dict(r) for r in c.execute(
             """SELECT j.id, j.machine_id, j.jobtype, j.pm_freq, j.planned_date, j.problem_type,
-                      j.fault_category, j.lead_tech
+                      j.fault_category, j.trade, j.lead_tech
                  FROM jobs j LEFT JOIN machines m ON m.id = j.machine_id
                 WHERE j.planned_date BETWEEN ? AND ? AND j.status NOT IN """ + OPEN + """
                   AND (COALESCE(m.factory_id, j.factory_id) = ? OR COALESCE(m.factory_id, j.factory_id) IS NULL)""",
@@ -268,12 +282,17 @@ async def day_range(req: Request, frm: str = "", to: str = ""):
         overdue = []
         if frm <= t0 <= to:
             overdue = [dict(r) for r in c.execute(
-                """SELECT j.id, j.machine_id, j.jobtype, j.pm_freq, j.problem_type, j.fault_category
+                """SELECT j.id, j.machine_id, j.jobtype, j.pm_freq, j.problem_type, j.fault_category, j.trade
                      FROM jobs j LEFT JOIN machines m ON m.id = j.machine_id
                     WHERE COALESCE(j.planned_date,'') != '' AND j.planned_date < ?
                       AND j.status NOT IN """ + OPEN + """
                       AND (COALESCE(m.factory_id, j.factory_id) = ? OR COALESCE(m.factory_id, j.factory_id) IS NULL)""",
                 (t0, fac))]
+        # b599: AC work is the AC planner's; nobody else's need counts it
+        from .elec import AcFilter, is_ac_planner
+        _acf, _ac = AcFilter(c), is_ac_planner(_as_ac(req, u))
+        jobs = [j for j in jobs if bool(_acf.ok(dict(j, factory_id=fac))) == _ac]
+        overdue = [j for j in overdue if bool(_acf.ok(dict(j, factory_id=fac))) == _ac]
         own = _own(c, [j["id"] for j in jobs + overdue])
         for j in jobs:
             work.setdefault(str(j["planned_date"])[:10], []).append(
@@ -293,6 +312,8 @@ async def day_range(req: Request, frm: str = "", to: str = ""):
             for o in occ:
                 dd = str(o.get("date") or "")[:10]
                 if o.get("cm") or not dd or (o["machine_id"], dd) in have:
+                    continue
+                if _acf.ac_machine(fac, o["machine_id"]) != _ac:
                     continue
                 work.setdefault(dd, []).append({"machine_id": o["machine_id"], "jobtype": "PM",
                                                 "freq": o.get("freq"), "trade": "PM"})
@@ -322,3 +343,9 @@ async def day_range(req: Request, frm: str = "", to: str = ""):
             dd += timedelta(days=1)
     hpd = round(sum(_day_hours(t, off_wd) for t in techs) / max(1, len(techs)), 1) if techs else 0
     return {"from": frm, "to": to, "techs": len(techs), "hpd": hpd, "days": days}
+
+
+def _as_ac(req, u):
+    """b601: see elec.as_ac — the admin's ❄️ Air-con Planning view."""
+    from .elec import as_ac
+    return as_ac(req, u)

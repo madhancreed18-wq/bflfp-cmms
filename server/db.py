@@ -406,7 +406,13 @@ def _migrate(c):
             ("users", "sig_at", "VARCHAR(30) DEFAULT ''"),
             ("users", "shared_login", "INTEGER DEFAULT 0"),
             # b430: which board gave a corrective job its crew — 'ce' or '' (the plant's)
-            ("jobs", "board", "VARCHAR(8) DEFAULT ''")]
+            ("jobs", "board", "VARCHAR(8) DEFAULT ''"),
+            # b594: the DEPARTMENT a planner set for the job (Mechanical, Electrical & Control …).
+            # Empty = worked out from the problem type as before. Set, it wins everywhere —
+            # Electrical & Control sends a corrective job to Central Electrical.
+            ("jobs", "trade", "VARCHAR(30) DEFAULT ''"),
+            ("jobs", "trade_by", "INTEGER"),
+            ("jobs", "trade_at", "VARCHAR(19) DEFAULT ''")]
     from .jobtables import is_split, add_job_column
     for table, col, ddl in adds:
         if col not in _table_cols(c, table):
@@ -483,6 +489,15 @@ def _migrate(c):
             _log.info("[db] b456: %d symptoms added, %d air-con symptoms moved" % (n, moved))
         except Exception as e:
             _log.warning("[db] b456 symptoms skipped: %s", e)
+    # b600: the Central Air Conditioning team's symptoms — once, all three plants, so a
+    # symptom an admin later deletes stays deleted
+    if state_get(c, "ptypes:b600-aircon") != "done":
+        try:
+            n = add_symptoms(c, AIRCON_MORE)
+            state_set(c, "ptypes:b600-aircon", "done")
+            _log.info("[db] b600: %d air-conditioning symptoms added" % n)
+        except Exception as e:
+            _log.warning("[db] b600 air-con symptoms skipped: %s", e)
     # b459: ONE problem-type list for all three plants. Each plant kept its own copy and
     # they drifted (BFL/BFLPC 150, BFLFP 132, same symptom filed under two trades). Every
     # plant now carries the same entries, same trade, same on/off; the admin and planner
@@ -1082,6 +1097,27 @@ def share_problem_types(c):
     for f in facs:
         regroup_problem_types(c, f)
     return added
+
+
+# b600: what operators and the AC team report on split units, fan coils, condensing units
+# and VRF systems. Category Air Condition, so every one routes to Central Air Conditioning.
+AIRCON_MORE = [
+    ("แอร์เย็นน้อย / เย็นไม่ทั่วห้อง / Air conditioner weak or uneven cooling", "Air Condition"),
+    ("แอร์ลมออกน้อย / ฟิลเตอร์ตัน / Air conditioner weak airflow or filter clogged", "Air Condition"),
+    ("คอมเพรสเซอร์แอร์ไม่ทำงาน / Air conditioner compressor not running", "Air Condition"),
+    ("คอมเพรสเซอร์แอร์ตัด / ติด ๆ ดับ ๆ / Air conditioner compressor cutting out", "Air Condition"),
+    ("พัดลมคอยล์เย็น (แฟนคอยล์) ไม่หมุน / Indoor fan coil not running", "Air Condition"),
+    ("พัดลมคอยล์ร้อน (คอนเดนซิ่ง) ไม่หมุน / Outdoor condensing-unit fan not running", "Air Condition"),
+    ("น้ำแข็งเกาะคอยล์ / ท่อแอร์ / Ice forming on the air-con coil or pipe", "Air Condition"),
+    ("แอร์น้ำยารั่ว / น้ำยาน้อย / Air conditioner refrigerant leak or low gas", "Air Condition"),
+    ("ปั๊มน้ำทิ้งแอร์ไม่ทำงาน / ถาดน้ำล้น / Air-con drain pump not working or tray overflowing", "Air Condition"),
+    ("แอร์มีกลิ่นเหม็น / Air conditioner bad smell", "Air Condition"),
+    ("แอร์ขึ้นรหัสผิดพลาด (Error code) / Air conditioner showing an error code", "Air Condition"),
+    ("เบรกเกอร์แอร์ทริป / Air conditioner breaker tripped", "Air Condition"),
+    ("ตั้งอุณหภูมิแอร์ไม่ได้ / เทอร์โมสตัทเสีย / Air-con thermostat or temperature setting not working", "Air Condition"),
+    ("คอยล์แอร์สกปรก ต้องล้าง / Air-con coil dirty, needs cleaning", "Air Condition"),
+    ("แอร์ VRF ไม่ทำงานหลายเครื่อง / VRF system down — several indoor units", "Air Condition"),
+]
 
 
 def add_symptoms(c, rows, codes=None):

@@ -1644,7 +1644,7 @@ async def edit_asset(mid: int, req: Request):
 STARTED = ("InProgress", "Paused")
 
 
-def day_counts(c, fac, d_from, d_to, occ=None):
+def day_counts(c, fac, d_from, d_to, occ=None, keep=None):
     """One day's work, counted the SAME way on every screen that shows it.
 
     The calendar and the assign board each counted a day by their own rule, and the two
@@ -1675,11 +1675,14 @@ def day_counts(c, fac, d_from, d_to, occ=None):
     def slot(d):
         return out.setdefault(d, dict(zero))
     for r in c.execute(
-            """SELECT j.planned_date d, j.status s, j.lead_tech lt
+            """SELECT j.planned_date d, j.status s, j.lead_tech lt, j.jobtype, j.machine_id, j.problem_type,
+                      j.fault_category, j.trade, COALESCE(m.factory_id,j.factory_id) factory_id
                  FROM jobs j LEFT JOIN machines m ON m.id=j.machine_id
                 WHERE j.planned_date BETWEEN ? AND ? AND j.status NOT IN ('Cancelled','Rejected')
                   AND (COALESCE(m.factory_id,j.factory_id)=? OR COALESCE(m.factory_id,j.factory_id) IS NULL)""",
             (d_from, d_to, fac)):
+        if keep is not None and not keep(dict(r)):     # b599: one team's work only
+            continue
         s = r["s"]
         key = ("done" if s == "Done" else "accept" if s == "ServiceCompleted"
                else "working" if s in STARTED else "assigned" if r["lt"] else "waiting")
@@ -1702,6 +1705,8 @@ def day_counts(c, fac, d_from, d_to, occ=None):
                 have.add((r["machine_id"], str(v)[:10]))
     for o in occ:
         if o.get("cm"):
+            continue
+        if keep is not None and not keep({"jobtype": "PM", "machine_id": o["machine_id"], "factory_id": fac}):
             continue
         d = str(o.get("date") or "")[:10]
         if not d or (o["machine_id"], d) in have:
@@ -2051,7 +2056,7 @@ async def cm_calendar(req: Request):
     with closing(db()) as c:
         _ensure(c)
         rows = [dict(r) for r in c.execute("""SELECT j.id,j.jobid,j.status,j.jobtype,j.priority,j.planned_date,
-                j.descr, j.problem_type, j.fault_category, m.code mcode, m.name mname
+                j.descr, j.problem_type, j.fault_category, j.trade, m.code mcode, m.name mname
               FROM jobs j LEFT JOIN machines m ON m.id=j.machine_id
               WHERE j.jobtype IN ('CM','BD','IMP','PRJ') AND (COALESCE(m.factory_id,j.factory_id)=? OR COALESCE(m.factory_id,j.factory_id) IS NULL)
                 AND j.status NOT IN ('Done','Rejected','Cancelled')""", (fac,))]
@@ -2061,7 +2066,8 @@ async def cm_calendar(req: Request):
             _f = CeFilter(c)
             rows = [r for r in rows if _f.ok(dict(r, factory_id=fac))]
         else:
-            _ok = scope_of(c, u)             # b421: a plant planner's CM plan has no electrical CM
+            from .elec import as_ac as _asac
+            _ok = scope_of(c, _asac(req, u))             # b421: a plant planner's CM plan has no electrical CM
             if _ok:
                 rows = [r for r in rows if _ok(dict(r, factory_id=fac))]
     days, unplanned, alljobs = {}, [], []
@@ -2273,11 +2279,27 @@ async def planned(req: Request):
         sd, active = _pm_config(c, fac)
         offdays, holidays = _cal_config(c, fac)
         cm = [dict(r) for r in c.execute("""SELECT j.id,j.jobid,j.status,j.priority,j.planned_date,
-                m.code mcode, m.name mname
+                m.code mcode, m.name mname, j.jobtype, j.machine_id, j.problem_type, j.fault_category, j.trade,
+                COALESCE(m.factory_id,j.factory_id) factory_id
               FROM jobs j LEFT JOIN machines m ON m.id=j.machine_id
               WHERE j.jobtype IN ('CM','BD','IMP','PRJ') AND (COALESCE(m.factory_id,j.factory_id)=? OR COALESCE(m.factory_id,j.factory_id) IS NULL)
                 AND j.status NOT IN ('Done','Rejected','Cancelled')
                 AND COALESCE(NULLIF(j.planned_date,''),'')<>''""", (fac,))]
+        # b599: Central Air Conditioning — the AC planner's calendar holds only AC machines and
+        # Air Conditioning corrective work; everyone else's calendar no longer holds them.
+        if not elec_only:
+            from .elec import AcFilter, is_ac_planner
+            _acf, _ac = AcFilter(c), is_ac_planner(_as_ac(req, u))
+            occ = [o for o in occ if o.get("cm") or _acf.ac_machine(fac, o["machine_id"]) == _ac]
+            cm = [j for j in cm if bool(_acf.ok(j)) == _ac]
+            if _ac:
+                _am = {o["machine_id"] for o in occ}
+                permac = {k: v for k, v in permac.items() if k in _am or _acf.ac_machine(fac, k)}
+            else:
+                permac = {k: v for k, v in permac.items() if not _acf.ac_machine(fac, k)}
+            # the day numbers on the calendar count the same team's work as the cards
+            counts = day_counts(c, fac, frm.isoformat(), to.isoformat(), occ,
+                                keep=lambda r: bool(_acf.ok(r)) == _ac)
     days = {}
     for o in occ:
         days.setdefault(o["date"], []).append(o)
@@ -3169,6 +3191,8 @@ async def pending(req: Request):
     out = []
     with closing(db()) as c:
         _cnt, _m2t = _elc(c, fac), _match_all(c, fac)
+        from .elec import AcFilter, is_ac_planner
+        _acf, _ac = AcFilter(c), is_ac_planner(_as_ac(req, u))
         nm = user_names(c)
         rows = [dict(r) for r in c.execute(
             """SELECT j.*, m.code mcode, m.name mname, m.line mline, m.floor mfloor,
@@ -3191,9 +3215,17 @@ async def pending(req: Request):
             else:
                 if r.get("lead_tech") or el_only:
                     continue
+                if _acf.ac_machine(fac, r["machine_id"]) != _ac:     # b599: one team's PM
+                    continue
             out.append({"id": r["id"], "jobid": r["jobid"], "status": r["status"],
                         "date": (r.get("planned_date") or r.get("due_date") or "")[:10],
                         "mcode": r["mcode"] or "", "mname": r["mname"] or "",
                         "line": r.get("mline") or "", "freq": r.get("pm_freq") or "",
                         "el_only": el_only, "ce_name": nm.get(str(r.get("e_tech") or ""), "")})
     return {"jobs": out}
+
+
+def _as_ac(req, u):
+    """b601: see elec.as_ac — the admin's ❄️ Air-con Planning view."""
+    from .elec import as_ac
+    return as_ac(req, u)

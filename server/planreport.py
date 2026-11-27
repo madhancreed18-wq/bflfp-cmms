@@ -260,7 +260,8 @@ def _thdate(iso):
 
 
 def _trade(job, cats):
-    c = cats.get(job.get("problem_type") or "") or (job.get("fault_category") or "")
+    from .elec import job_trade
+    c = job_trade(job, cats.get(job.get("problem_type") or ""))      # b594
     return DR_TRADE.get(c, ("", ""))
 
 
@@ -401,7 +402,7 @@ DAY_OPEN   = ("Reported", "WaitingApproval", "WaitingAssignment", "Assigned",
               "Released", "Rework")
 DAY_GONE   = ("Cancelled", "Rejected")
 JOB_COLS   = """SELECT j.id,j.jobid,j.jobtype,j.status,j.priority,j.descr,j.problem,
-                       j.problem_type,j.fault_category,j.root_cause,j.solution,
+                       j.problem_type,j.fault_category,j.trade,j.root_cause,j.solution,
                        j.cleared_worksite,j.planned_date,j.started_at,j.done_at,
                        j.lead_tech,j.helpers,j.approver_id,
                        j.carryover,j.planned_date_orig, m.code mcode, m.name mname,
@@ -868,7 +869,7 @@ async def plan_daily(req: Request):
     # number of the sheet it replaces — it is the same plan, brought up to date.
     _code = ((f["code"] if f else "") or "BFL").upper()
     _now0 = datetime.datetime.now()
-    _edit0 = d > _now0.date().isoformat() or (d == _now0.date().isoformat() and _now0.hour < 12)
+    _edit0 = d >= _now0.date().isoformat()          # b590: today can be planned all day
     with closing(db()) as _c:
         _prev0 = None
         if b.get("replace") and _edit0:
@@ -921,7 +922,7 @@ async def plan_daily(req: Request):
     # A plain "Create work plan" (no flag) still files a new sheet, as it always did.
     replaced = False
     _now = datetime.datetime.now()
-    editable = d > _now.date().isoformat() or (d == _now.date().isoformat() and _now.hour < 12)
+    editable = d >= _now.date().isoformat()         # b590: no noon cut-off any more
     with closing(db()) as c:
         prev = None
         if b.get("replace") and editable:

@@ -60,6 +60,10 @@ def ensure(c):
         job_id INTEGER PRIMARY KEY, factory_id INTEGER, tech INTEGER,
         assigned_by INTEGER, assigned_at TEXT DEFAULT '', started_at TEXT DEFAULT '',
         done_at TEXT DEFAULT '', done_by INTEGER)""")
+    try:
+        ensure_ac(c)                                  # b599: Central Air Conditioning
+    except Exception:
+        pass
 
 
 def remap_person(c, pid, acc):
@@ -558,6 +562,22 @@ async def done(jid: int, req: Request):
 # plant.
 CE_TRADES = ("Electrical", "Other", "")
 
+# b594: the departments a planner can give a job. Two of them are the old trade names under a
+# new label; everything that compares trades (CE routing, KPI, colours) uses the old name.
+DEPARTMENTS = ("Mechanical", "Electrical & Control", "Automation", "IT", "Air Conditioning",
+               "Civil", "Utility", "Other")
+_CANON = {"Electrical & Control": "Electrical", "Air Conditioning": "Air Condition"}
+
+
+def canon_trade(t):
+    t = (t or "").strip()
+    return _CANON.get(t, t)
+
+
+def job_trade(j, pt_cat=""):
+    """The job's trade: the planner's department if one was set, else the problem type's."""
+    return canon_trade(j.get("trade")) or pt_cat or (j.get("fault_category") or "")
+
 
 def is_ce_planner(u):
     return is_ce(u) and u.get("role") == "planner"
@@ -595,7 +615,7 @@ class CeFilter:
         if fac not in self._pt:
             self._pt[fac] = {r["name"]: (r["category"] or "") for r in self.c.execute(
                 "SELECT name,category FROM problem_types WHERE factory_id=?", (fac,))}
-        return self._pt[fac].get(j.get("problem_type") or "") or (j.get("fault_category") or "")
+        return job_trade(j, self._pt[fac].get(j.get("problem_type") or ""))      # b594
 
     def pm_elec(self, j):
         fac = self._fac_of(j)
@@ -659,16 +679,213 @@ def all_elec(f, j):
     return n > 0 and n == e
 
 
+# ── b599: CENTRAL AIR CONDITIONING (users.team = 'AC') ──────────────────────────────
+# Decided 2026-11-25: like Central Electrical, but for whole machines and on all three
+# plants. An AC job is
+#   * a PM job on a machine whose PM sheet (pm_templates) is the air-conditioning team's
+#     (pm_templates.team = 'AC' — seeded once from the sheet names: AIR CONDITIONER …,
+#     คอยเย็นแอร์), or
+#   * corrective work whose department is Air Conditioning.
+# The AC planner's lists, calendar and board show only those; every other planner and
+# manager stops seeing them. AC technicians are the only ones offered on the AC board.
+AC = "AC"
+AC_TRADE = "Air Condition"
+import re as _re
+_AC_NAME = _re.compile(r"AIR\s*CON|แอร์|เครื่องปรับอากาศ", _re.I)   # b602: + เครื่องปรับอากาศ (BFLFP)
+
+
+def is_ac(u):
+    return (u.get("team") or "") == AC
+
+
+def is_ac_planner(u):
+    return is_ac(u) and u.get("role") == "planner"
+
+
+def as_ac(req, u):
+    """b601: an admin working in the ❄️ Air-con Planning menu (?ac=1) sees the screens the
+    AC planner sees. Only for deciding WHAT to show — never for permissions."""
+    try:
+        if u.get("role") == "admin" and req.query_params.get("ac") == "1":
+            return dict(u, team=AC, role="planner")
+    except Exception:
+        pass
+    return u
+
+
+def ac_ids(c, fac=None):
+    q = "SELECT id FROM users WHERE COALESCE(team,'')='AC' AND role='technician' AND active=1"
+    if fac is None:
+        return {r["id"] for r in c.execute(q)}
+    return {r["id"] for r in c.execute(q + " AND (factory_id=? OR COALESCE(factory_id,0)=0)", (fac,))}
+
+
+def ensure_ac(c):
+    """pm_templates.team + the one-off seeding of the air-conditioning sheets."""
+    try:
+        c.execute("SELECT team FROM pm_templates LIMIT 1")
+    except Exception:
+        try:
+            c.execute("ALTER TABLE pm_templates ADD COLUMN team VARCHAR(8) DEFAULT ''")
+        except Exception:
+            pass
+    from .db import state_set
+    if state_get(c, "ac:seed2") != "done":       # b602: re-run once with the wider name list
+        for r in c.execute("SELECT id, machine_type FROM pm_templates").fetchall():
+            if _AC_NAME.search(r["machine_type"] or ""):
+                c.execute("UPDATE pm_templates SET team='AC' WHERE id=?", (r["id"],))
+        state_set(c, "ac:seed2", "done")
+        c.commit()
+
+
+def ac_templates(c, fac):
+    try:
+        return {r["id"] for r in c.execute(
+            "SELECT id FROM pm_templates WHERE factory_id=? AND COALESCE(team,'')='AC'", (fac,))}
+    except Exception:
+        return set()
+
+
+class AcFilter:
+    """ok(job) — is this the Central Air Conditioning team's job?"""
+
+    def __init__(self, c):
+        self.c, self.f = c, CeFilter(c)
+        self._tpl, self._m2t = {}, {}
+
+    def ac_machine(self, fac, mid):
+        if fac not in self._tpl:
+            self._tpl[fac] = ac_templates(self.c, fac)
+            self._m2t[fac] = pm._match_all(self.c, fac) if self._tpl[fac] else {}
+        return bool(mid) and self._m2t[fac].get(mid) in self._tpl[fac]
+
+    def ok(self, j):
+        if (j.get("jobtype") or "").upper() == "PM":
+            return self.ac_machine(self.f._fac_of(j), j.get("machine_id"))
+        return self.f.trade(j) == AC_TRADE
+
+
 def scope_of(c, u):
     """The job filter a user's lists go through, or None for no filter."""
     role = u.get("role")
     if role == "technician" and not is_ce(u):
         f = CeFilter(c)
         return lambda j: not all_elec(f, j)
+    if is_ac_planner(u):                           # b599
+        return AcFilter(c).ok
     if is_ce_planner(u):
-        f = CeFilter(c)
-        return f.ok
-    if role in ("planner", "manager") and not is_ce(u):
-        f = CeFilter(c)
-        return lambda j: plant_ok(f, j)
+        f, a = CeFilter(c), AcFilter(c)
+        return lambda j: f.ok(j) and not a.ok(j)
+    if role in ("planner", "manager") and not is_ce(u) and not is_ac(u):
+        f, a = CeFilter(c), AcFilter(c)
+        return lambda j: plant_ok(f, j) and not a.ok(j)
     return None
+
+
+# ── b604: the ❄️ Air-con dashboard — the plant dashboard read over AC work only ─────────
+import time as _time
+_ACS = {"t": 0.0, "v": None}
+
+
+def ac_scope_ids(c):
+    """(AC job ids, AC machine ids) across all plants — cached a minute."""
+    if _ACS["v"] is not None and _time.time() - _ACS["t"] < 60:
+        return _ACS["v"]
+    f = AcFilter(c)
+    mids = set()
+    for fac in [r["id"] for r in c.execute("SELECT id FROM factories")]:
+        tp = ac_templates(c, fac)
+        if tp:
+            m2t = pm._match_all(c, fac)
+            mids |= {m for m, t in m2t.items() if t in tp}
+    jids = set()
+    for r in c.execute("""SELECT j.id, j.jobtype, j.machine_id, j.problem_type, j.fault_category, j.trade,
+                                 COALESCE(m.factory_id, j.factory_id) factory_id
+                            FROM jobs j LEFT JOIN machines m ON m.id = j.machine_id"""):
+        d = dict(r)
+        if (d.get("jobtype") or "").upper() == "PM":
+            if d.get("machine_id") in mids:
+                jids.add(d["id"])
+        elif f.ok(d):
+            jids.add(d["id"])
+    _ACS.update(t=_time.time(), v=(jids, mids))
+    return _ACS["v"]
+
+
+def install_ac_scope(app):
+    """Dashboard / KPI calls of the AC planner, or of an admin in the ❄️ menu (?ac=1), read
+    the database through the AC team's jobs and machines (database.SCOPE). The plant's own
+    dashboard is untouched: AC work stays in the plant's numbers."""
+    from .database import SCOPE
+
+    @app.middleware("http")
+    async def _ac_scope(request, call_next):
+        p = request.url.path
+        if not (p.startswith("/api/kpi") or p == "/api/dashboard"):
+            return await call_next(request)
+        try:
+            u = user_from(request)
+        except Exception:
+            return await call_next(request)
+        if not is_ac_planner(as_ac(request, u)):
+            return await call_next(request)
+        with closing(db()) as c:
+            ids = ac_scope_ids(c)
+        tok = SCOPE.set(ids)
+        try:
+            return await call_next(request)
+        finally:
+            SCOPE.reset(tok)
+
+
+# ── b603: the ❄️ Air-con asset list ─────────────────────────────────────────────────
+_AC_LOOK = _re.compile(r"แอร์|AIR\s*CON|VRF|FCU|แฟนคอยล์|คอยล์เย็น|คอยเย็น|CHILLER|ชิลเลอร์|เครื่องปรับอากาศ|\bAHU\b|ห้องเย็น", _re.I)
+_AC_NOT = _re.compile(r"ดราย|ล็อค|ลอค|ล็อก|คอมเพรส|COMPRESS|DRYER|AIR\s*LOCK|FILTER|ปั๊มลม", _re.I)
+
+
+@router.get("/ac-assets")
+async def ac_assets(req: Request):
+    """Every air-conditioning machine of the three plants: the ones whose PM checklist group
+    belongs to Central Air Conditioning, and the ones that LOOK like air-con (name / asset
+    group) but are not in it yet — a new unit with no checklist group, a chiller, a cold
+    room — so the list can be checked for completeness."""
+    u = require_role(req, "planner", "admin", "manager", "engcenter")
+    if not (u.get("role") in ("admin", "engcenter") or is_ac(u)):
+        raise HTTPException(403, "for the air-conditioning team")
+    out = []
+    with closing(db()) as c:
+        pm._ensure(c)
+        facs = {r["id"]: r["code"] for r in c.execute("SELECT id, code FROM factories ORDER BY id")}
+        for fac, fcode in facs.items():
+            m2t = pm._match_all(c, fac)
+            tpl = {r["id"]: (r["machine_type"] or "", r["team"] or "") for r in c.execute(
+                "SELECT id, machine_type, COALESCE(team,'') team FROM pm_templates WHERE factory_id=?", (fac,))}
+            fq = pm._machine_freqs(c, fac)
+            name = {"FP": "BFLFP", "PC": "BFLPC"}.get((fcode or "").upper(), fcode or "BFL")
+            for m in c.execute("SELECT id, code, name, asset_group, line, floor, criticality, department"
+                               " FROM machines WHERE factory_id=? AND COALESCE(active,1)=1 ORDER BY code", (fac,)):
+                tn, team = tpl.get(m2t.get(m["id"]), ("", ""))
+                pend = (not tn) or tn.startswith("PENDING")
+                in_ac = team == AC
+                txt = " ".join([m["name"] or "", m["asset_group"] or "", tn])
+                looks = bool(_AC_LOOK.search(txt)) and not _AC_NOT.search(txt)
+                if not (in_ac or looks or "AIR CONDITION" in (m["asset_group"] or "").upper()):
+                    continue
+                if in_ac:
+                    st, why = "ac", ""
+                elif pend:
+                    st, why = "nogroup", "no PM checklist group yet — put it in the air-con group"
+                elif "ห้องเย็น" in txt:
+                    st, why = "check", "cold room — AC team or plant?"
+                elif "chiller" in txt.lower():
+                    st, why = "check", "chiller — AC team or plant?"
+                else:
+                    st, why = "check", "PM group is not an air-con group"
+                out.append({"plant": name, "factory_id": fac, "id": m["id"], "code": m["code"],
+                            "name": m["name"] or "", "group": m["asset_group"] or "",
+                            "line": m["line"] or "", "floor": m["floor"] or "",
+                            "crit": m["criticality"] or "", "dept": m["department"] or "",
+                            "pm_group": "" if pend else tn,
+                            "freq": [pm.FREQ_LABEL.get(f, f) for f in sorted((fq.get(m["id"]) or {}).get("freqs", []), key=lambda f: ["weekly", "monthly", "q3m", "m6", "yearly"].index(f) if f in ("weekly", "monthly", "q3m", "m6", "yearly") else 9)],
+                            "status": st, "why": why})
+    return {"rows": out}

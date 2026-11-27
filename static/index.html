@@ -84,6 +84,14 @@ label{font-size:12px;color:var(--gray);display:block;margin:8px 0 3px}
 .jdacts{margin-left:auto;display:flex;gap:7px;flex-wrap:wrap}
 .jdstages{display:flex;flex-wrap:wrap;padding:10px 16px 12px}
 .jdstage{padding:6px 16px 6px 0;margin-right:16px;border-right:1px solid var(--bd)}
+.acat td{padding:6px 8px;border-bottom:1px solid #EEF1F4;vertical-align:top}
+/* b597: a PM job's checklist inside the Reported-issue card */
+.jdcl{display:flex;align-items:center;gap:8px;margin:2px 0 6px;padding:7px 10px;border:1px solid #DBE4EE;border-radius:8px;background:#F8FAFC;cursor:pointer;font-size:13px;color:#1E3A8A;font-weight:600}
+.jdcl:hover{background:#EEF4FB}.jdcl .ar{margin-left:auto;color:#64748B;transition:transform .15s}.jdcl.open .ar{transform:rotate(90deg)}
+.jdclt{width:100%;border-collapse:collapse;font-size:12.5px;margin:2px 0 8px}
+.jdclt th{background:#F1F5F9;color:#475569;font-weight:600;text-align:left;padding:5px 7px;border-bottom:1px solid #E2E8F0;font-size:11.5px}
+.jdclt td{padding:6px 7px;border-bottom:1px solid #F1F5F9;vertical-align:top}
+.jdclt .ok{color:#15803D;font-weight:700}.jdclt .ng{color:#B91C1C;font-weight:700}.jdclt .wt{color:#94A3B8}
 .jdstage:last-child{border-right:0;margin-right:0}
 .jdslab{display:block;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:#94A3B8;font-weight:600}
 .jdsval{display:flex;align-items:center;gap:7px;font-size:14.5px;font-weight:600;margin-top:2px}
@@ -1046,8 +1054,19 @@ dialog#spad::backdrop{background:#0F172A}
    too or the left edge stays white while the rest of the row moves. */
 @keyframes jbLate{0%,100%{background:#FDE047}50%{background:#F87171}}
 @keyframes jbDue {0%,100%{background:#FEF9C3}50%{background:#FDE047}}
-tr.jlate,tr.jlate>td:first-child{animation:jbLate 1.6s ease-in-out infinite}
-tr.jdue ,tr.jdue >td:first-child{animation:jbDue  2.2s ease-in-out infinite}
+/* b595: ONLY THE JOB NUMBER BLINKS. A whole blinking row repainted ~30,000 cells twice a
+   second on a 1,000-row list and made the page crawl. The row keeps a still colour that says
+   late / due today; the job number alone pulses (a small badge, cheap to repaint). */
+tr.jlate,tr.jlate>td:first-child{background:#FECACA!important}
+tr.jdue ,tr.jdue >td:first-child{background:#FEF9C3!important}
+@keyframes jbNum{0%,100%{background:#FDE047}50%{background:#F87171}}   /* background only: the GPU runs it, the page does no work */
+@keyframes jbNumD{0%,100%{background:#FEF9C3}50%{background:#FACC15}}
+.jlate .jblk,.jdue .jblk{display:inline-block;border-radius:4px;padding:0 5px;margin-left:-5px}
+.jlate .jblk{animation:jbNum 1.6s ease-in-out infinite}
+.jdue .jblk{animation:jbNumD 2.2s ease-in-out infinite}
+body.noblink .jlate .jblk,body.noblink .jdue .jblk{animation:none}
+body.noblink .jlate .jblk{background:#F87171}
+@media(prefers-reduced-motion:reduce){.jlate .jblk,.jdue .jblk{animation:none}.jlate .jblk{background:#F87171}}
 /* Planned date gone by, but nobody promised a date: late, and said so without moving. */
 tr.jplan,tr.jplan>td:first-child{background:#FEF3C7}
 /* Acknowledged today: still marked, no longer shouting. It must not vanish — the job
@@ -1057,12 +1076,12 @@ tr.jack td{color:#64748B}
 /* Blink off, on this phone only. The colour that says "late" stays; the motion stops. */
 @keyframes jbEdge{0%,100%{border-left-color:#EAB308;background:#FEFCE8}50%{border-left-color:#DC2626;background:#FEF2F2}}
 @keyframes jbEdgeD{0%,100%{border-left-color:#FDE047;background:#FFFEF5}50%{border-left-color:#EAB308;background:#FEFCE8}}
-.jrow.jlate{border-left:5px solid #DC2626;animation:jbEdge 1.6s ease-in-out infinite}
-.jrow.jdue {border-left:5px solid #EAB308;animation:jbEdgeD 2.2s ease-in-out infinite}
+.jrow.jlate{border-left:5px solid #DC2626;background:#FEF2F2}
+.jrow.jdue {border-left:5px solid #EAB308;background:#FEFCE8}
 .jrow.jplan{border-left:5px solid #D97706;background:#FFFBEB}
 .jrow.jack {border-left:5px solid #94A3B8;background:#F8FAFC}
-.pcard.jlate{border-left:5px solid #DC2626;animation:jbEdge 1.6s ease-in-out infinite}
-.pcard.jdue {border-left:5px solid #EAB308;animation:jbEdgeD 2.2s ease-in-out infinite}
+.pcard.jlate{border-left:5px solid #DC2626;background:#FEF2F2}
+.pcard.jdue {border-left:5px solid #EAB308;background:#FEFCE8}
 .pcard.jplan{border-left:5px solid #D97706;background:#FFFBEB}
 .pcard.jack {border-left:5px solid #94A3B8}
 body.noblink .pcard.jlate{animation:none;background:#FEF2F2}
@@ -1089,8 +1108,8 @@ body.noblink .jrow.jdue {animation:none;background:#FEFCE8}
   .jrow.jlate{animation:none;background:#FEF2F2}
   .jrow.jdue {animation:none;background:#FEFCE8}
 }
-body.noblink tr.jlate,body.noblink tr.jlate>td:first-child{animation:none;background:#FCA5A5}
-body.noblink tr.jdue ,body.noblink tr.jdue >td:first-child{animation:none;background:#FDE047}
+body.noblink tr.jlate,body.noblink tr.jlate>td:first-child{background:#FECACA}
+body.noblink tr.jdue ,body.noblink tr.jdue >td:first-child{background:#FEF9C3}
 /* b580: hover card on a job */
 #jtBox{position:fixed;z-index:10050;display:none;width:min(420px,calc(100vw - 16px));background:#fff;border:1px solid #E2E8F0;border-radius:12px;box-shadow:0 14px 36px rgba(15,23,42,.22);padding:11px 13px 9px;font-size:12.5px;color:#1E293B;line-height:1.45;pointer-events:none}
 #jtBox .jt-h{display:flex;align-items:center;gap:8px;font-size:15px}#jtBox .jt-ty{color:#fff;border-radius:5px;padding:0 7px;font-size:11px;font-weight:700}
@@ -1110,8 +1129,8 @@ tr.jlate:hover td,tr.jdue:hover td{background:transparent}
 /* Movement can be genuinely unpleasant, and a phone set to reduce motion has said so.
    The colour still lands — it just stops moving. */
 @media(prefers-reduced-motion:reduce){
-  tr.jlate,tr.jlate>td:first-child{animation:none;background:#FCA5A5}
-  tr.jdue ,tr.jdue >td:first-child{animation:none;background:#FDE047}
+  tr.jlate,tr.jlate>td:first-child{background:#FECACA!important}
+  tr.jdue ,tr.jdue >td:first-child{background:#FEF9C3!important}
 }
 /* ── Projects sheet ─────────────────────────────────────────────────────────── */
 .pjtop{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap}
@@ -1890,7 +1909,13 @@ function monReport(kind,o){try{if(!ME)return;
     body:JSON.stringify({kind,page:monPage(),...(o||{})})}).catch(()=>{});}catch(e){}}
 (()=>{let last=Date.now(),vis=true;setInterval(()=>{const n=Date.now(),d=n-last-1000;const v=document.visibilityState==='visible';
   if(v&&vis&&d>=3000)monReport('freeze',{ms:d,detail:'screen stopped responding'});last=n;vis=v;},1000);})();
+/* b601: ❄️ Air-con Planning — an admin's view of the Central Air Conditioning team's screens.
+   While it is on, the lists, calendars, boards and manpower ask the server for AC work only. */
+let ACV=false;
+const ACV_RX=/^\/api\/(kpi|dashboard|jobs(\?|\/counts|$)|pm\/(planned|pending|cm-calendar)|teams\/(day|save|now|by-tech|timeline)|manpower\/)/;
+const acUrl=u=>(ACV&&typeof u==='string'&&ACV_RX.test(u)&&!/[?&]ac=1/.test(u))?u+(u.includes('?')?'&':'?')+'ac=1':u;
 const api=async(url,opt={})=>{
+  url=acUrl(url);
   const _mon0=Date.now(),_monLong=/[?&]wait=\d|\/(media|photos?|import-|upload|bundle|export|pdf|reports?\b)|\/monitor\/|\/log\/client/.test(url);
   const _monT=_monLong?null:setTimeout(()=>monReport('hang',{path:String(url).split('?')[0],ms:10000,detail:'still waiting after 10 s'}),10000);
   try{return await _api0(url,opt);}
@@ -2002,6 +2027,7 @@ const _api0=async(url,opt={})=>{
   return r.json();
 };
 const post=(u,b,o)=>{
+  u=acUrl(u);
   // stopping a timer carries no job id — the technician is always acting on the job
   // their screen is showing, so that is the one to mark as seen
   if(String(u).indexOf('/api/segments/')===0&&window._twJob&&window._twJob.id)markJobActed(window._twJob.id);
@@ -2012,7 +2038,7 @@ const patch=(u,b,o)=>api(u,{method:'PATCH',body:JSON.stringify(b),...(o||{})});
 const isNetErr=e=>{const m=(e&&e.message)||'';return m==='offline'||m==='timeout';};
 const esc=s=>(s||'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 const P=['','ปกติ','เร่ง','ด่วน!'];
-const UIBUILD='b589';
+const UIBUILD='b604';
 /* b391 — the sliding shape under the selected tab. Every screen redraws its tabs from
    scratch, so the shape is added after each draw: it starts where the previous tab was
    (remembered per tab set) and slides to the new one; the content after the tabs slides
@@ -3374,6 +3400,11 @@ function navLayout(){
   // order a saved menu put them in
   if(lay.top.includes('elplan')){const EK=['elec','elcm','elprj'];Object.keys(lay.kids).forEach(p=>{lay.kids[p]=lay.kids[p].filter(x=>!EK.includes(x));if(!lay.kids[p].length)delete lay.kids[p];});
     lay.top=lay.top.filter(x=>!EK.includes(x));lay.kids.elplan=EK.filter(k=>NAV.some(n=>n[3]===k));}
+  // b601: the ❄️ Air-con Planning group, right after Electrical Planning
+  if(NAV.some(n=>n[3]==='acplan')){const AK=['acdash','acpm','accm','acjobs','acasg','acassets'];
+    Object.keys(lay.kids).forEach(p=>{lay.kids[p]=lay.kids[p].filter(x=>!AK.includes(x)&&x!=='acplan');if(!lay.kids[p].length)delete lay.kids[p];});
+    lay.top=lay.top.filter(x=>!AK.includes(x)&&x!=='acplan');
+    const e=lay.top.indexOf('elplan');lay.top.splice(e<0?1:e+1,0,'acplan');lay.kids.acplan=AK.filter(k=>NAV.some(n=>n[3]===k));}
   // b500: Chat and More always close the menu, after any group a saved layout did not know about
   ['chat','more'].forEach(k=>{const i=lay.top.indexOf(k);if(i>=0){lay.top.splice(i,1);lay.top.push(k);}});
   NAVLAY=lay;return lay;
@@ -4448,6 +4479,19 @@ function buildNav(){
       [IC.pm,(LANG==='TH'?'แผน PM ไฟฟ้า':'Electrical PM plan'),renderElecPlan,'elec'],
       [IC.cm,(LANG==='TH'?'แผน CM ไฟฟ้า':'Electrical CM Plan'),renderElecCM,'elcm'],
       [IC.prj,(LANG==='TH'?'โปรเจกต์':'Project'),renderProject,'elprj']);   // b438: Project in both groups
+  // b601: …and ❄️ Air-con Planning — the Central Air Conditioning team's plan, PM, CM, jobs
+  if(ME.role==='admin'){const at=NAV.findIndex(n=>n[3]==='elprj')+1;
+    NAV.splice(at,0,
+      [IC.plan,'❄️ '+(LANG==='TH'?'แผนงานแอร์':'Air-con Planning'),renderPlanCal,'acplan'],
+      [IC.pm,(LANG==='TH'?'แผน PM แอร์':'Air-con PM plan'),()=>renderPM(false),'acpm'],
+      [IC.cm,(LANG==='TH'?'แผน CM แอร์':'Air-con CM Plan'),renderCMPlan,'accm'],
+      [IC.jobs,(LANG==='TH'?'งานแอร์':'Air-con jobs'),renderPlanner,'acjobs'],
+      [IC.asg,(LANG==='TH'?'งานที่มอบหมาย (แอร์)':'Air-con assigned jobs'),renderAsgJobs,'acasg'],
+      [IC.report,(LANG==='TH'?'รายการเครื่องแอร์ (Asset list)':'Air-con asset list'),renderAcAssets,'acassets'],
+      [IC.dash,(LANG==='TH'?'แดชบอร์ดทีมแอร์':'Air-con dashboard'),renderAcDash,'acdash']);}
+  // b603: the AC planner gets the same asset list, after Assets
+  if(ISAC()&&ME.role==='planner'){const at=NAV.findIndex(n=>n[3]==='assets');
+    NAV.splice(at<0?NAV.length:at+1,0,[IC.report,'❄️ '+(LANG==='TH'?'รายการเครื่องแอร์':'Air-con asset list'),renderAcAssets,'acassets']);}
   // b495: Production → Master Data, for the Production department (PRD) and admin
   if(ME.master_see&&!OPTECH()){const at=NAV.findIndex(n=>n[3]==='chat');
     NAV.splice(at<0?NAV.length:at,0,
@@ -4758,7 +4802,69 @@ function liveStop(){
   LIVEV='';
 }
 
+/* b603 — ❄️ Air-con asset list: every air-con machine of the three plants, whether it is in the
+   Central Air Conditioning team (its PM checklist group is an AC group), and the ones that look
+   like air-con but are not in it yet (no checklist group, a chiller, a cold room). */
+/* b604 — ❄️ Air-con dashboard: the same dashboard, read over the AC team's jobs and machines only
+   (the server scopes every KPI call of this view). The plant's dashboard still counts AC work. */
+async function renderAcDash(){
+  await renderDash();
+  const TH=LANG==='TH',a=document.getElementById('app');
+  if(a&&ACV&&!document.getElementById('acDashBan'))a.insertAdjacentHTML('afterbegin',`<div id="acDashBan" class="card" style="padding:9px 14px;margin-bottom:10px;background:#E0F2FE;border-color:#7DD3FC;color:#075985;font-size:13px">
+    ❄️ <b>${TH?'แดชบอร์ดทีมแอร์ส่วนกลาง':'Central Air Conditioning dashboard'}</b> — ${TH?'ตัวเลขทั้งหมดในหน้านี้นับเฉพาะงานแอร์และเครื่องแอร์ ของโรงงานที่เลือก · แดชบอร์ดของโรงงานยังนับงานแอร์รวมอยู่':'every number on this page counts air-con jobs and air-con machines only, for the plant picked · the plant’s own dashboard still includes them'}</div>`);
+}
+let ACA={rows:null,plant:'',st:'',q:''};
+async function renderAcAssets(){
+  const TH=LANG==='TH';
+  if(!ACA.rows){$('#app').innerHTML=`<div class="card muted" style="padding:20px">${TH?'กำลังโหลด…':'Loading…'}</div>`;
+    try{ACA.rows=(await api('/api/elec/ac-assets')).rows||[];}catch(e){$('#app').innerHTML=`<div class="card">${esc(e.message||'')}</div>`;return;}}
+  const R=ACA.rows,q=ACA.q.trim().toLowerCase();
+  const list=R.filter(r=>(!ACA.plant||r.plant===ACA.plant)&&(!ACA.st||(ACA.st==='ac'?r.status==='ac':r.status!=='ac'))
+    &&(!q||[r.code,r.name,r.group,r.line,r.pm_group].some(v=>String(v||'').toLowerCase().includes(q))));
+  const cnt=(p,f)=>R.filter(r=>(!p||r.plant===p)&&(!f||(f==='ac'?r.status==='ac':r.status!=='ac'))).length;
+  const chip=(lb,on,fn,n,col)=>`<button class="btn sm ${on?'on':''}" onclick="${fn}" style="${on?'':''}">${lb} <b style="color:${col||'inherit'}">${n}</b></button>`;
+  const plants=['BFL','BFLFP','BFLPC'];
+  const ST={ac:[TH?'✓ ทีมแอร์':'✓ AC team','#15803D','#DCFCE7'],nogroup:[TH?'ยังไม่มีกลุ่มเช็คลิสต์':'No checklist group','#B45309','#FEF3C7'],check:[TH?'ตรวจสอบ':'Check','#B45309','#FEF3C7']};
+  const rows=list.map((r,i)=>{const s=ST[r.status]||ST.check;
+    return `<tr style="background:${r.status==='ac'?(i%2?'#F8FAFC':'#fff'):'#FFFBEB'}">
+      <td>${esc(r.plant)}</td><td style="white-space:nowrap"><b>${esc(r.code)}</b></td><td>${esc(r.name)}</td>
+      <td>${esc(r.line)}${r.floor?' · '+esc(r.floor):''}</td><td style="text-align:center">${r.crit?critTag(r.crit):'—'}</td>
+      <td>${esc(r.pm_group)||'<span style="color:#B45309">—</span>'}</td><td style="white-space:nowrap">${esc((r.freq||[]).join(', '))||'—'}</td>
+      <td style="white-space:nowrap"><span style="background:${s[2]};color:${s[1]};border-radius:999px;padding:1px 9px;font-weight:700;font-size:11.5px">${s[0]}</span></td>
+      <td style="color:#92400E;font-size:12px">${esc(r.why||'')}</td></tr>`;}).join('');
+  $('#app').innerHTML=(typeof facBarHtml==='function'?'':'')+`<div class="card" style="padding:12px 14px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <h2 style="margin:0;font-size:17px">❄️ ${TH?'รายการเครื่องแอร์ — 3 โรงงาน':'Air-con asset list — 3 plants'}</h2>
+      <span class="muted" style="font-size:12px">${TH?'เครื่องที่อยู่ในกลุ่มเช็คลิสต์ของทีมแอร์ และเครื่องที่น่าจะเป็นแอร์แต่ยังไม่อยู่ในทีม':'machines in the AC team’s checklist groups, and ones that look like air-con but are not in the team yet'}</span>
+      <span style="margin-left:auto;display:flex;gap:6px"><input id="acaQ" value="${esc(ACA.q)}" oninput="ACA.q=this.value;clearTimeout(window._acaT);window._acaT=setTimeout(()=>{renderAcAssets();const e=$('#acaQ');if(e){e.focus();e.setSelectionRange(e.value.length,e.value.length)}},250)" placeholder="${TH?'ค้นหารหัส / ชื่อ / สถานที่':'Search code / name / place'}" style="width:230px">
+        <button class="btn sm" onclick="acaCsv()">⬇ Excel (CSV)</button><button class="btn sm" onclick="ACA.rows=null;renderAcAssets()">↻</button></span></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-items:center">
+      ${chip(TH?'ทุกโรงงาน':'All plants',!ACA.plant,"ACA.plant='';renderAcAssets()",cnt('',''))}
+      ${plants.map(p=>chip(p,ACA.plant===p,`ACA.plant='${p}';renderAcAssets()`,cnt(p,''))).join('')}
+      <span style="width:14px"></span>
+      ${chip(TH?'ทั้งหมด':'All',!ACA.st,"ACA.st='';renderAcAssets()",cnt(ACA.plant,''))}
+      ${chip(TH?'✓ ในทีมแอร์':'✓ In AC team',ACA.st==='ac',"ACA.st='ac';renderAcAssets()",cnt(ACA.plant,'ac'),'#15803D')}
+      ${chip(TH?'⚠ ต้องตรวจสอบ':'⚠ To check',ACA.st==='chk',"ACA.st='chk';renderAcAssets()",cnt(ACA.plant,'chk'),'#B45309')}
+    </div></div>
+  <div class="card" style="padding:0;overflow:auto;max-height:calc(100vh - 250px)">
+    <table class="acat" style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:1100px">
+      <thead><tr>${[TH?'โรงงาน':'Plant',TH?'รหัส':'Code',TH?'ชื่อเครื่อง':'Name',TH?'สถานที่ · ชั้น':'Location · floor',TH?'ระดับ':'Class',
+        TH?'กลุ่มเช็คลิสต์ PM':'PM checklist group',TH?'ความถี่ PM':'PM frequency',TH?'ทีมแอร์':'AC team',TH?'สิ่งที่ต้องตรวจ':'What to check']
+        .map(h=>`<th style="position:sticky;top:0;background:#1E293B;color:#fff;text-align:left;padding:7px 8px;font-weight:600;white-space:nowrap">${h}</th>`).join('')}</tr></thead>
+      <tbody>${rows||`<tr><td colspan="9" class="muted" style="padding:16px;text-align:center">${TH?'ไม่มีรายการ':'Nothing to show'}</td></tr>`}</tbody></table></div>
+  <div class="muted" style="font-size:11.5px;margin:6px 2px">${list.length} ${TH?'เครื่อง':'machines'} · ${TH?'เครื่องแอร์ที่ไม่อยู่ในรายการนี้เลย คือยังไม่มีในทะเบียนสินทรัพย์ — เพิ่มที่ สินทรัพย์ › นำเข้า':'an air-con unit missing from this list is not in the asset register — add it in Assets › Import'}</div>`;
+}
+function acaCsv(){
+  const R=(ACA.rows||[]).filter(r=>!ACA.plant||r.plant===ACA.plant);
+  const cell=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  const lines=[['Plant','Code','Name','Asset group','Location','Floor','Criticality','PM checklist group','PM frequency','In AC team','What to check'].map(cell).join(',')]
+    .concat(R.map(r=>[r.plant,r.code,r.name,r.group,r.line,r.floor,r.crit,r.pm_group,(r.freq||[]).join(' / '),r.status==='ac'?'Yes':'No',r.why].map(cell).join(',')));
+  const b=new Blob(['\ufeff'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='aircon_assets'+(ACA.plant?'_'+ACA.plant:'')+'.csv';document.body.appendChild(a);a.click();a.remove();
+}
 async function navGo(i){
+  {const k=(NAV[i]||[])[3]||'';const was=ACV;ACV=/^ac(plan|pm|cm|jobs|asg|assets|dash)$/.test(k);
+   if(was!==ACV){try{PMR.loaded=0;}catch(e){}}}
   // light the pressed item first, and on a phone keep the drawer open a moment so the
   // person SEES which one they pressed before it slides away (b380)
   NAV.forEach((_,j)=>{const s=$('#sb'+j);if(s)s.classList.toggle('on',j===i)});
@@ -5871,7 +5977,7 @@ function pcard(j){
       <div class="muted" style="white-space:normal;word-break:break-word;margin-top:2px">${esc(j.descr)}</div></div>
       <div style="text-align:right"><span class="tag s-${jobIsPending(j)?'Rework':j.status}">${jobStatusLabel(j)}</span>
       <div style="margin-top:4px"><span class="tag ${s2Cls(j)}" title="${esc(s2Label(j,false))}">${esc(s2Label(j,true))}</span></div>
-      <div class="prd">${j.jobid}</div></div></div>
+      <div class="prd"><span class="jblk">${j.jobid}</span></div></div></div>
     <div class="info">
       <span>📅 <b>${t('planned_date')}</b><br>${fdate(j.planned_date)}</span>
       <span>👥 <b>${t('assigned_to')}</b><br>${esc(who)||'—'}</span>
@@ -6523,7 +6629,7 @@ function histTableHtml(jobs,forMachine){
     const void_=['Cancelled','Rejected'].includes(j.status);
     return `<tr class="${jobLate(j)}"${jtA(j)} onclick="pmOpenJob(${j.id})" style="cursor:pointer;background:${bg};${kpiExRow(j)}${void_?'opacity:.62':''}">
       <td style="padding:5px 8px;border:1px solid #e6e9ee;font-size:11.5px;text-align:right;position:sticky;left:0;background:${bg};color:#94A3B8">${i+1}</td>
-      ${td('<b>'+esc(j.jobid||'')+'</b>'+kpiExTag(j),'white-space:nowrap')}
+      ${td('<b class="jblk">'+esc(j.jobid||'')+'</b>'+kpiExTag(j),'white-space:nowrap')}
       ${td('<span style="color:'+rcTypeColor(j)+';font-weight:600">'+esc(j.jobtype||'')+'</span>','text-align:center')}
       ${forMachine?'':clip(jobWhere(j),200)}
       ${forMachine?'':td(critBadge(j.mcrit),'text-align:center')}
@@ -6685,7 +6791,7 @@ function rcFields(){
      show:v=>v==='0'?(TH?'ไม่เคยตีกลับ':'never sent back'):v+'×'},
     {k:'dept',lb:TH?'แผนกที่แจ้ง':'Reporting dept',kind:'set',get:j=>jobDept(j),
      show:v=>deptLabel(v)||v},
-    {k:'trade',lb:TH?'หน่วยงานช่าง':'Trade',kind:'set',get:j=>jobTrade(j)||''},
+    {k:'trade',lb:TH?'แผนก (ช่าง)':'Department',kind:'set',get:j=>tradeName(jobTrade(j))||''},
     {k:'prio',lb:TH?'ระดับ':'Priority',kind:'set',get:j=>String(j.priority??''),show:v=>rcPrioLbl(v)},
     // b454: machine class A / B / C (machines.criticality), the Class column
     {k:'crit',lb:TH?'ระดับเครื่อง':'Class',kind:'set',get:j=>String(j.mcrit||'').trim().toUpperCase(),
@@ -6822,12 +6928,21 @@ function assetHtml(j,plain){
   return `<span class="nlchip">🏷 ${TH?'ไม่มีในทะเบียน':'Not listed'}</span>`
     +(plain===false?'':` <span class="nltxt">${esc(j.asset_text)}</span>`);
 }
+/* b594: the DEPARTMENT a planner set on the job wins. Two departments are the old trade names
+   with a new label; jobTrade keeps returning the old name (colours, CE routing and the cause
+   suggestions are keyed on it) and tradeName() gives the label people read. */
+const DEPTS=['Mechanical','Electrical & Control','Automation','IT','Air Conditioning','Civil','Utility','Other'];
+const DEPT_TH={'Mechanical':'เครื่องกล','Electrical & Control':'ไฟฟ้าและควบคุม','Automation':'ออโตเมชัน','IT':'ไอที',
+  'Air Conditioning':'เครื่องปรับอากาศ','Civil':'โยธา','Utility':'ยูทิลิตี้','Other':'อื่นๆ'};
+const TRADE_CANON={'Electrical & Control':'Electrical','Air Conditioning':'Air Condition'};
+const tradeName=k=>({'Electrical':'Electrical & Control','Air Condition':'Air Conditioning'})[k]||k||'';
 function jobTrade(j){
+  if(j.trade)return TRADE_CANON[j.trade]||j.trade;
   if(j.fault_category)return j.fault_category;
   const pt=((BOOT&&BOOT.problem_types)||[]).find(p=>p.name===j.problem_type);
   return (pt&&pt.category)||'';
 }
-const TRADE_COL={Mechanical:'#0E7A70',Electrical:'#B45309',Instrument:'#7C3AED',Process:'#2563EB','Air Condition':'#0891B2',IT:'#4F46E5',Facility:'#A16207',Other:'#64748B'};
+const TRADE_COL={Automation:'#7C3AED',Civil:'#A16207',Utility:'#0E7490',Mechanical:'#0E7A70',Electrical:'#B45309',Instrument:'#7C3AED',Process:'#2563EB','Air Condition':'#0891B2',IT:'#4F46E5',Facility:'#A16207',Other:'#64748B'};
 // ── What the two columns say out loud ───────────────────────────────────────────
 // Stage 1 / Stage 2 named nothing. The first is the phase the job is in; the second
 // is WHOSE MOVE IT IS — and that is a different person at every step, which is why it
@@ -6888,14 +7003,38 @@ function s2Label(j,short){
 function s2Cls(j){const ce=s2PmCE(j,true);if(ce)return ce[1];const e=S2L[s2Key(j)];return e?e[0]:'w-flat';}
 const stage1Of=j=>j.stage1||stagePair(j)[0];
 const stage2Of=j=>j.stage2||stagePair(j)[1];
+let RCPG=1,RCPER=(()=>{try{return +localStorage.getItem('bflfp_rcper')||200}catch(e){return 200}})();
+function rcGoPage(n){RCPG=n;rcRedraw();const b=document.getElementById('rcTblBox');if(b)b.scrollTop=0;}
+function rcSetPer(v){RCPER=+v||200;try{localStorage.setItem('bflfp_rcper',RCPER)}catch(e){}RCPG=1;window._rcPgKey='';rcRedraw();}
+function rcPagerHtml(total,pages,p0,n){
+  const TH=LANG==='TH',P=RCPG;
+  const b=(lbl,to,dis,on)=>`<button ${dis?'disabled':''} onclick="rcGoPage(${to})" style="min-width:32px;padding:4px 9px;border-radius:6px;border:1px solid ${on?'#1E293B':'#E2E8F0'};background:${on?'#1E293B':'#fff'};color:${on?'#fff':dis?'#CBD5E1':'#334155'};font:inherit;font-size:12px;cursor:${dis?'default':'pointer'}">${lbl}</button>`;
+  const nums=[...new Set([1,P-2,P-1,P,P+1,P+2,pages])].filter(x=>x>=1&&x<=pages).sort((a,c)=>a-c);
+  let last=0,h='';for(const x of nums){if(x-last>1)h+='<span style="color:#94A3B8;padding:0 2px">…</span>';h+=b(x,x,false,x===P);last=x;}
+  return `<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin:6px 0;font-size:12px;color:#475569">
+    ${b('«',1,P<=1)}${b('‹',P-1,P<=1)}${h}${b('›',P+1,P>=pages)}${b('»',pages,P>=pages)}
+    <span style="margin-left:8px">${total?`${(p0+1).toLocaleString()}–${(p0+n).toLocaleString()}`:'0'} ${TH?'จาก':'of'} <b>${total.toLocaleString()}</b> ${TH?'งาน':'jobs'}</span>
+    <span style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;white-space:nowrap">${TH?'ต่อหน้า':'per page'}
+      <select onchange="rcSetPer(this.value)" style="font:inherit;font-size:12px;padding:2px 4px;border-radius:6px;border:1px solid #E2E8F0">
+        ${[100,200,500].map(v=>`<option ${v===RCPER?'selected':''}>${v}</option>`).join('')}</select></span></div>`;
+}
 function rcTableHtml(jobs){
   const TH=LANG==='TH';
   // By the day CREATED (the date in the first column), newest day first; inside a day
   // BD → CM → IMP → PM, job number from highest down.
   const list=(jobs||[]).slice().sort(rcOrderCreated);
-  const cols=[TH?'ลำดับ':'#',TH?'สร้างเมื่อ':'Created',TH?'รหัสงาน':'Job ID',TH?'ประเภท':'Type',TH?'ผู้แจ้ง':'Reporter',TH?'แผนกที่แจ้ง':'Dept',TH?'เครื่อง':'Machine',TH?'อาการที่แจ้ง (ผู้แจ้ง)':'Issue reported (operator)',TH?'วางแผน':'Planned',TH?'Asset':'Asset',TH?'ระดับเครื่อง':'Class',TH?'ความเร่งด่วน':'Priority',TH?'หน่วยงานช่าง':'Trade',(TH?'สถานะงาน':'Job status'),(TH?'รอใคร':'Waiting on'),TH?'เสร็จเมื่อ':'Completed',TH?'กำหนด':'Due',TH?'ช่างหลัก':'Lead tech',TH?'ผู้รับงานแรก':'Owner 1',TH?'ย้ายไปให้':'Owner 2',TH?'งานที่ทำ (ช่าง)':'Work done (technician)'];
+  const cols=[TH?'ลำดับ':'#',TH?'สร้างเมื่อ':'Created',TH?'รหัสงาน':'Job ID',TH?'ประเภท':'Type',TH?'ผู้แจ้ง':'Reporter',TH?'แผนกที่แจ้ง':'Dept',TH?'เครื่อง':'Machine',TH?'อาการที่แจ้ง (ผู้แจ้ง)':'Issue reported (operator)',TH?'วางแผน':'Planned',TH?'Asset':'Asset',TH?'ระดับเครื่อง':'Class',TH?'ความเร่งด่วน':'Priority',TH?'แผนก (ช่าง)':'Department',(TH?'สถานะงาน':'Job status'),(TH?'รอใคร':'Waiting on'),TH?'เสร็จเมื่อ':'Completed',TH?'กำหนด':'Due',TH?'ช่างหลัก':'Lead tech',TH?'ผู้รับงานแรก':'Owner 1',TH?'ย้ายไปให้':'Owner 2',TH?'งานที่ทำ (ช่าง)':'Work done (technician)'];
   const th=cols.map((h,i)=>`<th style="position:sticky;top:0;z-index:2;background:#1E293B;color:#fff;font-weight:600;font-size:11px;padding:6px 8px;border:1px solid #33415580;white-space:nowrap;${i===0?'left:0;z-index:3':''}">${h}</th>`).join('');
-  const rows=list.map((j,idx)=>{const bg=(idx%2)?'#F5F7FA':'#fff';const ca=(j.created_at||'').slice(0,16);
+  /* b593: PAGES OF 200. Every filter, chip, search and sort above has already run over ALL
+     the jobs in the date range (1,200+ in a month); only the finished list is cut into pages.
+     Counts and Export Excel use the whole filtered list, never just the page on screen.
+     A different list (other filter, plant or dates) starts again at page 1. */
+  const per=RCPER,pages=Math.max(1,Math.ceil(list.length/per));
+  const pkey=list.length+':'+((list[0]||{}).id||'')+':'+((list[list.length-1]||{}).id||'');
+  if(window._rcPgKey!==pkey){window._rcPgKey=pkey;RCPG=1;}
+  RCPG=Math.min(Math.max(1,RCPG),pages);
+  const p0=(RCPG-1)*per,pageList=list.slice(p0,p0+per);
+  const rows=pageList.map((j,i)=>{const idx=p0+i;const bg=(idx%2)?'#F5F7FA':'#fff';const ca=(j.created_at||'').slice(0,16);
     const time=(j.planned_start||j.planned_end)?`${esc(j.planned_start||'')}–${esc(j.planned_end||'')}`:'';
     // เสร็จเมื่อ / Completed — the moment the technician pressed Stop (jobs.done_at).
     // A tick means the operator has since accepted it; hover for that time.
@@ -6905,7 +7044,7 @@ function rcTableHtml(jobs){
     return `<tr class="${jobLate(j)}"${jtA(j)} onclick="pmOpenJob(${j.id})" style="cursor:pointer;background:${bg};${kpiExRow(j)}">
       <td style="padding:5px 8px;border:1px solid #e6e9ee;font-size:11.5px;text-align:right;position:sticky;left:0;background:${bg};color:#94A3B8">${idx+1}</td>
       ${td(esc(ca),'text-align:center;color:#64748B;white-space:nowrap')}
-      ${td('<b>'+esc(j.jobid||j.mcode||'')+'</b>'+kpiExTag(j),'white-space:nowrap')}
+      ${td('<b class="jblk">'+esc(j.jobid||j.mcode||'')+'</b>'+kpiExTag(j),'white-space:nowrap')}
       ${td('<span style="color:'+rcTypeColor(j)+';font-weight:600">'+esc(j.jobtype||'')+'</span>','text-align:center')}
       ${(v=>`<td style="padding:5px 8px;border:1px solid #e6e9ee;font-size:11.5px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${v?'#334155':'#CBD5E1'}" title="${esc(v)}">${esc(v)||'—'}</td>`)(jobReporter(j))}
       ${(v=>`<td style="padding:5px 8px;border:1px solid #e6e9ee;font-size:11.5px;text-align:center;white-space:nowrap;color:${v?'#334155':'#CBD5E1'}" title="${esc(deptName(v))}">${esc(v)||'—'}</td>`)(jobDept(j))}
@@ -6921,7 +7060,7 @@ function rcTableHtml(jobs){
            'text-align:center'+(j.mcode?'':';white-space:nowrap'))}
       ${td(critBadge(j.mcrit),'text-align:center')}
       ${td(prioWord(j.priority),'text-align:center;white-space:nowrap')}
-      ${td((tr=>tr?'<span style="font-weight:600;color:'+(TRADE_COL[tr]||'#64748B')+'">'+esc(tr)+'</span>':'')(jobTrade(j)),'text-align:center;white-space:nowrap')}
+      ${td((tr=>tr?'<span style="font-weight:600;color:'+(TRADE_COL[tr]||'#64748B')+'">'+esc(tradeName(tr))+'</span>':'')(jobTrade(j)),'text-align:center;white-space:nowrap')}
       ${td('<span style="font-weight:600;color:'+pmStatColor(j.status)+'">'+esc(s1Label(j))+'</span>','text-align:center;white-space:nowrap')}
       ${(v=>`<td style="padding:5px 8px;border:1px solid #e6e9ee;font-size:11.5px;text-align:center;white-space:nowrap" title="${esc(s2Label(j,false))}"><span class="tag ${s2Cls(j)}">${esc(v)}</span></td>`)(s2Label(j,true))}
       ${(v=>`<td style="padding:5px 8px;border:1px solid #e6e9ee;font-size:11.5px;text-align:center;white-space:nowrap;color:${v?'#334155':'#94A3B8'}" title="${okd?(TH?'ตรวจรับเมื่อ ':'accepted ')+esc((j.approved_at||'').slice(0,16)):''}">${v?esc(v)+(okd?' <span style="color:#16A34A">✓</span>':''):''}</td>`)(doneTs)}
@@ -6939,11 +7078,12 @@ function rcTableHtml(jobs){
       ${td(esc(j.owner1_name||'')||'<span style="color:#CBD5E1">—</span>','white-space:nowrap')}
       ${td(j.owner2_name?esc(j.owner2_name):'<span style="color:#CBD5E1">—</span>','white-space:nowrap;color:#B45309')}
       ${(v=>`<td style="padding:5px 8px;border:1px solid #e6e9ee;font-size:11.5px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(v)}">${esc(v)}</td>`)(j.solution||j.maint_action||'')}
-    </tr>`;}).join('');
-  return `<div class="card" style="padding:0;overflow:auto;max-height:calc(100vh - 220px)">
-    <table style="border-collapse:collapse;width:100%;min-width:1740px"><thead><tr>${th}</tr></thead><tbody>${rows}</tbody></table>
+    </tr>`;});
+  const pager=rcPagerHtml(list.length,pages,p0,pageList.length);
+  return `${pager}<div class="card" id="rcTblBox" style="padding:0;overflow:auto;max-height:calc(100vh - 220px)">
+    <table style="border-collapse:collapse;width:100%;min-width:1740px"><thead><tr>${th}</tr></thead><tbody id="rcTbody">${rows.join('')}</tbody></table>
   </div><div style="text-align:center;padding:6px;font-size:12px;color:#94A3B8">${list.length} ${
-    TH?'งาน':'jobs'} · ${RCFROM||rcDefFrom()} → ${RCTO||(TH?'งานล่วงหน้าทั้งหมด':'all work ahead')}${kpiExFoot(list)}</div>`;
+    TH?'งาน':'jobs'} · ${RCFROM||rcDefFrom()} → ${RCTO||(TH?'งานล่วงหน้าทั้งหมด':'all work ahead')}${kpiExFoot(list)}</div>`+(pages>1?pager:'');
 }
 window.addEventListener('resize',()=>{
   if(typeof rcSyncSearch==='function'&&document.getElementById('rcSearchBox'))
@@ -7866,7 +8006,7 @@ async function mpDashLoad(){
     <div class="mpdash">${r.days.map(col).join('')}</div>${od}</div>`;
 }
 async function asgOpen(day){
-  if(planTooLate(day))return;          // same noon rule as the Issue button
+  if(planTooLate(day))return;          // same rule as the Issue button (past days only)
   if(!ME||!['planner','admin'].includes(ME.role))return;
   // draw straight away with an inline spinner — never blank the whole app
   if(PHONE()){let w=document.getElementById('asgWrap');
@@ -8853,8 +8993,11 @@ async function asgSave(){
                       :`\n\n📄 Plan issued (${pl.jobs} jobs · ${pl.crews} crews)${pl.replaced?' — replaced the earlier sheet for this day':''} · open it from Reports`)
                   :(TH?'\n\n⚠ มอบหมายงานแล้ว แต่ออกแผนงานไม่สำเร็จ — กด “ออกแผนงาน” อีกครั้งภายหลัง'
                       :'\n\n⚠ Work assigned, but the plan could not be issued — press “Issue plan” again later');
+  /* b590: only work new to a crew is sent to the technicians' phones */
+  const newTxt=(r.new_jobs!=null)?(r.new_jobs?(TH?` · ส่งงานใหม่ไปที่ช่าง ${r.new_jobs} งาน`:` · ${r.new_jobs} new job(s) sent to technicians`)
+                                  :(TH?' · ไม่มีงานใหม่ (ไม่ส่งแจ้งเตือนซ้ำ)':' · no new jobs (nothing re-sent)')):'';
   alert((TH?`บันทึกแล้ว · ${r.teams} ทีม · ${r.jobs} งาน`
-           :`Saved · ${r.teams} team(s) · ${r.jobs} job(s) assigned`)+keptDay+heldTxt+nocrewTxt+made+back+ren+aheadTxt+keptTxt+memTxt+planTxt);
+           :`Saved · ${r.teams} team(s) · ${r.jobs} job(s) assigned`)+newTxt+keptDay+heldTxt+nocrewTxt+made+back+ren+aheadTxt+keptTxt+memTxt+planTxt);
   try{const fn=NAV&&NAV[NAVI]&&NAV[NAVI][2];if(fn)fn();else renderPM();}catch(e){}
 }
 
@@ -11589,7 +11732,7 @@ function jobRow(j,openFn){
     ${jobPhoto(j)}
     <div class="jmeta">
       <div class="jttl">${(()=>{const k=j.mcrit||((machOf(j)||{}).criticality)||'';return critTag(k)?critTag(k)+' ':'';})()}${title}</div>
-      <div class="jepi"><b>${esc(j.jobid||'')}</b>${j.descr?' · '+esc(j.descr):''}</div>
+      <div class="jepi"><b class="jblk">${esc(j.jobid||'')}</b>${j.descr?' · '+esc(j.descr):''}</div>
       <div class="jsub">${dt}${who?' · '+who:''}${(()=>{
         if(dst==='jlate')return ` · <b>${(LANG==='TH')?'เลยกำหนด':'overdue'} ${pjDD(j.due_date,todayLocal())} ${(LANG==='TH')?'วัน':'d'}</b>`;
         if(dst==='jdue') return ` · <b>${(LANG==='TH')?'ครบกำหนดวันนี้':'due today'}</b>`;
@@ -12177,6 +12320,7 @@ async function twStop(id){await post('/api/segments/stop',{action:'pause',reason
      a CE technician given to each.
    · CE technician → "Electrical PM": his list; tap → only the electrical points. */
 const ISCE=()=>!!(ME&&ME.team==='CE');
+const ISAC=()=>!!(ME&&ME.team==='AC');     // b599: Central Air Conditioning
 // b417: the crew board in its Central Electrical form — for a CE planner always, and for
 // anyone working from the electrical calendar
 const ceQ=()=>((ISCE()&&ME&&ME.role==='planner')||PMELEC||CMELEC)?('&ce=1'+(CMELEC?'&cm=1':'')):'';
@@ -13073,6 +13217,37 @@ async function jdSaveReason(id){
   try{await patch('/api/jobs/'+id,{pending_reason:v});}catch(e){return;}
   renderDetail(id);
 }
+/* b594 — the job's DEPARTMENT. Worked out from the symptom when the job is saved; a planner
+   can set it. "Other" / unknown opens straight as a picker; a set one shows a ✏️ to change it.
+   The Save button appears only once the choice differs. Electrical & Control sends corrective
+   work to Central Electrical. */
+function jdDeptHtml(j,can,edit){
+  const TH=LANG==='TH',tr=jobTrade(j),nm=tradeName(tr);
+  const lab=`<span class="jdslab">${TH?'แผนก (ช่าง)':'Department'}</span>`;
+  const open=can&&(edit||(!j.trade&&(!tr||tr==='Other')));
+  if(!open)return lab+`<span class="jdsval" style="color:${TRADE_COL[tr]||'#475569'}">${esc(nm?(TH?(DEPT_TH[nm]||nm):nm):'—')}
+      ${j.trade?`<small title="${TH?'กำหนดโดยผู้วางแผน':'set by the planner'}" style="font-size:10px;color:#94A3B8;font-weight:500">✓</small>`:''}
+      ${can?`<button onclick="jdDeptEdit()" title="${TH?'เปลี่ยนแผนก':'Change department'}" style="margin-left:4px;border:none;background:none;cursor:pointer;font-size:14px;padding:0 2px">✏️</button>`:''}</span>`;
+  const cur=j.trade||(DEPTS.includes(nm)?nm:'');
+  return lab+`<span class="jdsval" style="gap:6px">
+    <select id="jdDeptSel" data-cur="${esc(cur)}" onchange="document.getElementById('jdDeptSave').style.display=(this.value&&this.value!==this.dataset.cur)?'':'none'"
+      style="font:inherit;font-size:13px;font-weight:600;padding:3px 6px;border-radius:7px;border:1px solid #CBD5E1">
+      <option value="">${TH?'— เลือกแผนก —':'— choose —'}</option>
+      ${DEPTS.map(d=>`<option value="${esc(d)}" ${d===cur?'selected':''}>${esc(TH?DEPT_TH[d]+' · '+d:d)}</option>`).join('')}</select>
+    <button id="jdDeptSave" class="btn sm primary" style="display:none" onclick="jdDeptSave()">${TH?'บันทึก':'Save'}</button>
+    ${edit?`<button class="btn sm ghost" onclick="jdDeptCancel()">✕</button>`:''}</span>`;
+}
+function jdDeptEdit(){const j=window._jobNow;const el=document.getElementById('jdDept');if(j&&el)el.innerHTML=jdDeptHtml(j,true,true);}
+function jdDeptCancel(){const j=window._jobNow;const el=document.getElementById('jdDept');if(j&&el)el.innerHTML=jdDeptHtml(j,true,false);}
+async function jdDeptSave(){
+  const TH=LANG==='TH',j=window._jobNow,sel=document.getElementById('jdDeptSel');if(!j||!sel||!sel.value)return;
+  const b=document.getElementById('jdDeptSave');if(b){b.disabled=true;b.textContent='…';}
+  let r=null;try{r=await post('/api/jobs/'+j.id+'/trade',{trade:sel.value});}catch(e){if(b){b.disabled=false;b.textContent=TH?'บันทึก':'Save';}return;}
+  j.trade=r.trade;
+  const el=document.getElementById('jdDept');if(el)el.innerHTML=jdDeptHtml(j,true,false);
+  if(r.to_ce)alert(TH?'บันทึกแล้ว — งานนี้ย้ายไปทีมไฟฟ้าส่วนกลาง (Central Electrical)':'Saved — this job now goes to the Central Electrical team');
+  if(r.to_ac)alert(TH?'บันทึกแล้ว — งานนี้ย้ายไปทีมแอร์ส่วนกลาง (Central Air Conditioning)':'Saved — this job now goes to the Central Air Conditioning team');
+}
 async function renderDetail(id){
   stopPoll();
   const [{job:j,segments},jchat,jact]=await Promise.all([
@@ -13154,8 +13329,7 @@ async function renderDetail(id){
         <span class="jdsval" style="color:${rcTypeColor(j)}">${esc(j.jobtype||'')}</span></div>
       <div class="jdstage"><span class="jdslab">${TH?'ระดับ':'Priority'}</span>
         <span class="jdsval">${prio||'—'} ${prio?`<span class="pill ${prioCls}">${prio>=3?(TH?'ด่วน':'Urgent'):prio===2?(TH?'ปานกลาง':'Normal'):(TH?'ต่ำ':'Low')}</span>`:''}</span></div>
-      ${trade?`<div class="jdstage"><span class="jdslab">${TH?'หน่วยงานช่าง':'Trade'}</span>
-        <span class="jdsval" style="color:${TRADE_COL[trade]||'#475569'}">${esc(trade)}</span></div>`:''}
+      ${(trade||CANPLAN)&&(j.jobtype||'').toUpperCase()!=='PM'?`<div class="jdstage" id="jdDept">${jdDeptHtml(j,CANPLAN&&!CLOSED,false)}</div>`:''}
     </div>
     <div class="jdfacts">
       <div class="jdfact"><div class="k">${TH?'แจ้งเมื่อ':'Reported'}</div>
@@ -13392,6 +13566,47 @@ async function renderDetail(id){
    operator said on the left, what the technician found and did on the right. Every value
    sits on its own labelled line so a single field can be read at a glance; an empty field
    is a short grey dash, not a sentence. Stacks on a phone. */
+/* b597 — a PM job's description is its whole checklist run together ("PM · Weekly · CRANE 1. …
+   [เช็ค] 2. … [ทำ] …"), which read as one long paragraph. The card now shows the title and a
+   "Checklist" bar; a click opens the points as a table with each one's result (OK / NG / waiting),
+   remark, who and when — read from the job's own PM sheet. */
+function jdPmDesc(j){
+  const TH=LANG==='TH',d=String(j.descr||'');
+  const m=d.match(/^(.*?)\s+1\.\s/);const title=(m?m[1]:d.split(/\s\d+\.\s/)[0]).trim()||d;
+  const n=(d.match(/(?:^|\s)\d+\.\s/g)||[]).length;
+  return `<div class="desc">${esc(title)}</div>
+    <div class="jdcl" id="jdCl" onclick="jdClToggle(${j.id})">📋 ${TH?'รายการตรวจเช็ค (Checklist)':'Checklist'}${n?` · ${n} ${TH?'ข้อ':'points'}`:''}
+      <span id="jdClSum" style="font-weight:500;color:#64748B"></span><span class="ar">↗</span></div>`;
+}
+/* b598: the checklist opens in a pop-up */
+async function jdClToggle(id){
+  const TH=LANG==='TH',J=window._jobNow||{},d=$('#dlg');
+  const title=esc(String(J.descr||'').split(/\n|\s(?=1\.\s)/)[0]||'PM');
+  const shell=body=>`<div class="dlgbar2"><span style="font-size:22px">📋</span>
+      <div><div style="font-size:15.5px;font-weight:700">${TH?'รายการตรวจเช็ค':'Checklist'} · ${esc(J.jobid||'')}</div>
+      <div style="font-size:11.5px;opacity:.8">${title}${J.mcode?' · '+esc(J.mcode):''}</div></div></div>
+    <div style="max-height:65vh;overflow:auto;margin-top:10px">${body}</div>
+    <button class="btn ghost" style="width:100%;margin-top:10px" onclick="dlg.close()">${TH?'ปิด':'Close'}</button>`;
+  d.style.width='min(980px,96vw)';d.style.maxWidth='96vw';
+  d.innerHTML=shell(`<div class="muted" style="padding:10px">${TH?'กำลังโหลด…':'Loading…'}</div>`);
+  d.addEventListener('close',()=>{d.style.width='';d.style.maxWidth='';},{once:true});
+  if(!d.open)d.showModal();
+  let cl=null;try{cl=await api('/api/pm/job/'+id+'/checklist',{quiet:1});}catch(e){cl=null;}
+  if(!d.open)return;
+  if(!cl||!(cl.items||[]).length){   // no sheet on record: the points in the description
+    const pts=String(J.descr||'').split(/\s(?=\d+\.\s)/).slice(1).map(x=>x.replace(/^\d+\.\s*/,''));
+    d.innerHTML=shell(pts.length?`<table class="jdclt"><tr><th>#</th><th>${TH?'รายการ':'Point'}</th></tr>${pts.map((p,i)=>`<tr><td>${i+1}</td><td>${esc(p)}</td></tr>`).join('')}</table>`
+      :`<div class="muted" style="padding:10px">${TH?'ไม่มีรายการตรวจเช็ค':'No checklist for this job'}</div>`);return;}
+  const res=r=>r==='OK'?`<span class="ok">✓ OK</span>`:r==='NG'?`<span class="ng">✗ NG</span>`:`<span class="wt">${TH?'รอ':'waiting'}</span>`;
+  const sum=document.getElementById('jdClSum');
+  const st=` · ${TH?'ทำแล้ว':'done'} ${cl.done}/${cl.total}${cl.ng?` · NG ${cl.ng}`:''}`;if(sum)sum.textContent=st;
+  d.innerHTML=shell(`<div style="font-size:12.5px;color:#475569;margin-bottom:6px">${cl.label||''}${st}</div>
+    <table class="jdclt"><tr><th>#</th><th>${TH?'รายการ':'Point'}</th><th>${TH?'วิธี':'Method'}</th><th>${TH?'ค่าปกติ':'Normal'}</th>
+      <th>${TH?'ผล':'Result'}</th><th>${TH?'หมายเหตุ':'Remark'}</th><th>${TH?'โดย':'By'}</th></tr>
+    ${cl.items.map(i=>`<tr><td>${i.seq}</td><td>${i.elec?'<span title="'+(TH?'จุดไฟฟ้า (ไฟฟ้าส่วนกลาง)':'electrical point (Central Electrical)')+'">⚡</span> ':''}${esc(i.item||'')}</td>
+      <td>${esc(i.method||'')}</td><td>${esc(i.normal||'')}</td><td style="white-space:nowrap">${res(i.result)}</td>
+      <td>${esc(i.remark||'')}</td><td style="white-space:nowrap;color:#64748B">${esc(i.tech_name||'')}${i.at?`<br><small>${esc(String(i.at).slice(5,16))}</small>`:''}</td></tr>`).join('')}</table>`);
+}
 function jdIssueCard(j){
   const TH=LANG==='TH',L=(th,en)=>TH?th:en;
   const kv=(k,v,cls)=>`<div class="jdkv"><span class="k">${k}</span><span class="v${v?'':' e'}${cls?' '+cls:''}">${v||'—'}</span></div>`;
@@ -13404,8 +13619,8 @@ function jdIssueCard(j){
   return `<div class="card jdir">
     <div class="jdirp op">
       <div class="h">${L('อาการที่แจ้ง','Reported issue')}<em>${L('ผู้แจ้ง','operator')}</em><span class="r">${jdWhen(j.created_at)}</span></div>
-      <div class="desc">${esc(j.descr||'')||'<span class="e">—</span>'}</div>
-      ${kv(L('อาการ','Symptom'),esc(j.problem_type||''))}
+      ${(j.jobtype||'').toUpperCase()==='PM'?jdPmDesc(j):`<div class="desc">${esc(j.descr||'')||'<span class="e">—</span>'}</div>`}
+      ${(j.jobtype||'').toUpperCase()==='PM'?'':kv(L('อาการ','Symptom'),esc(j.problem_type||''))}
       ${kv(L('เครื่อง','Machine'),mach)}
       ${kv(L('ผู้แจ้ง','Reported by'),who)}
     </div>
@@ -14617,7 +14832,7 @@ function admUsersHtml(users,q){
             padding:0 5px;font-size:9.5px;font-weight:700;white-space:nowrap;flex:none">${
             TH?'ยังไม่มีคน':'no person'}</span>`:''}
           ${(!u.factory_code&&ADMPL.charAt(0)!=='!'&&ADMPL!=='*'&&ADMPL!=='~')?`<span style="background:#F3E8FF;color:#7C3AED;border:1px solid #D8B4FE;border-radius:5px;padding:0 5px;font-size:9.5px;font-weight:600;margin-left:4px">${TH?'ทุกโรงงาน (all plants)':'all plants'}</span>`:''}
-          ${u.team==='CE'?`<span title="Central Engineering – Electrical" style="background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;border-radius:5px;padding:0 5px;font-size:9.5px;font-weight:700;white-space:nowrap;flex:none">⚡ ${TH?'ส่วนกลาง':'Central'}</span>`:''}
+          ${u.team==='CE'?`<span title="Central Engineering – Electrical" style="background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;border-radius:5px;padding:0 5px;font-size:9.5px;font-weight:700;white-space:nowrap;flex:none">⚡ ${TH?'ส่วนกลาง':'Central'}</span>`:''}${u.team==='AC'?`<span title="Central Air Conditioning" style="background:#E0F2FE;color:#075985;border:1px solid #7DD3FC;border-radius:5px;padding:0 5px;font-size:9.5px;font-weight:700;white-space:nowrap;flex:none">❄️ ${TH?'แอร์ส่วนกลาง':'Central AC'}</span>`:''}
           ${u.active?'':`<span class="tag s-Hold">${t('ad_off')}</span>`}</span>`)}
       ${td(`<span style="font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:${c}1f;color:${c};white-space:nowrap">${esc(u.role)}</span>`)}
       ${td(acct(u))}
@@ -14923,6 +15138,7 @@ function admUsersMx(users,q,preview,gapBanner){
                MXD===null&&u.dept?esc(u.dept):''].filter(Boolean).join(' · ');
     const tags=[`<span class="mxtag ${person?'mxt-per':(u.shared_login?'mxt-sh':'mxt-acc')}">${person?(TH?'คน':'Person'):u.shared_login?(TH?'บัญชีร่วม':'Shared login'):(TH?'บัญชีเข้าระบบ':'Login')}</span>`,
       u.team==='CE'?`<span class="mxtag mxt-sh">⚡ ${TH?'ส่วนกลาง':'Central'}</span>`:'',
+      u.team==='AC'?`<span class="mxtag mxt-sh">❄️ ${TH?'แอร์ส่วนกลาง':'Central AC'}</span>`:'',
       (!u.factory_code&&MXF!=='~'&&MXF!=='*')?`<span class="mxtag mxt-v">${TH?'ทุกโรงงาน':'all plants'}</span>`:'',
       ...ISS.filter(x=>x.f(u)).map(x=>`<span class="mxtag ${x.cls}">${esc(x.s)}</span>`)].join('');
     li+=`<div class="mxit ${ADMSEL===u.id?'on':''}" onclick="admPick(${u.id})">${admAvatar(u,32)}
@@ -15430,8 +15646,9 @@ function userDlg(id){
     (!u.dept&&(u.department||'').trim())
       ?`<option value="${esc(u.department)}" selected>${esc(u.department)} ${LANG==='TH'?'(ข้อความเดิม)':'(old free text)'}</option>`:''}</select>
   <label>${LANG==='TH'?'ทีม (Team)':'Team'}</label>
-  <select id="u_tm"><option value="" ${u.team==='CE'?'':'selected'}>${LANG==='TH'?'ซ่อมบำรุงโรงงาน (Plant maintenance)':'Plant maintenance'}</option>
-    <option value="CE" ${u.team==='CE'?'selected':''}>⚡ ${LANG==='TH'?'วิศวกรรมส่วนกลาง – ไฟฟ้า (Central Engineering – Electrical)':'Central Engineering – Electrical'}</option></select>
+  <select id="u_tm"><option value="" ${['CE','AC'].includes(u.team)?'':'selected'}>${LANG==='TH'?'ซ่อมบำรุงโรงงาน (Plant maintenance)':'Plant maintenance'}</option>
+    <option value="CE" ${u.team==='CE'?'selected':''}>⚡ ${LANG==='TH'?'วิศวกรรมส่วนกลาง – ไฟฟ้า (Central Engineering – Electrical)':'Central Engineering – Electrical'}</option>
+    <option value="AC" ${u.team==='AC'?'selected':''}>❄️ ${LANG==='TH'?'แอร์ส่วนกลาง (Central Air Conditioning)':'Central Air Conditioning'}</option></select>
   <label>${id?t('u_pw_r'):t('u_pw')}</label>
   <div style="display:flex;gap:6px;align-items:center">
     <input id="u_p" type="password" style="flex:1" autocomplete="new-password">
@@ -19190,11 +19407,11 @@ const HBKB=[
       ['PM ที่ถึงกำหนดแต่ยังไม่ออกใบงาน นับเป็น "รอมอบหมาย"','งานที่ยกเลิก/ตีกลับ ไม่นับ','ถ้าสองหน้าไม่ตรงกัน ให้รีเฟรช (Ctrl+F5) ก่อน แล้วแจ้งแอดมิน']],
   en:['The calendar number vs the board number','both read one shared count: every job of that day split into done · to accept · working · assigned · waiting',
       ['a PM due but with no work order yet counts as waiting','cancelled and rejected work is not counted','if the two disagree, refresh (Ctrl+F5) first, then tell the admin']]},
- {id:'lateplan',pg:['plan'],k:['เลยเวลา','12:00','วางแผนวันนี้ไม่ได้','too late','ออกแผน','issue plan'],
-  th:['ทำไมวางแผนของวันนี้ไม่ได้','แผนของวันนี้ปิดเวลา 12:00 น. — หลังจากนั้นวันนั้นเริ่มทำงานไปแล้ว',
-      ['หลังเที่ยง ระบบจะพาไปวางแผนของวันพรุ่งนี้แทน','แผนที่ออกไปแล้ว ดูได้จากปุ่ม "ดูแผนงานของวันนี้"','กด "บันทึกและมอบหมาย" จะออกแผนให้อัตโนมัติ']],
-  en:['Why today cannot be planned','today’s plan closes at 12:00 — after that the day is already running',
-      ['after noon it points you at tomorrow instead','a plan already issued opens from "View today’s plan"','Save & assign issues the plan for you']]},
+ {id:'lateplan',pg:['plan'],k:['เลยเวลา','12:00','วางแผนวันนี้ไม่ได้','too late','ออกแผน','issue plan','เพิ่มงาน','add job'],
+  th:['วางแผนและเพิ่มงานของวันนี้ได้ทั้งวัน','ไม่มีปิดเวลา 12:00 น. แล้ว — วันที่ผ่านไปแล้วเท่านั้นที่วางแผนไม่ได้',
+      ['เพิ่มงานให้ทีมหลังออกแผนแล้วได้ — กด "บันทึกและมอบหมาย" ช่างจะได้รับแจ้งเฉพาะงานใหม่','งานที่ส่งไปแล้วไม่ถูกส่งซ้ำ','แผนของวันนี้จะถูกปรับเป็นฉบับล่าสุด (เลขแผนเดิม)']],
+  en:['Today can be planned all day','there is no 12:00 cut-off any more — only days already past are closed',
+      ['add work to a crew after the plan is issued and press Save & assign — technicians are told about the new job only','work already sent is not sent again','today’s plan sheet is brought up to date (same plan number)']]},
  {id:'plandoc',pg:['plan','jobs','reports'],k:['แผนบอกว่า','plan says','plan issue','ในแผนมี','แผนที่ออก','plan document','ใบแผน','plan report','ไม่ตรงกับแผน','plan shows'],
   th:['ทำไมตัวเลขในแผนที่ออกไว้ ไม่เท่ากับที่เห็นบนหน้าจอ','วันหนึ่งมีสามตัวเลข และทั้งสามถูกต้องคนละเรื่อง',
       ['งานของวันนี้ = งานที่ "วันที่วางแผน" ตรงกับวันนี้ (ตัวเลขบนปฏิทินและท้ายกระดาน)','ยกมาจากวันก่อน = งานค้างที่ยังไม่เสร็จ อยู่บนกระดานด้วย แต่ไม่ถูกนับในยอดของวันนี้','แผนที่ออกไว้ = ภาพถ่าย ณ เวลาที่กดออกแผน — งานที่เพิ่มหรือย้ายหลังจากนั้นไม่เปลี่ยนตัวเลขในเอกสาร','ถ้าอยากให้ตรงกัน ให้ออกแผนใหม่ (บันทึกและมอบหมาย) แล้วเอกสารจะถ่ายภาพใหม่','ถามผมว่า "วันนี้วางแผนไว้กี่งาน" ผมจะแสดงทั้งสามตัวเลขพร้อมกัน']],
@@ -19288,8 +19505,8 @@ const HBHOW=[
   th:['สร้างทีม หรือเพิ่มคนเข้าทีม',['ในกระดานมอบหมาย ดับเบิลคลิกคอลัมน์ว่างเพื่อสร้างทีมใหม่ แล้วเลือกหัวหน้างาน','กด "+ ช่าง" บนหัวคอลัมน์เพื่อเพิ่มผู้ช่วย (สูงสุด 3 คนต่อทีม)','ทีมที่สร้างไว้จะอยู่ต่อไปทุกวัน จนกว่าผู้วางแผนจะลบเอง','ลบทีมด้วยปุ่ม ✕ บนหัวคอลัมน์']],
   en:['Form a team, or add someone to one',['on the assign board, double-click an empty column to start a team and pick its lead','press "+ Tech" on the column header to add a helper (3 per team)','a team stays from day to day until the planner deletes it','remove it with the ✕ on the column header']]},
  {id:'h_issue',pg:['plan'],go:'plan',k:['ออกแผน','issue plan','แผนประจำวัน','ดูแผนที่ออก','daily plan'],
-  th:['ออกแผนประจำวัน และดูแผนที่ออกไปแล้ว',['กด "บันทึกและมอบหมาย" — ระบบออกแผนของวันนั้นให้เอง ไม่ต้องเปิดหน้าแผน','แผนของวันนี้ปิดเวลา 12:00 น. หลังจากนั้นระบบจะพาไปวางแผนพรุ่งนี้','ดูแผนที่ออกแล้วได้จากปุ่ม "ดูแผนงานของวันนี้" หรือหน้า รายงาน / Reports','ออกแผนใหม่ทับของเดิมได้ ถ้ายังอยู่ในเวลาที่แก้ไขได้']],
-  en:['Issue the day’s plan, and find one already issued',['press Save & assign — the plan for that day is issued automatically','today’s plan closes at 12:00; after that the app points you at tomorrow','open an issued plan from "View today’s plan", or from Reports','re-issuing replaces it while the day is still editable']]},
+  th:['ออกแผนประจำวัน และดูแผนที่ออกไปแล้ว',['กด "บันทึกและมอบหมาย" — ระบบออกแผนของวันนั้นให้เอง ไม่ต้องเปิดหน้าแผน','วางแผนของวันนี้ได้ทั้งวัน — เพิ่มงานแล้วช่างได้รับเฉพาะงานใหม่','ดูแผนที่ออกแล้วได้จากปุ่ม "ดูแผนงานของวันนี้" หรือหน้า รายงาน / Reports','ออกแผนใหม่ทับของเดิมได้ ถ้ายังอยู่ในเวลาที่แก้ไขได้']],
+  en:['Issue the day’s plan, and find one already issued',['press Save & assign — the plan for that day is issued automatically','today can be planned all day — added work reaches technicians as new jobs only','open an issued plan from "View today’s plan", or from Reports','re-issuing replaces it while the day is still editable']]},
  {id:'h_accept',pg:['jobs'],go:'jobs',k:['ตรวจรับงาน','รับงาน','accept work','approve job','ปิดงาน'],
   th:['ตรวจรับงานที่ช่างทำเสร็จ',['เปิดหน้างาน แล้วกดชิป "รอตรวจรับ"','เปิดงาน ตรวจรูปก่อน-หลังและสิ่งที่ช่างบันทึกไว้','กด "ตรวจรับ" เพื่อปิดงาน หรือ "ตีกลับ" พร้อมเหตุผล ถ้ายังไม่เรียบร้อย','งาน PM ผู้วางแผนเป็นคนตรวจรับ · งาน CM/BD ผู้แจ้งเป็นคนตรวจรับ']],
   en:['Accept work a technician has finished',['open Jobs and press the "To accept" chip','open the job and check the before/after photos and what the technician recorded','press Accept to close it, or Send back with a reason','PM work is accepted by the planner; CM and BD by whoever reported it']]},
@@ -20373,26 +20590,26 @@ function hqDraw(){
   $('#app').innerHTML=facBarHtml()+head+list;
 }
 function planGoto(k){const i=NAV.findIndex(n=>n[3]===k);if(i>=0)return navGo(i);(k==='pm'?renderPM(false):renderCMPlan());}
-/* Today's plan is a morning decision: after 11:59 the day is already running, so
-   planning it is closed and the planner is pointed at tomorrow. The same gate guards
+/* b590: today can be planned ALL day (the 12:00 cut-off is gone) — only a day that has
+   already passed is closed, and the planner is pointed at today. The same gate guards
    the Issue button and the calendar double-click. Returns true when it blocked. */
 function planTooLate(d){
   const TH=LANG==='TH';
-  if(!(d<=todayLocal()&&!(d===todayLocal()&&new Date().getHours()<12)))return false;
-  const tmr=addDays(todayLocal(),1);
+  if(!(d<todayLocal()))return false;
+  const tmr=todayLocal();
   $('#dlg').innerHTML=`
     <div class="dlgbar2">
       <span style="font-size:22px">⏰</span>
-      <div><div style="font-size:15.5px;font-weight:700">${TH?'เลยเวลาจัดแผนของวันนี้แล้ว':'Too late to plan this day'}</div>
+      <div><div style="font-size:15.5px;font-weight:700">${TH?'วันนี้ผ่านไปแล้ว':'This day has passed'}</div>
       <div style="font-size:11.5px;opacity:.8">${esc(fdate(d)||d)}</div></div>
     </div>
     <p style="font-size:13.5px;color:#334155;line-height:1.7;margin:14px 0 8px">${TH
-      ?'แผนของวันนี้ต้องจัดก่อน 12:00 น. — ตอนนี้จัดได้เฉพาะแผนของวันพรุ่งนี้เป็นต้นไป'
-      :'Today\u2019s plan can only be made before 12:00 noon — from now on, plan tomorrow onwards'}</p>
-    <button class="btn primary" style="width:100%;padding:12px" onclick="dlg.close();planIssueSmart('${tmr}')">🗓️ ${TH?'จัดแผนพรุ่งนี้':'Plan tomorrow'}</button>
+      ?'วันที่ผ่านไปแล้ววางแผนไม่ได้ — วางแผนได้ตั้งแต่วันนี้เป็นต้นไป (วันนี้วางได้ทั้งวัน)'
+      :'A day that has passed cannot be planned — plan today onwards (today is open all day)'}</p>
+    <button class="btn primary" style="width:100%;padding:12px" onclick="dlg.close();planIssueSmart('${tmr}')">🗓️ ${TH?'จัดแผนวันนี้':'Plan today'}</button>
     <a id="planViewBtn" class="btn" target="_blank" rel="noopener" onclick="dlg.close()"
       style="display:block;width:100%;margin-top:8px;padding:12px;text-align:center;text-decoration:none;box-sizing:border-box;pointer-events:none;opacity:.6">📄 ${
-      d===todayLocal()?(TH?'ดูแผนงานของวันนี้':'View today\u2019s plan'):(TH?`ดูแผนงานวันที่ ${esc(fdate(d)||d)}`:`View the plan for ${esc(fdate(d)||d)}`)}</a>
+      (TH?`ดูแผนงานวันที่ ${esc(fdate(d)||d)}`:`View the plan for ${esc(fdate(d)||d)}`)}</a>
     <button class="btn ghost" style="width:100%;margin-top:8px" onclick="dlg.close()">${TH?'ปิด':'Close'}</button>`;
   dlg.showModal();planViewLink(d,'planViewBtn');return true;
 }
@@ -20695,8 +20912,8 @@ function ppPrio(j){const TH=LANG==='TH';
 function ppDept(j){
   const tr=ppTrade(j);if(!tr)return '';
   const pt=((BOOT&&BOOT.problem_types)||[]).find(p=>p.name===j.problem_type);
-  const key=(pt&&pt.category)||j.fault_category||'';
-  const col=(typeof PCATC!=='undefined'&&PCATC[key])||'#64748B';
+  const key=(j.trade&&(TRADE_CANON[j.trade]||j.trade))||(pt&&pt.category)||j.fault_category||'';
+  const col=(typeof PCATC!=='undefined'&&PCATC[key])||TRADE_COL[key]||'#64748B';
   return `<span class="pptg" style="background:${col}1A;color:${col}">${esc(tr)}</span>`;
 }
 /* The trade the symptom points at — the same first guess the admin's list carries.
@@ -20705,6 +20922,7 @@ function ppDept(j){
    on a weak signal is enough — and every row of the job list threw here, so the list
    never drew and every tap after it did nothing at all. Reported as a frozen phone. */
 function ppTrade(j){
+  if(j.trade)return j.trade;                          // b594: the planner's department
   const pt=((BOOT&&BOOT.problem_types)||[]).find(p=>p.name===j.problem_type);
   const c=(pt&&pt.category)||j.fault_category||'';
   return c?(typeof pcatName==='function'?pcatName(c):c):'';

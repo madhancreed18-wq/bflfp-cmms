@@ -212,9 +212,13 @@ async def day(req: Request, d: str = ""):
     # b417: the Central Electrical board — the same board, its own crews (kept under the
     # plant's NEGATIVE id, so they never mix with the plant's crews), CE technicians,
     # and only the electrical / other / unknown work plus electrical PM.
-    from .elec import is_ce_planner, ce_ids, CeFilter
+    from .elec import is_ce_planner, ce_ids, CeFilter, is_ac_planner, ac_ids, AcFilter
     ce = (req.query_params.get("ce") == "1") or is_ce_planner(u)
-    tk = -fac if ce else fac
+    # b599: the Central Air Conditioning board — its own crews (kept under -(1000 + plant)),
+    # AC technicians, and only AC work (AC machines' PM + Air Conditioning corrective work)
+    from .elec import as_ac as _asac
+    ac = (not ce) and is_ac_planner(_asac(req, u))
+    tk = -fac if ce else (-(1000 + fac) if ac else fac)
     with closing(db()) as c:
         _ensure(c)
         from .elec import ensure_board as _eb0
@@ -238,6 +242,9 @@ async def day(req: Request, d: str = ""):
         elif ce:
             techs, logins, one_person = [], [], {}
             standalone = ce_ids(c, fac)
+        elif ac:
+            techs, logins, one_person = [], [], {}
+            standalone = ac_ids(c, fac)
         # An account nobody is attached to IS the technician: the person signs in as
         # themselves and has no separate record (BFLFP: tech2 is Kanya). Without this they
         # could not be picked for a crew, showed as a bare "#4", and their work sat in a
@@ -251,7 +258,7 @@ async def day(req: Request, d: str = ""):
         techs.sort(key=lambda t: (t["name"] or "").lower())
         jobs = [dict(r) for r in c.execute(
             """SELECT j.id,j.jobid,j.jobtype,j.status,j.priority,j.descr,j.lead_tech,j.helpers,
-                      j.problem_type,j.fault_category,j.machine_id,j.pm_freq,
+                      j.problem_type,j.fault_category,j.trade,j.machine_id,j.pm_freq,
                       j.planned_start,j.planned_end, m.code mcode, m.name mname, m.floor mfloor, m.line mline, m.department mdept, m.asset_group mgroup, m.pm_group_color mcolor
                FROM jobs j LEFT JOIN machines m ON m.id=j.machine_id
                WHERE j.planned_date=? AND j.status NOT IN ('Cancelled','Done','Rejected','ServiceCompleted')
@@ -264,7 +271,7 @@ async def day(req: Request, d: str = ""):
         # the day's own work.
         for r in c.execute(
             """SELECT j.id,j.jobid,j.jobtype,j.status,j.priority,j.descr,j.lead_tech,j.helpers,
-                      j.problem_type,j.fault_category,j.machine_id,j.pm_freq,
+                      j.problem_type,j.fault_category,j.trade,j.machine_id,j.pm_freq,
                       j.planned_start,j.planned_end,j.planned_date, m.code mcode, m.name mname, m.floor mfloor, m.line mline, m.department mdept, m.asset_group mgroup, m.pm_group_color mcolor
                FROM jobs j LEFT JOIN machines m ON m.id=j.machine_id
                WHERE j.planned_date IS NOT NULL AND j.planned_date != ''
@@ -308,7 +315,15 @@ async def day(req: Request, d: str = ""):
         _pf = CeFilter(c)
         _elst = {r["job_id"]: r["tech"] for r in c.execute(
             "SELECT job_id, tech FROM pm_elec WHERE factory_id=?", (fac,))} if ce else {}
+        _acf = AcFilter(c)                      # b599
         for j in jobs:
+            _isac = _acf.ok(dict(j, factory_id=fac))
+            if ac:
+                if _isac:
+                    _keep.append(j)
+                continue
+            if _isac:
+                continue                        # b599: Central Air Conditioning's work
             _pm = (j.get("jobtype") or "") == "PM" and j.get("machine_id")
             if _pm:
                 _na, _ne = _cnt.get((_m2t.get(j["machine_id"]), j.get("pm_freq") or "weekly")) or (0, 0)
@@ -418,7 +433,12 @@ async def day(req: Request, d: str = ""):
                  AND (COALESCE(m.factory_id,j.factory_id)=? OR COALESCE(m.factory_id,j.factory_id) IS NULL)
                ORDER BY j.priority DESC, j.id LIMIT 200""", (fac,))]
         pm_due = _pm_due(c, fac, d, ce=ce)
-        if ce:
+        _acm = lambda mid: _acf.ac_machine(fac, mid)        # noqa: E731  (b599)
+        pm_due = [p for p in pm_due if bool(_acm(p["machine_id"])) == ac]
+        undated = [j for j in undated if bool(_acf.ok(dict(j, factory_id=fac))) == ac]
+        if ac:
+            pass
+        elif ce:
             undated = [j for j in undated if _cef.ok(dict(j, factory_id=fac))
                        and not (j.get("lead_tech") and j["lead_tech"] not in _ce)]
         elif fac in _CEP:
@@ -450,7 +470,7 @@ async def day(req: Request, d: str = ""):
         # account, and a job goes to the account of the person it is given to.
         self_login = True
         # the day's own work, counted exactly as the calendar counts it (pm.day_counts)
-        day_cnt = pm.day_counts(c, fac, d, d).get(d) or {
+        day_cnt = pm.day_counts(c, fac, d, d, keep=lambda r: bool(_acf.ok(r)) == ac).get(d) or {
             "total": 0, "done": 0, "accept": 0, "working": 0, "assigned": 0, "waiting": 0}
     for i, t in enumerate(teams):
         t["color"] = t["color"] or COLORS[i % len(COLORS)]
@@ -459,7 +479,7 @@ async def day(req: Request, d: str = ""):
             "pm_due": pm_due, "carried": carried, "carried_from": carried_from,
             "lends_known": lends_known, "lends": lends,
             "counts": day_cnt,
-            "undated": undated, "self_login": self_login, "ce": ce}
+            "undated": undated, "self_login": self_login, "ce": ce, "ac": ac}
 
 
 @router.post("/save")
@@ -473,8 +493,11 @@ async def save(req: Request):
         raise HTTPException(400, "date required")
     teams = b.get("teams") or []
     from .elec import is_ce_planner, ce_ids          # b417: the Central Electrical board
+    from .elec import is_ac_planner, ac_ids          # b599: the Central Air Conditioning board
     ce = bool(b.get("ce")) or is_ce_planner(u)
-    tk = -fac if ce else fac
+    from .elec import as_ac as _asac
+    ac = (not ce) and is_ac_planner(_asac(req, u))
+    tk = -fac if ce else (-(1000 + fac) if ac else fac)
     with closing(db()) as c:
         _ensure(c)
         valid = {r["id"] for r in c.execute(
@@ -485,6 +508,8 @@ async def save(req: Request):
             valid |= set(ce_ids(c, fac))            # b432: Central CM — plant technicians too
         elif ce:
             valid = {i for i in ce_ids(c, fac)}
+        elif ac:
+            valid = {i for i in ac_ids(c, fac)}
         _ceset = ce_ids(c)
         from .elec import ensure_board as _eb
         _eb(c)
@@ -533,7 +558,7 @@ async def save(req: Request):
             login_order = []                     # CE technicians each sign in as themselves
         valid_logins = set(login_order)
         day_jobs = {r["id"]: dict(r) for r in c.execute(
-            """SELECT j.id,j.jobid,j.status,j.lead_tech,j.started_at,j.planned_date, m.code mcode FROM jobs j
+            """SELECT j.id,j.jobid,j.status,j.lead_tech,j.helpers,j.started_at,j.planned_date, m.code mcode FROM jobs j
                LEFT JOIN machines m ON m.id=j.machine_id
                WHERE j.planned_date=? AND (COALESCE(m.factory_id,j.factory_id)=? OR COALESCE(m.factory_id,j.factory_id) IS NULL)""", (d, fac))}
         # This day's own work — the only jobs this save may take a technician away from.
@@ -542,7 +567,7 @@ async def save(req: Request):
         # that re-dates it: the plan says what is being worked on today. Leaving it alone
         # changes nothing, so opening tomorrow never disturbs yesterday's board.
         for r in c.execute(
-            """SELECT j.id,j.jobid,j.status,j.lead_tech,j.started_at,j.planned_date, m.code mcode FROM jobs j
+            """SELECT j.id,j.jobid,j.status,j.lead_tech,j.helpers,j.started_at,j.planned_date, m.code mcode FROM jobs j
                LEFT JOIN machines m ON m.id=j.machine_id
                WHERE j.planned_date < ? AND j.planned_date IS NOT NULL AND j.planned_date != ''
                  AND j.status NOT IN ('Cancelled','Done','Rejected','ServiceCompleted')
@@ -550,7 +575,7 @@ async def save(req: Request):
             day_jobs.setdefault(r["id"], dict(r))
         # never dated at all — assigning one here is also what gives it its day
         for r in c.execute(
-            """SELECT j.id,j.jobid,j.status,j.lead_tech,j.started_at,j.planned_date, m.code mcode FROM jobs j
+            """SELECT j.id,j.jobid,j.status,j.lead_tech,j.helpers,j.started_at,j.planned_date, m.code mcode FROM jobs j
                LEFT JOIN machines m ON m.id=j.machine_id
                WHERE COALESCE(j.planned_date,'')=''
                  AND j.status IN """ + UNDATED_ST + """
@@ -600,7 +625,7 @@ async def save(req: Request):
                     # The work order may already have existed — moved to another day, or
                     # even finished. It must be judged by what it really is, never stubbed
                     # as a fresh "Reported" job, or a stale board could re-assign done work.
-                    row = c.execute("SELECT id,jobid,status,lead_tech,started_at,planned_date"
+                    row = c.execute("SELECT id,jobid,status,lead_tech,helpers,started_at,planned_date"
                                     " FROM jobs WHERE id=?", (jid,)).fetchone()
                     day_jobs[jid] = dict(row) if row else {
                         "id": jid, "jobid": "", "status": "Reported", "lead_tech": None,
@@ -883,6 +908,33 @@ async def save(req: Request):
                 # technician, so a lent lead would put the job on the wrong crew's sheet.
                 lent = [m for m in extra.get(t["raw"].get(jid, ""), []) if m != t["lead"]]
                 helpers = ",".join(str(m) for m in dict.fromkeys(base + lent))
+                # b590 ── ONLY THE NEW WORK GOES OUT AGAIN ─────────────────────────────
+                # Planning is open all day now, so a planner adds a job to a plan that is
+                # already running. A job that was already Assigned to this crew's lead on
+                # this day is the same assignment: it keeps its planned_at and is not sent
+                # to anyone again. Only a job new to this crew (or a person new on a job)
+                # is announced, so the technicians' phones show what was added, not the
+                # whole day once more.
+                same = (job.get("lead_tech") == t["lead"] and job["status"] == "Assigned"
+                        and (job.get("planned_date") or "") == d)
+                if same:
+                    old_h = set(_ids(job.get("helpers") or ""))
+                    for m in [t["lead"]] + base + lent:
+                        if m != job.get("lead_tech") and m not in old_h:
+                            t.setdefault("new_for", {}).setdefault(m, []).append(jid)
+                    c.execute("""UPDATE jobs SET helpers=?, planned_start=?, planned_end=?, board=?
+                        WHERE id=?""", (helpers, t["start"] or None, t["end"] or None,
+                                        "ce" if ce else "", jid))
+                    n_jobs += 1
+                    continue
+                t.setdefault("new", []).append(jid)
+                # someone who was already on this job today (lead swapped inside the crew)
+                # is not told again; everyone else on it is
+                prev = (({job.get("lead_tech")} | set(_ids(job.get("helpers") or "")))
+                        if job["status"] == "Assigned" and (job.get("planned_date") or "") == d else set())
+                for m in [t["lead"]] + base + lent:
+                    if m not in prev:
+                        t.setdefault("new_for", {}).setdefault(m, []).append(jid)
                 c.execute("""UPDATE jobs SET lead_tech=?, helpers=?, planned_start=?, planned_end=?,
                     planned_at=?, planned_date=?, status='Assigned', board=? WHERE id=?""",
                     (t["lead"], helpers, t["start"] or None, t["end"] or None, now(), d,
@@ -933,12 +985,21 @@ async def save(req: Request):
             set_stage(c, jid)
             freed += 1
         c.commit()
+    # b590: each person hears only about the work that is NEW to them — a job added to
+    # their crew, or a job they were put on. Re-saving a plan nobody changed sends nothing.
+    n_new = 0
     for t in clean:
-        if t["jobs"]:
-            when = f" {t['start']}-{t['end']}" if t["start"] else ""
-            notify_users(t["members"], "📋 งานที่วางแผนให้คุณ / Your work plan",
-                         f"{t['name']}{when} · {d} · {len(t['jobs'])} งาน", "/")
-    return {"ok": True, "teams": sum(1 for t in clean if not t.get("auto")), "jobs": n_jobs,
+        n_new += len(t.get("new") or [])
+        when = f" {t['start']}-{t['end']}" if t["start"] else ""
+        by_set = {}
+        for m, jl in (t.get("new_for") or {}).items():
+            by_set.setdefault(tuple(dict.fromkeys(jl)), []).append(m)
+        for jl, who in by_set.items():
+            names = ", ".join((day_jobs.get(j) or {}).get("jobid") or str(j) for j in jl[:4])
+            more = f" +{len(jl) - 4}" if len(jl) > 4 else ""
+            notify_users(who, "📋 งานใหม่ในแผน / New work in your plan",
+                         f"{t['name']}{when} · {d} · งานใหม่ {len(jl)} งาน: {names}{more}", "/")
+    return {"ok": True, "teams": sum(1 for t in clean if not t.get("auto")), "jobs": n_jobs, "new_jobs": n_new,
             "kept_own_day": n_kept_day, "unassigned": freed,
             "pm_created": made, "already_started": n_started, "no_crew": n_no_tech,
             "no_crew_teams": no_crew_names,
@@ -974,7 +1035,7 @@ def _grp(s):
             else "working" if s in WORKING_ST else "assigned")
 
 
-def _tech_jobs(c, fac, d_from, d_to, open_any, done_day=None):
+def _tech_jobs(c, fac, d_from, d_to, open_any, done_day=None, u=None):
     """The plant's technicians and, per technician, the jobs they lead or help on.
 
     Window: planned day in [d_from, d_to]; with `open_any` also every unfinished job
@@ -986,6 +1047,10 @@ def _tech_jobs(c, fac, d_from, d_to, open_any, done_day=None):
     techs = [dict(r) for r in c.execute(
         "SELECT id, name, username, COALESCE(can_login,1) cl, photo FROM users"
         " WHERE active=1 AND role='technician' AND (factory_id=? OR COALESCE(factory_id,0)=0) ORDER BY name", (fac,))]
+    if u is not None and u.get("role") in ("planner", "manager"):   # b599: AC planner sees AC technicians; plant planners do not
+        from .elec import is_ac_planner, ac_ids
+        _acs, _ac = ac_ids(c, fac), is_ac_planner(u)
+        techs = [t for t in techs if (t["id"] in _acs) == _ac]
     where = "j.planned_date BETWEEN ? AND ?"
     args = [d_from, d_to]
     if open_any:
@@ -1046,7 +1111,7 @@ async def by_tech(req: Request, d_from: str = "", d_to: str = "", open_any: int 
     if d_from > d_to:
         d_from, d_to = d_to, d_from
     with closing(db()) as c:
-        techs, by = _tech_jobs(c, fac, d_from, d_to, open_any)
+        techs, by = _tech_jobs(c, fac, d_from, d_to, open_any, u=_as_ac(req, u))
     out = []
     for t in techs:
         jobs = sorted(by[t["id"]], key=lambda j: (j.get("planned_date") or "9999", j["jobid"] or ""))
@@ -1081,7 +1146,7 @@ async def by_tech_export(req: Request, d_from: str = "", d_to: str = "", open_an
     if d_from > d_to:
         d_from, d_to = d_to, d_from
     with closing(db()) as c:
-        techs, by = _tech_jobs(c, fac, d_from, d_to, open_any)
+        techs, by = _tech_jobs(c, fac, d_from, d_to, open_any, u=_as_ac(req, u))
         fcode = (c.execute("SELECT code FROM factories WHERE id=?", (fac,)).fetchone() or {"code": ""})["code"]
     th = (lang or "").upper() == "TH"
     ql = (q or "").strip().lower()
@@ -1187,7 +1252,10 @@ async def tech_now(req: Request):
     t0 = today()
     nw = datetime.now()
     with closing(db()) as c:
-        techs, by = _tech_jobs(c, fac, t0, t0, 1, done_day=t0)
+        techs, by = _tech_jobs(c, fac, t0, t0, 1, done_day=t0, u=_as_ac(req, u))
+        from .elec import ac_ids as _aci
+        _acset = _aci(c)                     # b599: AC technicians sign in as themselves — always listed
+        _acself = lambda i: i in _acset      # noqa: E731
         ids = sorted({j["id"] for js in by.values() for j in js})
         segs = {}
         for i in range(0, len(ids), 500):
@@ -1221,7 +1289,7 @@ async def tech_now(req: Request):
     out, late, wait, seen_l, seen_w = [], [], [], set(), set()
     for t in techs:
         js = by[t["id"]]
-        if t["cl"] and not js:
+        if t["cl"] and not js and not _acself(t["id"]):
             continue
         today_js = [j for j in js if j.get("planned_date") == t0 or str(j.get("done_at") or "")[:10] == t0]
         k = {"assigned": 0, "working": 0, "accept": 0, "done": 0}
@@ -1463,3 +1531,9 @@ def _fix_text(j):
     if str(j.get("solution") or "").strip():
         parts.append(str(j["solution"]).strip())
     return _clip(" → ".join(parts), 260)
+
+
+def _as_ac(req, u):
+    """b601: see elec.as_ac — the admin's ❄️ Air-con Planning view."""
+    from .elec import as_ac
+    return as_ac(req, u)

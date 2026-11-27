@@ -412,8 +412,8 @@ async def add_user(req: Request):
                  b.get("login_id") or None))
             if b.get("can_report") and b.get("role") == "technician":
                 c.execute("UPDATE users SET can_report=1 WHERE id=?", (uid,))
-            if b.get("team") == "CE":
-                c.execute("UPDATE users SET team='CE' WHERE id=?", (uid,))
+            if b.get("team") in ("CE", "AC"):         # b599: + Central Air Conditioning
+                c.execute("UPDATE users SET team=? WHERE id=?", (b.get("team"), uid))
             c.commit()
         except Exception:
             raise HTTPException(400, "username already exists")
@@ -559,7 +559,7 @@ async def edit_user(uid: int, req: Request):
         if "shared_login" in sets:         # b406: department (shared) login tick
             sets["shared_login"] = 1 if sets["shared_login"] else 0
         if "team" in sets:                 # b392: only two answers exist
-            sets["team"] = "CE" if sets["team"] == "CE" else ""
+            sets["team"] = sets["team"] if sets["team"] in ("CE", "AC") else ""      # b599: + AC
         if "can_report" in sets:
             sets["can_report"] = 1 if sets["can_report"] else 0
             try:                          # a signed-in phone picks it up without logging out

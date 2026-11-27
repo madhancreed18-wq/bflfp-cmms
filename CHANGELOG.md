@@ -1,6 +1,151 @@
 # Changelog — BFLFP CMMS
 All notable changes. Format: version · date · changes. Newest on top.
 
+## CMMS b604 — 2026-11-25 (❄️ Air-con dashboard — AC team reviewed on its own, still counted in the plants)
+- Admin › ❄️ Air-con Planning › "Air-con dashboard": the normal dashboard (PM compliance, CM closed, BD %,
+  availability, weekly PM/CM %, PM daily, downtime, report extras) counted over the Central Air
+  Conditioning team's jobs and machines only, for the plant picked. A blue banner says so.
+- The AC planner's own Dashboard is the AC dashboard.
+- The plant's dashboard is unchanged: AC work stays in the plant's numbers.
+- How: those dashboard / KPI calls run with a per-request read scope (database.SCOPE) that reads `jobs`
+  and `machines` through the AC team's job / machine ids (elec.ac_scope_ids, cached 1 min). SELECTs
+  only, that request only. Checked on the copy: BFL machines 716 -> 39, PM planned 830 -> 34.
+- Files: server/database.py, elec.py, app.py; static/index.html, static/sw.js.
+
+## CMMS b603 — 2026-11-25 (❄️ Air-con asset list page)
+- New page "Air-con asset list" — in the admin's ❄️ Air-con Planning menu, and in the AC planner's menu
+  after Assets. Every air-con machine of all 3 plants: plant, code, name, location · floor, class, PM
+  checklist group, PM frequency, AC team ✓ / No checklist group / Check, and what to check.
+- Lists the machines in the AC team's checklist groups AND the ones that look like air-con but are not in
+  the team yet (a new unit with no checklist group, a chiller, a cold room), so the list can be checked.
+- Filters: plant (All / BFL / BFLFP / BFLPC) and All / In AC team / To check; search; download as CSV
+  (opens in Excel). API: GET /api/elec/ac-assets (admin, Engineering Center, AC team).
+- Files: server/elec.py, static/index.html, static/sw.js.
+
+## CMMS b602 — 2026-11-25 (BFLFP "เครื่องปรับอากาศ" checklist group joins Central Air Conditioning)
+- The AC checklist groups are found by name; "เครื่องปรับอากาศ" (BFLFP, 6 split units) was missed. The
+  name list now has it and is applied once more on start ("ac:seed2"). Chiller and cold-room groups are
+  NOT included — the plant decides. File: server/elec.py.
+
+## CMMS b601 — 2026-11-25 (admin menu: ❄️ Air-con Planning)
+- Admins get a "❄️ Air-con Planning" menu beside "⚡ Electrical Planning": Plan calendar, PM plan, CM Plan,
+  Jobs and Assigned jobs of the Central Air Conditioning team — the same screens the AC planner sees,
+  on the plant picked (BFL / BFLFP / BFLPC). The assign board opened from there is the AC board.
+- Leaving the menu (any other page) goes back to the plant's own screens.
+- How: the page adds ?ac=1 to its list / calendar / board / manpower calls while in that menu; the
+  server honours it for admins only (elec.as_ac) and only to decide what to show.
+- Files: server/elec.py, jobs.py, pm.py, teams.py, manpower.py; static/index.html, static/sw.js.
+
+## CMMS b600 — 2026-11-25 (air-conditioning symptoms for the report screen)
+- 15 new symptoms, category Air Condition, on all three plants (added once at start-up; one an admin later
+  deletes stays deleted). With the 6 already there, the list has 21. Each one routes the job to Central
+  Air Conditioning (b599):
+  weak/uneven cooling · weak airflow / filter clogged · compressor not running · compressor cutting out ·
+  indoor fan coil not running · outdoor condensing fan not running · ice on coil/pipe · refrigerant leak /
+  low gas · drain pump / tray overflowing · bad smell · error code · breaker tripped · thermostat /
+  temperature setting · coil dirty, needs cleaning · VRF system down (several units).
+- File: server/db.py.
+
+## CMMS b599 — 2026-11-25 (Central Air Conditioning team — PM, CM and planning, all 3 plants)
+- New team in Users › edit: "❄️ Central Air Conditioning" (users.team = 'AC'), beside Central Engineering
+  – Electrical. Tag the AC planner(s) and AC technicians and file them under ALL plants.
+- What is AC work: PM on a machine whose PM sheet is an air-conditioning sheet (pm_templates.team = 'AC',
+  seeded once from the sheet names — BFL "AIR CONDITIONER", BFLFP "คอยเย็นแอร์", BFLPC "AIR CONDITIONER
+  SYSTEM"), and corrective work whose Department is Air Conditioning (b594 picker).
+- AC planner: Jobs list, PM calendar, Assign-work board and Manpower show ONLY AC work and AC technicians,
+  on whichever plant is picked (BFL / BFLFP / BFLPC). Crews are kept apart from the plant's crews.
+- Plant planners / managers (and the Central Electrical planner) no longer see AC work on any of those.
+- Setting a job's Department to Air Conditioning notifies the AC planners ("❄️ New air-conditioning job").
+- Also scoped: the calendar's day numbers, the PM "To assign" side list, Assigned jobs (Now / Week / List)
+  and the board's day count. Not yet: Dashboard / KPI split by team (they show the whole plant).
+- Files: server/elec.py, teams.py, pm.py, jobs.py, admin.py, manpower.py; static/index.html, static/sw.js.
+
+## CMMS b598 — 2026-11-25 (PM checklist opens in a pop-up)
+- Clicking the "📋 Checklist" bar on a PM job now opens the checklist in a pop-up (job number, PM title,
+  machine, done x/y, then the table of points with result / remark / who / when) instead of
+  unfolding inside the card. Close with the button, Esc or a click outside. File: static/index.html.
+
+## CMMS b597 — 2026-11-25 (PM job: checklist instead of one long paragraph)
+- b596's side-by-side Two-part PM / Progress is undone — the job page is laid out as before.
+  (Department stays hidden on PM jobs.)
+- PM job › Reported issue: the description used to be the whole checklist run together as one
+  paragraph. It now shows the title (e.g. "PM · Weekly · CRANE") and a "📋 Checklist · 5 points ·
+  done 3/5" bar; click it to open the points as a table — No., point (⚡ = electrical point), method,
+  normal value, result (✓ OK / ✗ NG / waiting), remark, who and when. Click again to close.
+  Read live from the job's own PM sheet; a job with no sheet lists the points from its description.
+- Files: static/index.html, static/sw.js.
+
+## CMMS b596 — 2026-11-25 (job page: Two-part PM and Progress side by side)
+- On a PM job that has an electrical part, "Two-part PM" (left) and "Progress" (right) sit in one row
+  instead of two stacked cards — the whole stage of the work reads in one line. One column again on a
+  narrow screen / phone. Jobs without the two-part card are unchanged.
+- The Department picker (b594) is not shown on PM jobs — the PM sheet already splits plant / electrical.
+- Files: static/index.html, static/sw.js.
+
+## CMMS b595 — 2026-11-25 (blink only the job number — page no longer slows down)
+- Late / due-today jobs no longer blink the whole row (or the whole card on phones). The row / card keeps
+  a still colour (light red = late, light yellow = due today) and only the JOB NUMBER blinks.
+- The blink now changes the badge background only, which the graphics card animates by itself: with 118
+  late rows on screen the page spent ~1.3 s of every 5 s redrawing blinking rows; now ~0.
+- "Blink off" still stops it (the number stays red). Files: static/index.html, static/sw.js.
+
+## CMMS b594 — 2026-11-25 (job Department — planner can set it; Electrical & Control goes to Central Electrical)
+- "Trade" is now "Department" (แผนก (ช่าง)) on the job page, the jobs table column and its filter.
+  Departments: Mechanical · Electrical & Control · Automation · IT · Air Conditioning · Civil · Utility · Other.
+- When a job is saved the department is still worked out from the symptom (problem type). If it comes
+  out as Other / unknown, the planner sees a picker on the job page; the Save button appears only when
+  the choice changes. Once saved it shows the department with ✏️ beside it to change it again.
+- Electrical & Control sends a corrective job to Central Electrical (its planners get a notification);
+  any other department returns it to the plant. Works the same whoever sets it (plant or CE planner).
+- The planner's choice wins everywhere the trade is used: CE / plant job lists and boards, KPI by trade,
+  manpower "needed by type", the printed plan.
+- New columns jobs.trade / trade_by / trade_at (added on start). API: POST /api/jobs/{id}/trade.
+- Files: server/jobs.py, elec.py, db.py, database.py, kpi.py, manpower.py, planreport.py, teams.py, pm.py;
+  static/index.html, static/sw.js.
+
+## CMMS b593 — 2026-11-25 (Jobs table: 200 jobs per page)
+- Jobs › Table shows 200 jobs per page (100 / 200 / 500 can be picked; the choice is remembered).
+  Pager above and below the table: « ‹ 1 2 3 … 7 › » and "201–400 of 1,058 jobs".
+- Filters, chips, search and sort still run over EVERY job in the date range (1,200+ a month) first;
+  only the finished list is cut into pages. Chip counts and Export Excel use the whole filtered list,
+  not just the page on screen. A new filter, plant or date range starts again at page 1.
+- Replaces b592's "first 120 rows, then the rest": the browser now only ever lays out one page.
+- Tree view is unchanged. File: static/index.html (+ sw.js).
+
+## CMMS b592 — 2026-11-25 (Jobs page: switching plant takes ~5 s)
+- Measured on a copy of the live data (admin, Jobs › table, BFL -> BFLFP -> BFLPC): the job list is ~1,000
+  rows x 66 columns (2 MB), and the table is ~30,000 cells the browser must lay out before it shows
+  anything. On the plant server / PC these add up to the ~5 s.
+- /api/jobs: rows are written straight to JSON instead of through FastAPI's per-value encoder —
+  ~160 ms -> ~90 ms on the test copy (about 45 % less server time), and it now runs beside other
+  requests instead of holding them up.
+- Jobs table: the first 120 rows are drawn at once and the rest added right after, so the page appears
+  in ~0.2 s instead of waiting for the whole table (~1.2 s on the test PC). Nothing is hidden: every row
+  is there a moment later, and Export Excel / search / filters still use the full list.
+- Files: server/jobs.py, static/index.html, static/sw.js.
+
+## CMMS b591 — 2026-11-25 (whole app slow when changing pages — packing scan history)
+- System health showed 600+ "server lag" stalls and slow calls led by FG packing: /api/fg/scans 7 s on
+  average (15 s worst), /api/fg/slips-scan 8 s, /api/fg/summary 6.6 s. The server answers one request at
+  a time on its main loop, so while one of these ran every other page in every browser waited — that was
+  the "every page is slow".
+- Cause: "was this slip scanned / revived before" is asked per slip, and fg_log had no index by slip, so
+  each question read the plant's whole packing log (63,000 rows). New index fg_log(factory_id, kind,
+  ref_id, action) — one day's scan history: 1.7 s -> 0.01 s on the test copy; each scan also faster.
+- /api/fg/scans and /api/fg/summary now run beside other requests instead of in front of them.
+- The index is built once when the server starts (a few seconds). File: server/fg.py.
+
+## CMMS b590 — 2026-11-25 (plan all day · only new work goes to the technician)
+- The 12:00 cut-off is gone: today can be planned and assigned all day (Assign-work board, Issue plan,
+  calendar double-click). Only a day that has already passed is closed ("This day has passed — plan today").
+- Save & assign on a day that already has a plan: a job that was already Assigned to that crew's lead on
+  that day is the same assignment — it keeps its planned time and is NOT sent again. Only work new to a
+  crew (or a person newly put on a job / crew) is announced: "📋 New work in your plan · Team A · 1 new job:
+  PRM-2611-630". Re-saving a plan nobody changed sends nothing. The save message says how many new jobs
+  were sent.
+- Today's plan sheet is brought up to date on every Save & assign, all day (same plan number).
+- Files: server/teams.py, server/planreport.py, static/index.html, static/sw.js.
+
 ## CMMS b589 — 2026-11-23 (admin login stuck on a white login page — PR app tile)
 - Admins (and anyone with a PR role who gets the "choose an app" screen) were left on the login form with
   a white background after pressing Login. Since the PR app was added, fnbar.js lists 'pr' as an app, but
