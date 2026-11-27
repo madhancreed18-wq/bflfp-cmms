@@ -649,19 +649,25 @@ function trackDlg(k){
   const sts=k==='pr'?ME.pr_statuses:ME.po_statuses;
   const cur=k==='pr'?(d.pr_status==='cancelled'?'cancelled':(short?'approved':'pending_approval')):(d.po_status||'');
   modal(`<h2>${k==='pr'?L('เลข PR','PR number'):L('เลข PO','PO number')} · ${esc(d.doc_code)}</h2>
-   <label class="f">${k==='pr'?L('เลข PR','PR number'):L('เลขที่','Number')} ${k==='pr'?`<div class="pfx"><b>PR</b><input id="tnum" value="${esc(short)}" placeholder="YYMM-XXXX" maxlength="9" inputmode="numeric" autocomplete="off" oninput="prFix(this);prSync()" onblur="prFix(this)"></div>`
+   <label class="f">${k==='pr'?L('เลข PR','PR number'):L('เลขที่','Number')} ${k==='pr'?`<div class="pfx"><b>PR</b><input id="tnum" value="${esc(short||yymm()+'-')}" placeholder="YYMM-XXXX" maxlength="9" inputmode="numeric" autocomplete="off" oninput="prFix(this);prSync()" onblur="prFix(this)"></div>`
       :`<div style="display:flex;align-items:center;gap:6px"><b class="mono">${esc(pfx)}-PO</b><input class="in mono" id="tnum" value="${esc(short)}" placeholder="XXXX-XXXX" style="text-transform:uppercase"></div>`}</label>
-   ${k==='pr'?`<div class="muted" style="margin:6px 0">${L('รูปแบบ PRYYMM-XXXX โดย YY คือปี ค.ศ. 2 หลัก และ MM คือเดือน เช่น PR2611-0001','Format PRYYMM-XXXX: YY = 2-digit year (A.D.), MM = month, e.g. PR2611-0001')}${d.pr_date?`<br>${L('บันทึกเมื่อ','Recorded on')} ${dmy(d.pr_date)}`:''}</div>`:''}
+   ${k==='pr'?`<div class="muted" style="margin:6px 0">${L('YYMM (ปี ค.ศ. 2 หลัก + เดือน) เติมให้ตามวันที่ปัจจุบัน กรอกเฉพาะ XXXX เช่น PR2611-0001','YYMM (2-digit year + month) is filled in from today; type only XXXX, e.g. PR2611-0001')}${d.pr_date?`<br>${L('บันทึกเมื่อ','Recorded on')} ${dmy(d.pr_date)}`:''}</div>`:''}
    <label class="f" style="margin-top:8px">${k==='pr'?L('สถานะเลข PR','PR status'):L('สถานะ','Status')}<select class="in" id="tst" onchange="$('#tcw').classList.toggle('hidden',this.value!=='cancelled')">${k==='po'?'<option value="">—</option>':''}${Object.entries(sts).map(([v,t])=>`<option value="${v}" ${cur===v?'selected':''}>${esc(T(t))}</option>`).join('')}</select></label>
    ${k==='po'?`<label class="f" style="margin-top:8px">${L('วันที่','Date')}<input type="date" class="in" id="tdt" value="${esc(d[k+'_date']||'')}"></label>`:''}
    <label class="f ${cur==='cancelled'?'':'hidden'}" id="tcw" style="margin-top:8px">${L('เหตุผลที่ยกเลิก','Cancel reason')}<textarea class="in" id="tcr" rows="2" maxlength="500">${esc(d[k+'_cancel_reason']||'')}</textarea></label>
    <div id="merr"></div><div class="btns" style="margin-top:12px"><button class="btn pri" onclick="saveTrack('${k}')">${L('บันทึก','Save')}</button><button class="btn" onclick="close_()">${L('ปิด','Close')}</button></div>`);
+  if(k==='pr'){const i=$('#tnum');i.focus();i.setSelectionRange(i.value.length,i.value.length);}
 }
 /* only digits go after the fixed "PR": keeps 8 digits and puts the dash in (YYMM-XXXX) */
-function prFix(el){const d=el.value.replace(/^\s*PR/i,'').replace(/\D/g,'').slice(0,8);const v=d.length>4?d.slice(0,4)+'-'+d.slice(4):d;if(el.value!==v)el.value=v;}
+function prFix(el){const d=el.value.replace(/^\s*PR/i,'').replace(/\D/g,'').slice(0,8);
+  const v=d.length>4||(d.length===4&&el.value.includes('-'))?d.slice(0,4)+'-'+d.slice(4):d;if(el.value!==v)el.value=v;}
+/* this month as YYMM (2-digit A.D. year + month), from the computer's date */
+const yymm=()=>today().slice(2,4)+today().slice(5,7);
+/* the number to save: only YYMM filled in (no XXXX typed) counts as no number */
+const prNum=()=>{const v=$('#tnum').value.trim();return /^\d{4}-?$/.test(v)?'':v;};
 /* the PR status follows the number: typing one = approved, clearing it = waiting (cancelled stays) */
-function prSync(){const t=$('#tst');if(t.value==='cancelled')return;t.value=$('#tnum').value.trim()?'approved':'pending_approval';}
-async function saveTrack(k){try{CUR=await post(`/api/pr/requests/${CUR.id}/tracking/${k}`,{number:$('#tnum').value,status:$('#tst').value,date:k==='po'?$('#tdt').value:'',cancel_reason:$('#tcr').value});close_();drawDetail();counts();toast(L('บันทึกแล้ว','Saved'));}catch(e){$('#merr').innerHTML=err(e);}}
+function prSync(){const t=$('#tst');if(t.value==='cancelled')return;t.value=prNum()?'approved':'pending_approval';}
+async function saveTrack(k){try{CUR=await post(`/api/pr/requests/${CUR.id}/tracking/${k}`,{number:k==='pr'?prNum():$('#tnum').value,status:$('#tst').value,date:k==='po'?$('#tdt').value:'',cancel_reason:$('#tcr').value});close_();drawDetail();counts();toast(L('บันทึกแล้ว','Saved'));}catch(e){$('#merr').innerHTML=err(e);}}
 async function delReq(){if(!confirm(L(`ลบเอกสาร ${CUR.doc_code} และไฟล์แนบทั้งหมด? ย้อนกลับไม่ได้`,`Delete ${CUR.doc_code} and all its files? This cannot be undone.`)))return;
   try{await del('/api/pr/requests/'+CUR.id);toast(L('ลบแล้ว','Deleted'));counts();go('list');}catch(e){$('#derr').innerHTML=err(e);}}
 
