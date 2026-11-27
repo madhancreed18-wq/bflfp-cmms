@@ -123,7 +123,8 @@ PR_SFX = re.compile(r"[0-9]{2}(0[1-9]|1[0-2])-[A-Z0-9]{4}")
 PO_SFX = re.compile(r"[A-Z0-9]{4}-[A-Z0-9]{4}")
 SORTS = {"code": "doc_code", "date": "request_date", "company": "company", "department": "department",
          "requester": "requester_name", "supplier": "supplier_name", "total": "CAST(net_total AS REAL)",
-         "status": "status", "pr": "pr_number", "po": "po_number", "updated": "updated_at"}
+         "status": "status", "pr": "pr_number", "po": "po_number", "updated": "updated_at",
+         "book": "book_no", "purpose": "purpose"}
 
 
 def _bad(msg, code=400):
@@ -158,6 +159,10 @@ def ensure(c):
     c.execute("UPDATE pr_requests SET pr_number='PR'||pr_number "
               "WHERE COALESCE(pr_number,'')<>'' AND pr_number NOT LIKE 'PR%'")
     c.execute("UPDATE pr_requests SET status='pending_approval' WHERE status='waiting_quotation'")
+    # A PR number means approved. Requests numbered before that rule are still waiting: approve them.
+    c.execute("UPDATE pr_requests SET status='approved', pr_status='approved' "
+              "WHERE COALESCE(pr_number,'')<>'' AND status='pending_approval' "
+              "AND COALESCE(pr_status,'')<>'cancelled'")
     c.execute("CREATE INDEX IF NOT EXISTS ix_pr_req_date ON pr_requests(request_date)")
     c.execute("CREATE INDEX IF NOT EXISTS ix_pr_req_status ON pr_requests(status)")
     c.execute("""CREATE TABLE IF NOT EXISTS pr_items(
@@ -447,6 +452,7 @@ async def list_requests(req: Request):
         total = c.execute(f"SELECT COUNT(*) n FROM pr_requests{where}", p).fetchone()["n"]
         rows = [dict(r) for r in c.execute(
             f"SELECT id,doc_code,company,department,requester_name,supplier_name,request_date,purpose,"
+            f"purpose_other,book_no,sheet_no,"
             f"reason,amount_entered,grand_total,net_total,status,pr_number,pr_status,po_number,po_status,"
             f"updated_at FROM pr_requests{where} ORDER BY {col} {direction}, id DESC LIMIT ? OFFSET ?",
             p + [size, (page - 1) * size]).fetchall()]
@@ -456,13 +462,17 @@ async def list_requests(req: Request):
             "SELECT po_status, COUNT(*) n FROM pr_requests WHERE COALESCE(po_status,'')<>'' "
             "GROUP BY po_status").fetchall()}
         ids = [r["id"] for r in rows]
-        have = {}
+        have, items = {}, {}
         if ids:
             for f in c.execute(f"SELECT request_id, kind FROM pr_files WHERE request_id IN ({','.join('?' * len(ids))})",
                                ids).fetchall():
                 have.setdefault(f["request_id"], []).append(f["kind"])
+            for it in c.execute(f"SELECT request_id, description FROM pr_items WHERE request_id IN "
+                                f"({','.join('?' * len(ids))}) ORDER BY request_id, position, id", ids).fetchall():
+                items.setdefault(it["request_id"], []).append(it["description"] or "")
     for r in rows:
         r["files"] = have.get(r["id"], [])
+        r["items"] = items.get(r["id"], [])
     return {"rows": rows, "total": total, "page": page, "size": size, "counts": counts, "po_counts": po_counts}
 
 

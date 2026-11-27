@@ -90,8 +90,31 @@ def thai_text_checks():
           r["items"][:1])
 
 
+def numbered_pending_checks():
+    """ensure(): a request that already has a PR number but is still pending becomes approved."""
+    import sqlite3
+    sys.path.insert(0, ROOT)
+    from server import pr
+    c = sqlite3.connect(":memory:")
+    c.row_factory = sqlite3.Row
+    c.execute("CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT)")
+    pr.ensure(c)
+    for code, num, st, ps in (("A", "PR2611-0042", "pending_approval", "pending_approval"),
+                              ("B", "", "pending_approval", "pending_approval"),
+                              ("C", "PR2611-0043", "cancelled", "cancelled"),
+                              ("D", "PR2611-0044", "pending_approval", "cancelled")):
+        c.execute("INSERT INTO pr_requests(doc_code,pr_number,status,pr_status) VALUES(?,?,?,?)", (code, num, st, ps))
+    pr.ensure(c)
+    got = {r["doc_code"]: (r["status"], r["pr_status"]) for r in c.execute("SELECT * FROM pr_requests")}
+    check("numbered pending request -> approved", got["A"] == ("approved", "approved"), got["A"])
+    check("unnumbered request stays pending", got["B"][0] == "pending_approval", got["B"])
+    check("cancelled requests untouched", got["C"][0] == "cancelled" and got["D"][0] == "pending_approval",
+          (got["C"], got["D"]))
+
+
 def run():
     thai_text_checks()
+    numbered_pending_checks()
     adm = Client()
     st, me = adm.login("admin1")
     check("admin login", st == 200)

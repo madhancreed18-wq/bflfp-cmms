@@ -353,14 +353,23 @@ async function pgHome(){
 function table(rows,sortable){
   if(!rows.length)return `<div class="muted" style="padding:12px">${L('ไม่พบเอกสาร','No documents')}</div>`;
   const th=(k,t,c)=>sortable?`<th class="so ${c||''}" onclick="sortBy('${k}')">${t}${LISTQ.sort===k?(LISTQ.dir==='asc'?' ▲':' ▼'):''}</th>`:`<th class="${c||''}">${t}</th>`;
-  return `<div class="tw"><table><thead><tr>${th('code',L('รหัสเอกสาร','Document'))}${th('date',L('วันที่','Date'))}${th('company',L('บริษัท','Co.'),'hide-m')}${th('department',L('แผนก','Dept'),'hide-m')}
-   <th>${L('งาน/เหตุผล','Reason')}</th>${th('supplier','Supplier','hide-m')}${th('total',L('ยอดสุทธิ','Net'),'r')}${th('status',L('สถานะ','Status'))}${th('pr','PR','hide-m')}${th('po','PO','hide-m')}</tr></thead><tbody>
-   ${rows.map(r=>`<tr class="click" onclick="go('detail',${r.id})"><td class="nw"><b>${esc(r.doc_code)}</b>${r.files&&r.files.length?` <span title="${esc(r.files.join(', '))}">📎</span>`:''}</td><td class="nw">${dmy(r.request_date)}</td>
-    <td class="hide-m">${esc(r.company)}</td><td class="hide-m">${esc(r.department)}</td>
-    <td style="max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.reason)}<div class="muted">${esc(r.requester_name)}</div></td>
-    <td class="hide-m" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.supplier_name)||'<span class="muted">—</span>'}</td>
-    <td class="r">${r.amount_entered?money(r.net_total):'<span class="muted">—</span>'}</td><td>${pill(r.status)}</td>
-    <td class="hide-m nw mono">${esc(r.pr_number)||'<span class="muted">—</span>'}</td><td class="hide-m nw mono">${esc(r.po_number)||'<span class="muted">—</span>'}${r.po_status?'<br>'+pill(r.po_status,ME.po_statuses):''}</td></tr>`).join('')}</tbody></table></div>`;
+  const no='<span class="muted">—</span>',cut='max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+  const items=r=>{const a=(r.items||[]).filter(Boolean);if(!a.length)return no;
+    return a.slice(0,2).map(x=>`<div style="${cut}" title="${esc(x)}">${esc(x)}</div>`).join('')+(a.length>2?`<div class="muted">+${a.length-2} ${L('รายการ','more')}</div>`:'');};
+  const pur=r=>{const t=esc(T(ME.purposes[r.purpose])||r.purpose||'');return t?(r.purpose_other?`${t}<div class="muted" style="${cut}">${esc(r.purpose_other)}</div>`:t):no;};
+  const book=r=>r.book_no||r.sheet_no?`${esc(r.book_no||'—')} / ${esc(r.sheet_no||'—')}`:no;
+  return `<div class="tw"><table><thead><tr>${th('code',L('รหัสเอกสาร','Document'))}${th('book',L('เล่มที่ / เลขที่','Book / sheet'),'hide-m')}${th('company',L('บริษัท / แผนก','Co. / Dept'),'hide-m')}
+   <th>${L('รายการ','Items')}</th><th class="hide-m">${L('งาน/เหตุผล','Reason')}</th>${th('date',L('วันที่ขอซื้อ','Request date'))}${th('purpose',L('วัตถุประสงค์','Purpose'),'hide-m')}
+   ${th('status',L('สถานะ PR / เลข PR','PR status / no.'))}${th('po',L('สถานะ PO / เลข PO','PO status / no.'),'hide-m')}</tr></thead><tbody>
+   ${rows.map(r=>`<tr class="click" onclick="go('detail',${r.id})"><td class="nw"><b>${esc(r.doc_code)}</b>${r.files&&r.files.length?` <span title="${esc(r.files.join(', '))}">📎</span>`:''}</td>
+    <td class="hide-m nw">${book(r)}</td>
+    <td class="hide-m nw">${esc(r.company)}<div class="muted">${esc(r.department)}</div></td>
+    <td>${items(r)}</td>
+    <td class="hide-m"><div style="${cut}" title="${esc(r.reason)}">${esc(r.reason)||no}</div><div class="muted">${esc(r.requester_name)}</div></td>
+    <td class="nw">${dmy(r.request_date)}</td>
+    <td class="hide-m">${pur(r)}</td>
+    <td class="nw">${pill(r.status)}<div class="mono" style="margin-top:4px">${esc(r.pr_number)||no}</div></td>
+    <td class="hide-m nw">${r.po_status?pill(r.po_status,ME.po_statuses):no}<div class="mono" style="margin-top:4px">${esc(r.po_number)||no}</div></td></tr>`).join('')}</tbody></table></div>`;
 }
 function sortBy(k){if(LISTQ.sort===k)LISTQ.dir=LISTQ.dir==='asc'?'desc':'asc';else{LISTQ.sort=k;LISTQ.dir=k==='date'||k==='total'?'desc':'asc';}LISTQ.page=1;pgList();}
 function qs(o){return Object.entries(o).filter(([k,v])=>v!==''&&v!=null).map(([k,v])=>`${k}=${encodeURIComponent(v)}`).join('&');}
