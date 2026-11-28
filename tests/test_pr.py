@@ -187,6 +187,69 @@ def backup_ocr_checks():
           (method, calls))
 
 
+def tiny_png():
+    """A valid 1x1 PNG."""
+    import struct, zlib
+    chunk = lambda t, d: struct.pack(">I", len(d)) + t + d + struct.pack(">I", zlib.crc32(t + d) & 0xffffffff)
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 6, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(b"\x00\x00\x00\x00\x00")) + chunk(b"IEND", b""))
+
+
+def esign_checks(adm, u, ap, body, b64, ids):
+    """Saved signatures; requester -> checker -> approver; the approver's signature approves."""
+    png = "data:image/png;base64," + base64.b64encode(tiny_png()).decode()
+    st, d = u.req("POST", "/api/pr/requests", {**body, "reason": "e-sign test"})
+    rid = d["id"]
+    u.req("POST", f"/api/pr/requests/{rid}/files/quotation", {"name": "q.pdf", "data": b64})
+    st, x = u.req("POST", f"/api/pr/requests/{rid}/sign/requester")
+    check("sign without a saved signature refused", st == 400, msg(x))
+    st, x = u.req("PUT", "/api/pr/my-signature", {"image": "data:image/jpeg;base64,AAAA"})
+    check("non-PNG signature refused", st == 400)
+    big = "data:image/png;base64," + base64.b64encode(tiny_png() + b"\0" * (210 * 1024)).decode()
+    st, x = u.req("PUT", "/api/pr/my-signature", {"image": big})
+    check("signature over 200 KB refused", st == 400)
+    for cl in (u, ap, adm):
+        st, x = cl.req("PUT", "/api/pr/my-signature", {"image": png})
+    check("signature saved", st == 200)
+    st, me = u.req("GET", "/api/pr/me")
+    check("/me says the user has a signature", me.get("has_signature") is True)
+    st, x = ap.req("POST", f"/api/pr/requests/{rid}/sign/checker")
+    check("checker cannot sign before the requester", st == 400, msg(x))
+    st, x = ap.req("POST", f"/api/pr/requests/{rid}/sign/requester")
+    check("only the request's requester signs the requester box", st == 403, msg(x))
+    st, x = u.req("POST", f"/api/pr/requests/{rid}/sign/requester")
+    check("requester signs", st == 200 and x["signs"]["requester"]["user_id"] == ids["tech1"]
+          and x["signs"]["requester"]["image"] == png, msg(x))
+    st, x = u.req("POST", f"/api/pr/requests/{rid}/sign/checker")
+    check("the requester cannot also check", st == 403, msg(x))
+    st, x = ap.req("POST", f"/api/pr/requests/{rid}/sign/checker")
+    check("approver-role user signs as checker", st == 200 and "checker" in x["signs"], msg(x))
+    st, x = ap.req("POST", f"/api/pr/requests/{rid}/sign/approver")
+    check("the checker cannot also approve", st == 403, msg(x))
+    st, x = u.req("DELETE", f"/api/pr/requests/{rid}/sign/requester")
+    check("requester cannot unsign after the checker signed", st == 400, msg(x))
+    st, x = adm.req("POST", f"/api/pr/requests/{rid}/sign/approver")
+    check("approver signature approves the request", st == 200 and x["status"] == "approved"
+          and "approver" in x["signs"], (x.get("status"), msg(x)))
+    st, x = adm.req("DELETE", f"/api/pr/requests/{rid}/sign/approver")
+    check("removing the approver signature reopens it", st == 200 and x["status"] == "pending_approval"
+          and "approver" not in x["signs"], x.get("status"))
+    st, x = u.req("PUT", f"/api/pr/requests/{rid}", {**body, "reason": "e-sign test changed"})
+    check("editing a signed (not approved) request clears its signatures", st == 200 and x["signs"] == {},
+          x.get("signs"))
+    st, x = u.req("POST", f"/api/pr/requests/{rid}/sign/requester")
+    st, x = ap.req("POST", f"/api/pr/requests/{rid}/sign/checker")
+    st, x = adm.req("POST", f"/api/pr/requests/{rid}/sign/approver")
+    st, x = adm.req("POST", f"/api/pr/requests/{rid}/status", {"status": "reopen"})
+    check("reopen removes the approver signature", st == 200 and "approver" not in x["signs"]
+          and "checker" in x["signs"], list(x.get("signs", {})))
+    st, x = u.req("DELETE", "/api/pr/my-signature")
+    st, x = adm.req("GET", f"/api/pr/requests/{rid}")
+    check("deleting a saved signature keeps signed documents", "requester" in x["signs"], list(x["signs"]))
+    st, x = adm.req("DELETE", f"/api/pr/requests/{rid}")   # keep the later counts as they were
+    check("e-sign test request deleted", st == 200, msg(x))
+
+
 def run():
     thai_text_checks()
     backup_ocr_checks()
@@ -290,6 +353,8 @@ def run():
     check("approved request locked for requester", st == 403)
     st, x = ap.req("PUT", f"/api/pr/requests/{rid}", {**body, "reason": "Mixer paddle spare (urgent)"})
     check("approver may still edit an approved request", st == 200 and x["status"] == "approved", msg(x))
+
+    esign_checks(adm, u, ap, body, b64, ids)
 
     pa = Client(); pa.login("planner1")
     st, x = pa.req("POST", f"/api/pr/requests/{rid}/tracking/pr", {"number": "2611-0012"})

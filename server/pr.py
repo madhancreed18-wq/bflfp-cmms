@@ -184,6 +184,13 @@ def ensure(c):
         action TEXT DEFAULT '', summary TEXT DEFAULT '', details_json TEXT DEFAULT '{}',
         user_name TEXT DEFAULT '', legacy_id INTEGER DEFAULT 0, created_at TEXT DEFAULT '')""")
     c.execute("CREATE INDEX IF NOT EXISTS ix_pr_log_at ON pr_log(created_at)")
+    # e-sign: each person's saved signature, and the signatures put on a request (a copy of the
+    # picture, so changing a saved signature later does not change signed documents)
+    c.execute("""CREATE TABLE IF NOT EXISTS pr_user_signs(
+        user_id INTEGER PRIMARY KEY, image TEXT DEFAULT '', updated_at TEXT DEFAULT '')""")
+    c.execute("""CREATE TABLE IF NOT EXISTS pr_signs(
+        id INTEGER PRIMARY KEY AUTOINCREMENT, request_id INTEGER, slot TEXT, user_id INTEGER DEFAULT 0,
+        name TEXT DEFAULT '', image TEXT DEFAULT '', signed_at TEXT DEFAULT '', UNIQUE(request_id, slot))""")
     os.makedirs(FILES, exist_ok=True)
 
 
@@ -369,10 +376,42 @@ def _full(c, rid):
         "WHERE request_id=? ORDER BY position, id", (rid,)).fetchall()]
     d["files"] = _files(c, rid)
     d["ready"] = _ready(c, rid, d["amount_entered"])
+    d["signs"] = _signs(c, rid)
     d["log"] = [dict(x) for x in c.execute(
         "SELECT action,summary,user_name,created_at FROM pr_log WHERE request_id=? ORDER BY id DESC LIMIT 50",
         (rid,)).fetchall()]
     return d
+
+
+# ---------------------------------------------------------------- e-sign
+# The three boxes at the foot of the paper, signed in this order.
+SIGN_SLOTS = {"requester": ("ผู้ขอซื้อ", "Requested by"), "checker": ("ผู้ตรวจสอบ", "Checked by"),
+              "approver": ("ผู้อนุมัติ", "Approved by")}
+SIGN_ORDER = list(SIGN_SLOTS)
+CHECKER_ROLES = {"user", "approver", "super_admin"}
+MAX_SIGN_BYTES = 200 * 1024
+
+
+def _signs(c, rid):
+    return {r["slot"]: {"user_id": r["user_id"], "name": r["name"], "image": r["image"], "at": r["signed_at"]}
+            for r in c.execute("SELECT * FROM pr_signs WHERE request_id=?", (rid,)).fetchall()}
+
+
+def _clean_signature(image):
+    """A PNG picture as a data URL, at most MAX_SIGN_BYTES."""
+    image = (image or "").strip()
+    head = "data:image/png;base64,"
+    if not image.startswith(head):
+        raise _bad("ลายเซ็นต้องเป็นรูป PNG (signature must be a PNG picture)")
+    try:
+        raw = base64.b64decode(image[len(head):], validate=True)
+    except Exception:
+        raise _bad("ไฟล์ลายเซ็นเสีย (bad signature picture)")
+    if not raw.startswith(b"\x89PNG\r\n\x1a\n"):
+        raise _bad("ลายเซ็นต้องเป็นรูป PNG (signature must be a PNG picture)")
+    if len(raw) > MAX_SIGN_BYTES:
+        raise _bad("รูปลายเซ็นใหญ่เกิน 200 KB (signature picture too large)")
+    return head + base64.b64encode(raw).decode()
 
 
 def _may_edit(d, caps):
@@ -388,6 +427,8 @@ async def me(req: Request):
         cos = companies(c)
         deps = departments(c)
         people = requesters(c)
+        has_sign = bool(c.execute("SELECT 1 FROM pr_user_signs WHERE user_id=? AND image<>''",
+                                  (u["id"],)).fetchone())
         dep = ""
         try:
             r = c.execute("SELECT COALESCE(department,'') d FROM users WHERE id=?", (u["id"],)).fetchone()
@@ -402,7 +443,7 @@ async def me(req: Request):
             "company": COMPANY_OF_PLANT.get(plant, plant), "department": dep.upper(),
             "companies": cos, "departments": deps,
             "statuses": STATUSES, "purposes": PURPOSES, "pr_statuses": PR_STATUSES,
-            "po_statuses": PO_STATUSES, "payment_methods": PAYMENT_METHODS, "requesters": people, "roles": ROLE_LABELS, "vat_rate": str(VAT_RATE),
+            "po_statuses": PO_STATUSES, "payment_methods": PAYMENT_METHODS, "requesters": people, "has_signature": has_sign, "sign_slots": SIGN_SLOTS, "roles": ROLE_LABELS, "vat_rate": str(VAT_RATE),
             "max_file_mb": MAX_FILE // (1024 * 1024)}
 
 
@@ -636,6 +677,10 @@ async def update_request(req: Request, rid: int):
         if changed:
             _log(c, rid, old["doc_code"], "UPDATE", f"แก้ไข {old['doc_code']}: {', '.join(changed)}", _who(u),
                  {"changed": changed, "net_total": [old["net_total"], head["net_total"]]})
+            if old["status"] != "approved" and _signs(c, rid):
+                c.execute("DELETE FROM pr_signs WHERE request_id=?", (rid,))
+                _log(c, rid, old["doc_code"], "UNSIGN",
+                     f"{old['doc_code']}: ล้างลายเซ็นเพราะแก้ไขเอกสาร (signatures cleared: document changed)", _who(u))
         c.commit()
         d = _full(c, rid)
     d["can_edit"] = _may_edit(d, caps)
@@ -661,10 +706,127 @@ async def set_status(req: Request, rid: int):
             raise _bad("สถานะไม่ถูกต้อง (bad status)")
         c.execute("UPDATE pr_requests SET status=?, status_note=?, status_by=?, status_at=?, updated_at=? WHERE id=?",
                   ("pending_approval" if want == "reopen" else want, note, _who(u), now(), now(), rid))
+        if want == "reopen":
+            c.execute("DELETE FROM pr_signs WHERE request_id=? AND slot='approver'", (rid,))
         st = "pending_approval" if want == "reopen" else want
         _log(c, rid, d["doc_code"], "STATUS",
              f"{d['doc_code']}: {STATUSES[d['status']][0]} → {STATUSES[st][0]}" + (f" ({note})" if note else ""),
              _who(u), {"from": d["status"], "to": st, "note": note})
+        c.commit()
+        out = _full(c, rid)
+    out["can_edit"] = _may_edit(out, caps)
+    return out
+
+
+@router.get("/my-signature")
+async def my_signature(req: Request):
+    u, role, caps = ctx(req, "view")
+    with closing(db()) as c:
+        r = c.execute("SELECT image, updated_at FROM pr_user_signs WHERE user_id=?", (u["id"],)).fetchone()
+    return {"image": r["image"] if r else "", "updated_at": r["updated_at"] if r else ""}
+
+
+@router.put("/my-signature")
+async def save_signature(req: Request):
+    u, role, caps = ctx(req, "view")
+    image = _clean_signature((await req.json()).get("image"))
+    with closing(db()) as c:
+        c.execute("DELETE FROM pr_user_signs WHERE user_id=?", (u["id"],))
+        c.execute("INSERT INTO pr_user_signs(user_id,image,updated_at) VALUES(?,?,?)", (u["id"], image, now()))
+        _log(c, 0, "", "SIGNATURE", f"{_who(u)} บันทึกลายเซ็น (saved signature)", _who(u))
+        c.commit()
+    return {"ok": True, "image": image}
+
+
+@router.delete("/my-signature")
+async def delete_signature(req: Request):
+    u, role, caps = ctx(req, "view")
+    with closing(db()) as c:
+        c.execute("DELETE FROM pr_user_signs WHERE user_id=?", (u["id"],))
+        c.commit()
+    return {"ok": True}
+
+
+def _may_sign(d, slot, u, role, caps, signs):
+    """Raise unless this person may sign this box now. Order: requester, checker, approver."""
+    if d["status"] == "cancelled":
+        raise _bad("เอกสารถูกยกเลิกแล้ว (request cancelled)")
+    if slot in signs:
+        raise _bad(f"ช่อง{SIGN_SLOTS[slot][0]}ลงนามแล้ว (already signed)")
+    before = SIGN_ORDER[:SIGN_ORDER.index(slot)]
+    waiting = [SIGN_SLOTS[k][0] for k in before if k not in signs]
+    if waiting:
+        raise _bad(f"ต้องให้{', '.join(waiting)}ลงนามก่อน (sign in order)")
+    if slot == "requester":
+        if u["id"] != d.get("requester_id"):
+            raise _bad("เฉพาะผู้ขอซื้อของเอกสารนี้ลงนามช่องนี้ได้ (only the requester)", 403)
+    elif slot == "checker":
+        if role not in CHECKER_ROLES:
+            raise _bad("ไม่มีสิทธิ์ลงนามผู้ตรวจสอบ (no permission to check)", 403)
+        if u["id"] == signs["requester"]["user_id"]:
+            raise _bad("ผู้ขอซื้อตรวจสอบเอกสารของตัวเองไม่ได้ (the requester cannot check)", 403)
+    else:
+        if "approve" not in caps:
+            raise _bad("ไม่มีสิทธิ์อนุมัติ (no permission to approve)", 403)
+        if u["id"] == signs["checker"]["user_id"]:
+            raise _bad("ผู้ตรวจสอบอนุมัติเอกสารเดียวกันไม่ได้ (the checker cannot also approve)", 403)
+
+
+@router.post("/requests/{rid}/sign/{slot}")
+async def sign_request(req: Request, rid: int, slot: str):
+    """Put the person's saved signature in a box. The approver's signature approves the request."""
+    if slot not in SIGN_SLOTS:
+        raise _bad("bad slot", 404)
+    u, role, caps = ctx(req, "view")
+    with closing(db()) as c:
+        d = _get(c, rid)
+        signs = _signs(c, rid)
+        _may_sign(d, slot, u, role, caps, signs)
+        r = c.execute("SELECT image FROM pr_user_signs WHERE user_id=?", (u["id"],)).fetchone()
+        if not r or not r["image"]:
+            raise _bad("ยังไม่มีลายเซ็น — ตั้งค่าที่เมนู ลายเซ็นของฉัน ก่อน (save your signature first)")
+        if slot == "approver" and d["status"] != "approved" and not _ready(c, rid, d["amount_entered"]):
+            raise _bad("ต้องมียอดรวมและแนบใบเสนอราคาก่อนอนุมัติ (amount + quotation needed before approval)")
+        at = now()
+        c.execute("INSERT INTO pr_signs(request_id,slot,user_id,name,image,signed_at) VALUES(?,?,?,?,?,?)",
+                  (rid, slot, u["id"], _who(u), r["image"], at))
+        _log(c, rid, d["doc_code"], "SIGN", f"{d['doc_code']}: {SIGN_SLOTS[slot][0]} ลงนาม (signed)", _who(u),
+             {"slot": slot})
+        if slot == "approver" and d["status"] != "approved":
+            c.execute("UPDATE pr_requests SET status='approved', status_note='', status_by=?, status_at=?, "
+                      "updated_at=? WHERE id=?", (_who(u), at, at, rid))
+            _log(c, rid, d["doc_code"], "STATUS",
+                 f"{d['doc_code']}: {STATUSES[d['status']][0]} → {STATUSES['approved'][0]} (ลงนามอนุมัติ)",
+                 _who(u), {"from": d["status"], "to": "approved", "by_sign": True})
+        c.commit()
+        out = _full(c, rid)
+    out["can_edit"] = _may_edit(out, caps)
+    return out
+
+
+@router.delete("/requests/{rid}/sign/{slot}")
+async def unsign_request(req: Request, rid: int, slot: str):
+    """The signer (or the super admin) takes a signature off while no later box is signed.
+    Taking the approver's off reopens a request it approved (unless a PR number approved it)."""
+    if slot not in SIGN_SLOTS:
+        raise _bad("bad slot", 404)
+    u, role, caps = ctx(req, "view")
+    with closing(db()) as c:
+        d = _get(c, rid)
+        signs = _signs(c, rid)
+        if slot not in signs:
+            raise _bad("ช่องนี้ยังไม่ได้ลงนาม (not signed)")
+        if signs[slot]["user_id"] != u["id"] and role != "super_admin":
+            raise _bad("ยกเลิกได้เฉพาะลายเซ็นของตัวเอง (only your own signature)", 403)
+        later = [SIGN_SLOTS[k][0] for k in SIGN_ORDER[SIGN_ORDER.index(slot) + 1:] if k in signs]
+        if later:
+            raise _bad(f"{', '.join(later)}ลงนามแล้ว ต้องยกเลิกช่องนั้นก่อน (a later box is signed)")
+        c.execute("DELETE FROM pr_signs WHERE request_id=? AND slot=?", (rid, slot))
+        _log(c, rid, d["doc_code"], "UNSIGN", f"{d['doc_code']}: ยกเลิกลายเซ็น{SIGN_SLOTS[slot][0]} (signature removed)",
+             _who(u), {"slot": slot})
+        if slot == "approver" and d["status"] == "approved" and not d.get("pr_number"):
+            c.execute("UPDATE pr_requests SET status='pending_approval', status_by=?, status_at=?, updated_at=? "
+                      "WHERE id=?", (_who(u), now(), now(), rid))
         c.commit()
         out = _full(c, rid)
     out["can_edit"] = _may_edit(out, caps)
@@ -765,6 +927,7 @@ async def delete_request(req: Request, rid: int):
         names = [r["stored_name"] for r in c.execute("SELECT stored_name FROM pr_files WHERE request_id=?", (rid,))]
         c.execute("DELETE FROM pr_items WHERE request_id=?", (rid,))
         c.execute("DELETE FROM pr_files WHERE request_id=?", (rid,))
+        c.execute("DELETE FROM pr_signs WHERE request_id=?", (rid,))
         c.execute("DELETE FROM pr_requests WHERE id=?", (rid,))
         _log(c, rid, d["doc_code"], "DELETE", f"ลบเอกสาร {d['doc_code']} (deleted)", _who(u),
              {"net_total": d["net_total"], "reason": d["reason"][:200]})

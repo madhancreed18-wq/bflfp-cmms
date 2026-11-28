@@ -177,6 +177,16 @@ input.in,select.in,textarea.in{width:100%}
 .pp-sign .ln i{flex:1;border-bottom:1px dotted #94A3B8;height:18px}
 .pp-sign .pn{display:flex;gap:6px;align-items:flex-end;justify-content:center;margin:26px 0 0 40px}
 .pp-sign .pn span{flex:1;text-align:center;border-bottom:1px dotted #94A3B8}.pp-sign .pn i{flex:1;border-bottom:1px dotted #94A3B8}
+.pp-sign .ln{position:relative}
+.pp-sign img.sg{position:absolute;left:58%;bottom:1px;transform:translateX(-50%);max-height:52px;max-width:62%;pointer-events:none}
+.pp-sign .pn b{flex:1;text-align:center;font-weight:400;border-bottom:1px dotted #94A3B8}
+.pp-sign .sd{text-align:center;margin:6px 0 0 40px;font-size:12px;color:#475569}
+.sgbox{border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center;background:#fff}
+.sgbox .im{height:70px;display:flex;align-items:center;justify-content:center}.sgbox .im img{max-height:66px;max-width:100%}
+.sgbox h3{margin:0 0 6px;font-size:14px}.sgbox .who{font-size:13px;margin-top:4px}.sgbox .when{font-size:12px;color:#64748B}
+.sggrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media (max-width:820px){.sggrid{grid-template-columns:1fr}}
+#pad{width:100%;max-width:560px;height:200px;border:1px dashed #94A3B8;border-radius:12px;background:#fff;touch-action:none;cursor:crosshair;display:block}
 .pp-sign select{flex:1;min-width:0;border:0;border-bottom:1px dotted #94A3B8;background:transparent;font-size:13.5px;padding:2px;outline:none;text-align:center;text-align-last:center}
 /* The printed paper: a copy of the form laid out at 1120px, scaled (--pz) onto one A5 landscape page. */
 #printArea{position:fixed;left:-20000px;top:0;width:1120px;pointer-events:none}
@@ -275,6 +285,7 @@ const IC={
  appr:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>',
  sup:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-6h6v6"/></svg>',
  log:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+ pen:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21c3-1 5-3 7-6M14 4l6 6-9 9H5v-6z"/></svg>',
  users:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M22 21a6 6 0 0 0-4-5.6"/></svg>'};
 function pages(){return [
   ['home',IC.home,L('แดชบอร์ด','Dashboard'),'view'],
@@ -282,8 +293,12 @@ function pages(){return [
   ['new',IC.add,L('สร้าง PR','New PR'),'create'],
   ['approve',IC.appr,L('รออนุมัติ','To approve'),'approve','q'],
   ['sup',IC.sup,L('Supplier','Suppliers'),'suppliers_view'],
+  ['sign',IC.pen,L('ลายเซ็นของฉัน','My signature'),'view'],
   ['log',IC.log,L('ประวัติความเคลื่อนไหว','Activity log'),'view_log'],
-  ['users',IC.users,L('ผู้ใช้งาน PR','PR users'),'users']].filter(p=>can(p[3]));}
+  ['users',IC.users,L('ผู้ใช้งาน PR','PR users'),'users']].filter(p=>can(p[3])&&!(MENU_HIDDEN[ME.pr_role]||[]).includes(p[0]));}
+/* menus a role does not see (its rights stay: an approver may still edit a request it approves) */
+const MENU_HIDDEN={approver:['new','sup','log']};
+const showMenu=k=>pages().some(p=>p[0]===k);
 let QN=0;
 function buildNav(){
   $('#side').innerHTML=pages().map(p=>`<button id="nv-${p[0]}" onclick="go('${p[0]}')">${p[1]}<span>${esc(p[2])}</span>${p[4]==='q'?`<span class="bdg" id="qbdg">${QN||''}</span>`:''}</button>`).join('');
@@ -299,7 +314,7 @@ function mark(){
 function go(p,arg,keep){
   PAGE=p;ARG=arg==null?null:arg;mark();window.scrollTo(0,0);
   const h='#'+p+(ARG!=null?'/'+ARG:'');if(!keep&&location.hash!==h)history.pushState(null,'',h);
-  const f={home:pgHome,list:pgList,new:()=>pgForm(null),edit:()=>pgForm(ARG),detail:()=>pgDetail(ARG),approve:pgApprove,sup:pgSup,log:pgLog,users:pgUsers}[p]||pgHome;
+  const f={home:pgHome,list:pgList,new:()=>pgForm(null),edit:()=>pgForm(ARG),detail:()=>pgDetail(ARG),approve:pgApprove,sign:pgSign,sup:pgSup,log:pgLog,users:pgUsers}[p]||pgHome;
   f();
 }
 window.addEventListener('popstate',()=>route());
@@ -336,7 +351,7 @@ async function pgHome(){
   <div class="tiles"><button class="tile" style="--c:#475569" title="${L('ทุกปี · กดเพื่อดู','all years · tap to open')}" onclick="LISTQ={page:1,size:20,sort:'date',dir:'desc'};go('list')"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICO.doc}</svg></span><span><div class="l">${L('เอกสารทั้งหมด','All requests')}</div><div class="v">${Object.values(st).reduce((a,n)=>a+(+n||0),0)}</div></span></button>${tile('pending_approval','#1B75BC','clock')}${tile('approved','#15803D','ok')}${tile('cancelled','#B91C1C','x')}${poTile('not_sent_to_supplier','#B45309','box')}${poTile('sent_to_supplier','#7C3AED','send')}</div>
   <div class="bar"><label class="f">${L('ปี','Year')}<select class="in" onchange="YEAR=+this.value;pgHome()">${s.years.map(y=>`<option ${y===s.year?'selected':''}>${y}</option>`).join('')}</select></label>
    <label class="f">${L('บริษัท','Company')}<select class="in" onchange="DCO=this.value;pgHome()"><option value="">${L('ทุกบริษัท','All companies')}</option>${ME.companies.map(c=>`<option value="${c.code}" ${c.code===DCO?'selected':''}>${esc(c.code)}</option>`).join('')}</select></label>
-   <div class="sp" style="flex:1"></div>${can('create')?`<button class="btn pri" onclick="go('new')">＋ ${L('สร้าง PR','New PR')}</button>`:''}</div>
+   <div class="sp" style="flex:1"></div>${showMenu('new')?`<button class="btn pri" onclick="go('new')">＋ ${L('สร้าง PR','New PR')}</button>`:''}</div>
   <div class="grid2" style="margin-bottom:12px">
    <div class="card"><div class="muted">${L('ยอดสุทธิทั้งปี (ไม่รวมยกเลิก)','Net total this year (cancelled not counted)')}</div><div style="font-size:28px;font-weight:700;color:var(--blue)">฿ ${money(s.total)}</div><div class="muted">${s.count} ${L('เอกสาร','documents')}</div></div>
    <div class="card"><div class="muted">${L('อนุมัติแล้วแต่ยังไม่มีเลข PO','Approved, no PO number yet')}</div><div style="font-size:28px;font-weight:700;color:${s.approved_without_po?'#D97706':'var(--ok)'}">${s.approved_without_po}</div>
@@ -391,11 +406,11 @@ async function pgList(){
      <label class="f">${L('ถึง','To')}<input type="date" class="in" value="${LISTQ.date_to||''}" onchange="LISTQ.date_to=this.value;LISTQ.page=1;pgList()"></label>
      <button class="btn" onclick="LISTQ={page:1,size:LISTQ.size,sort:'date',dir:'desc'};$('#lbar').remove();pgList()">${L('ล้าง','Clear')}</button>
      <a class="btn" id="csv" href="#">⬇ CSV</a>
-     ${can('create')?`<button class="btn pri" onclick="go('new')">＋ ${L('สร้าง PR','New PR')}</button>`:''}</div><div id="lres"><div class="card skel">Loading…</div></div>`;
+     ${showMenu('new')?`<button class="btn pri" onclick="go('new')">＋ ${L('สร้าง PR','New PR')}</button>`:''}</div><div id="lres"><div class="card skel">Loading…</div></div>`;
   }
   let d;try{d=await api('/api/pr/requests?'+qs(LISTQ));}catch(e){$('#lres').innerHTML=err(e);return;}
   const c=d.counts||{},all=Object.values(c).reduce((a,b)=>a+b,0);QN=c.pending_approval||0;mark();
-  $('#stabs').innerHTML=[['',L('ทั้งหมด','All'),all]].concat(Object.keys(ME.statuses).map(k=>[k,T(ME.statuses[k]),c[k]||0]))
+  $('#stabs').innerHTML=[['',L('ทั้งหมด','All'),all]].concat(Object.keys(ME.statuses).filter(k=>k!=='waiting_quotation').map(k=>[k,T(ME.statuses[k]),c[k]||0]))
     .map(([k,t,n])=>`<button class="tab ${(LISTQ.status||'')===k?'on':''}" onclick="LISTQ.status='${k}';LISTQ.page=1;pgList()">${esc(t)} <b>${n}</b></button>`).join('');
   $('#csv').href='/api/pr/export.csv?'+qs(Object.assign({},LISTQ,{page:'',size:''}));
   const pages=Math.max(1,Math.ceil(d.total/d.size));
@@ -449,11 +464,14 @@ function formFrom(d,id){
     company:d?d.company:(ME.company||ME.companies[0].code),department:d?d.department:(ME.departments.some(x=>x.code===ME.department)?ME.department:'ENG'),
     request_date:d?d.request_date:today(),purpose:d?d.purpose:'Repair',purpose_other:d?d.purpose_other:'',reason:d?d.reason:'',
     supplier_id:d?(d.supplier_id||''):'',vat_included:d?!!d.vat_included:true,payment_method:d?(d.payment_method||''):'',pay_by:d?(d.pay_by||''):'',book_no:d?(d.book_no||''):'',sheet_no:d?(d.sheet_no||''):'',
-    requester_id:d?(d.requester_id||''):ME.id,requester_name:d?d.requester_name:ME.name,amount:d&&!d.items.length&&d.amount_entered?d.subtotal:''};
+    requester_id:d?(d.requester_id||''):ME.id,requester_name:d?d.requester_name:ME.name,signs:d?(d.signs||{}):{},amount:d&&!d.items.length&&d.amount_entered?d.subtotal:''};
 }
 /* the paper part of the form (ใบขออนุมัติซื้อ), shared by the form and the printout */
 function paperHTML(F){
-  const ck=CK;
+  const ck=CK,sg=k=>(F.signs||{})[k];
+  const sgImg=k=>sg(k)?`<img class="sg" src="${esc(sg(k).image)}" alt="">`:'';
+  const sgName=k=>sg(k)?`<b>${esc(sg(k).name)}</b>`:'<i></i>';
+  const sgDate=k=>sg(k)?`<div class="sd">${L('วันที่','Date')} ${dmy(sg(k).at)}</div>`:'';
   const pur=k=>ME.purposes[k]?ck('pur',k,F.purpose===k,esc(T(ME.purposes[k]))):'';
   const reqs=(ME.requesters||[]).slice();
   if(F.requester_name&&!reqs.some(x=>String(x.id)===String(F.requester_id)))reqs.unshift({id:'',name:F.requester_name});
@@ -481,10 +499,10 @@ function paperHTML(F){
      <div class="net"><span>${L('ยอดสุทธิ','Net total')}</span><span>฿ <span id="t_net">0.00</span></span></div></div></div>
    <label class="pp-rea"><b>${L('งานหรือเหตุผลในการขอซื้อ','Job / reason for buying')} <i>*</i></b><textarea class="in" id="f_rea" rows="3" maxlength="2000" placeholder="${L('ระบุงานหรือเหตุผลและความจำเป็นในการขอซื้อ...','Say what it is for and why it is needed...')}">${esc(F.reason)}</textarea></label>
    <div class="pp-sign">
-    <div><div class="ln">${L('ผู้ขอซื้อ','Requested by')}<i></i></div><div class="pn">( <select id="f_req">${reqs.map(x=>`<option value="${x.id}" ${String(x.id)===String(F.requester_id)?'selected':''}>${esc(x.name)}</option>`).join('')}</select> )</div>
+    <div><div class="ln">${L('ผู้ขอซื้อ','Requested by')}<i></i>${sgImg('requester')}</div><div class="pn">( <select id="f_req">${reqs.map(x=>`<option value="${x.id}" ${String(x.id)===String(F.requester_id)?'selected':''}>${esc(x.name)}</option>`).join('')}</select> )</div>
      <div class="ln" style="margin-top:14px">${L('ฝ่าย/แผนก','Department')}<select id="f_dep">${ME.departments.map(x=>`<option value="${x.code}" ${F.department===x.code?'selected':''}>${esc(TH()?x.name_th:x.name_en)} (${esc(x.code)})</option>`).join('')}</select></div></div>
-    <div><div class="ln">${L('ผู้ตรวจสอบ','Checked by')}<i></i></div><div class="pn">( <i></i> )</div></div>
-    <div><div class="ln">${L('ผู้อนุมัติ','Approved by')}<i></i></div><div class="pn">( <i></i> )</div></div></div></div>`;
+    <div><div class="ln">${L('ผู้ตรวจสอบ','Checked by')}<i></i>${sgImg('checker')}</div><div class="pn">( ${sgName('checker')} )</div>${sgDate('checker')}</div>
+    <div><div class="ln">${L('ผู้อนุมัติ','Approved by')}<i></i>${sgImg('approver')}</div><div class="pn">( ${sgName('approver')} )</div>${sgDate('approver')}</div></div></div>`;
 }
 function itemRows(items,live){
   return items.map((it,i)=>`<tr><td class="n">${i+1}</td>
@@ -600,7 +618,7 @@ function drawDetail(){
   const act=[];
   if(d.can_edit&&can('create'))act.push(`<button class="btn" onclick="go('edit',${d.id})">✏️ ${L('แก้ไข','Edit')}</button>`);
   if(can('approve')){
-    if(d.status!=='approved')act.push(`<button class="btn ok" ${d.ready?'':'disabled title="'+L('ต้องมียอดรวมและใบเสนอราคา','needs amount + quotation')+'"'} onclick="setStatus('approved')">✓ ${L('อนุมัติ','Approve')}</button>`);
+    if(d.status!=='approved')act.push(`<button class="btn ok" ${d.ready?'':'disabled title="'+L('ต้องมียอดรวมและใบเสนอราคา','needs amount + quotation')+'"'} onclick="signDoc('approver')">✓ ${L('ลงนามอนุมัติ','Sign to approve')}</button>`);
     if(d.status!=='cancelled')act.push(`<button class="btn badl" onclick="cancelDlg()">✕ ${L('ยกเลิกเอกสาร','Cancel request')}</button>`);
     if(d.status==='approved'||d.status==='cancelled')act.push(`<button class="btn" onclick="setStatus('reopen')">↺ ${L('เปิดใหม่','Reopen')}</button>`);
   }
@@ -632,10 +650,108 @@ function drawDetail(){
     <div class="kv"><span>VAT 7% ${d.vat_included?'':L('(ไม่คิด)','(not charged)')}</span><b>${money(d.vat)}</b></div>
     ${Number(d.withholding_amount)?`<div class="kv"><span>${L('หัก ณ ที่จ่าย','Withholding')}</span><b>-${money(d.withholding_amount)}</b></div>`:''}
     <div class="kv big"><span>${L('ยอดสุทธิ','Net total')}</span><b>${d.amount_entered?money(d.net_total):'—'}</b></div></div></div></div>
+  ${signCard(d)}
   <div class="grid2"><div class="card"><h2>${L('ไฟล์แนบ','Files')}</h2>
     ${fileBox('quotation',L('ใบเสนอราคา','Quotation'),'create')}${fileBox('pr',L('เอกสาร PR','PR document'),'manage_pr')}${fileBox('po',L('เอกสาร PO','PO document'),'manage_po')}</div>
    <div class="card"><h2>${L('ความเคลื่อนไหว','History')}</h2>${d.log.map(l=>`<div class="tl"><b>${esc(l.summary)}</b><br><span>${dmy(l.created_at)} · ${esc(l.user_name)}</span></div>`).join('')||'<div class="muted">—</div>'}</div></div>`;
 }
+/* e-sign: requester -> checker -> approver; the approver's signature approves */
+const CHECKER_ROLES=['user','approver','super_admin'];
+function maySign(d,k){
+  const sg=d.signs||{},ord=['requester','checker','approver'],i=ord.indexOf(k);
+  if(d.status==='cancelled'||sg[k]||ord.slice(0,i).some(x=>!sg[x]))return false;
+  if(k==='requester')return ME.id===d.requester_id;
+  if(k==='checker')return CHECKER_ROLES.includes(ME.pr_role)&&sg.requester.user_id!==ME.id;
+  return can('approve')&&sg.checker.user_id!==ME.id;
+}
+function signCard(d){
+  const sg=d.signs||{},ord=['requester','checker','approver'];
+  const box=k=>{const s=sg[k],nx=ord[ord.indexOf(k)+1];
+    const mine=s&&(s.user_id===ME.id||ME.pr_role==='super_admin')&&!(nx&&sg[nx]);
+    return `<div class="sgbox"><h3>${esc(T(ME.sign_slots[k]))}</h3>
+     <div class="im">${s?`<img src="${esc(s.image)}" alt="">`:`<span class="muted">${L('ยังไม่ลงนาม','Not signed')}</span>`}</div>
+     <div class="who">${s?esc(s.name):(k==='requester'?esc(d.requester_name):'&nbsp;')}</div>
+     <div class="when">${s?dmy(s.at):'&nbsp;'}</div>
+     <div class="btns" style="justify-content:center;margin-top:8px">
+      ${maySign(d,k)?`<button class="btn sm ${k==='approver'?'ok':'pri'}" onclick="signDoc('${k}')">✍ ${k==='approver'?L('ลงนามอนุมัติ','Sign to approve'):L('ลงนาม','Sign')}</button>`:''}
+      ${mine?`<button class="btn sm badl" onclick="unsignDoc('${k}')">${L('ยกเลิกลายเซ็น','Remove')}</button>`:''}</div></div>`;};
+  return `<div class="card" style="margin-bottom:12px"><h2>${L('ลงนามอิเล็กทรอนิกส์','E-signatures')}</h2>
+   ${ME.has_signature?'':`<div class="msg m-info">${L('ยังไม่มีลายเซ็นของคุณ — ','You have no saved signature yet — ')}<a href="#sign" onclick="go('sign');return false">${L('ตั้งค่าลายเซ็น','set it up')}</a></div>`}
+   <div class="sggrid">${ord.map(box).join('')}</div><div id="sgerr"></div></div>`;
+}
+async function signDoc(k){
+  if(!ME.has_signature){toast(L('ตั้งค่าลายเซ็นก่อน','Save your signature first'));go('sign');return;}
+  const t=T(ME.sign_slots[k]);
+  if(!confirm(k==='approver'?L(`ลงนามอนุมัติ ${CUR.doc_code}? เอกสารจะเป็น "อนุมัติแล้ว"`,`Sign and approve ${CUR.doc_code}?`):L(`ลงนามเป็น${t}ใน ${CUR.doc_code}?`,`Sign ${CUR.doc_code} as ${t}?`)))return;
+  try{CUR=await post(`/api/pr/requests/${CUR.id}/sign/${k}`,{});drawDetail();counts();toast(L('ลงนามแล้ว','Signed'));}
+  catch(e){($('#sgerr')||$('#derr')).innerHTML=err(e);}
+}
+async function unsignDoc(k){
+  if(!confirm(k==='approver'?L('ยกเลิกลายเซ็นผู้อนุมัติ? เอกสารจะกลับเป็น "รออนุมัติ"','Remove the approver signature? The request goes back to waiting.'):L('ยกเลิกลายเซ็นนี้?','Remove this signature?')))return;
+  try{CUR=await del(`/api/pr/requests/${CUR.id}/sign/${k}`);drawDetail();counts();}catch(e){($('#sgerr')||$('#derr')).innerHTML=err(e);}
+}
+
+/* ════════ my signature ════════ */
+async function pgSign(){
+  const A=$('#app');A.innerHTML='<div class="card skel">Loading…</div>';
+  let r;try{r=await api('/api/pr/my-signature');}catch(e){A.innerHTML=err(e);return;}
+  A.innerHTML=`<h1>${L('ลายเซ็นของฉัน','My signature')}</h1><p class="sub">${L('วาดหรืออัปโหลดลายเซ็นครั้งเดียว แล้วใช้ลงนามในใบขออนุมัติซื้อ','Draw or upload your signature once, then use it to sign purchase requests')}</p>
+  <div class="grid2"><div class="card"><h2>${L('ลายเซ็นที่ใช้อยู่','Current signature')}</h2>
+    <div class="sgbox"><div class="im" style="height:110px">${r.image?`<img src="${esc(r.image)}" style="max-height:100px" alt="">`:`<span class="muted">${L('ยังไม่มีลายเซ็น','No signature yet')}</span>`}</div>
+    ${r.updated_at?`<div class="when">${L('บันทึกเมื่อ','Saved')} ${dmy(r.updated_at)}</div>`:''}</div>
+    ${r.image?`<div class="btns" style="margin-top:10px"><button class="btn badl" onclick="sigDelete()">${L('ลบลายเซ็น','Delete signature')}</button></div>`:''}
+    <p class="muted" style="margin-top:10px">${L('เอกสารที่ลงนามไปแล้วจะเก็บลายเซ็น ณ วันที่ลงนามไว้ การเปลี่ยนลายเซ็นไม่กระทบเอกสารเดิม','Signed documents keep the signature as it was; changing it here does not change them.')}</p></div>
+   <div class="card"><h2>${L('วาดลายเซ็นใหม่','Draw a new signature')}</h2>
+    <canvas id="pad" width="1120" height="400"></canvas>
+    <div class="btns" style="margin-top:10px"><button class="btn" onclick="padClear()">${L('ล้าง','Clear')}</button>
+     <label class="btn">${L('อัปโหลดรูป','Upload a picture')}<input type="file" accept=".png,.jpg,.jpeg" class="hidden" onchange="padLoad(this.files[0])"></label>
+     <button class="btn blue" onclick="sigSave()">${L('บันทึกลายเซ็น','Save signature')}</button></div><div id="sigerr"></div></div></div>`;
+  padInit();
+}
+let PADINK=false;
+function padInit(){
+  const c=$('#pad'),x=c.getContext('2d');PADINK=false;
+  x.lineWidth=5;x.lineCap='round';x.lineJoin='round';x.strokeStyle='#0B2A6F';
+  let on=false;const at=e=>{const b=c.getBoundingClientRect();return [(e.clientX-b.left)*c.width/b.width,(e.clientY-b.top)*c.height/b.height];};
+  c.onpointerdown=e=>{on=true;c.setPointerCapture(e.pointerId);const [a,b]=at(e);x.beginPath();x.moveTo(a,b);x.lineTo(a+0.1,b+0.1);x.stroke();PADINK=true;};
+  c.onpointermove=e=>{if(!on)return;const [a,b]=at(e);x.lineTo(a,b);x.stroke();};
+  c.onpointerup=c.onpointercancel=()=>{on=false;};
+}
+function padClear(){const c=$('#pad');c.getContext('2d').clearRect(0,0,c.width,c.height);PADINK=false;}
+/* an uploaded picture: fitted on the pad, white paper made transparent */
+function padLoad(f){
+  if(!f)return;const im=new Image(),u=URL.createObjectURL(f);
+  im.onload=()=>{const c=$('#pad'),x=c.getContext('2d');padClear();
+    const z=Math.min(c.width/im.width,c.height/im.height)*0.9,w=im.width*z,h=im.height*z;
+    x.drawImage(im,(c.width-w)/2,(c.height-h)/2,w,h);URL.revokeObjectURL(u);
+    const px=x.getImageData(0,0,c.width,c.height),a=px.data;
+    for(let i=0;i<a.length;i+=4){if(a[i]>200&&a[i+1]>200&&a[i+2]>200)a[i+3]=0;}
+    x.putImageData(px,0,0);PADINK=true;};
+  im.onerror=()=>{$('#sigerr').innerHTML=err(L('เปิดรูปไม่ได้','Cannot open the picture'));};
+  im.src=u;
+}
+/* the drawn part only, cropped, at most 600px wide */
+function padPNG(){
+  const c=$('#pad'),x=c.getContext('2d'),a=x.getImageData(0,0,c.width,c.height).data;
+  let l=c.width,t=c.height,r=-1,b=-1;
+  for(let y=0;y<c.height;y++)for(let i=0;i<c.width;i++){if(a[(y*c.width+i)*4+3]>10){if(i<l)l=i;if(i>r)r=i;if(y<t)t=y;if(y>b)b=y;}}
+  if(r<0)return '';
+  l=Math.max(0,l-8);t=Math.max(0,t-8);r=Math.min(c.width-1,r+8);b=Math.min(c.height-1,b+8);
+  const w=r-l+1,h=b-t+1,z=Math.min(1,600/w),o=document.createElement('canvas');
+  o.width=Math.round(w*z);o.height=Math.round(h*z);o.getContext('2d').drawImage(c,l,t,w,h,0,0,o.width,o.height);
+  return o.toDataURL('image/png');
+}
+async function sigSave(){
+  const png=PADINK?padPNG():'';
+  if(!png){$('#sigerr').innerHTML=err(L('กรุณาวาดหรืออัปโหลดลายเซ็นก่อน','Draw or upload a signature first'));return;}
+  try{await put('/api/pr/my-signature',{image:png});ME.has_signature=true;toast(L('บันทึกลายเซ็นแล้ว','Signature saved'));pgSign();}
+  catch(e){$('#sigerr').innerHTML=err(e);}
+}
+async function sigDelete(){
+  if(!confirm(L('ลบลายเซ็นของคุณ? เอกสารที่ลงนามแล้วยังคงลายเซ็นเดิม','Delete your signature? Signed documents keep theirs.')))return;
+  try{await del('/api/pr/my-signature');ME.has_signature=false;pgSign();}catch(e){toast(e.message||e);}
+}
+
 async function upFile(k,f){const e=checkFile(f);if(e){$('#derr').innerHTML=err(e);return;}
   try{CUR=await post(`/api/pr/requests/${CUR.id}/files/${k}`,await readFile(f));drawDetail();toast(L('แนบไฟล์แล้ว','File attached'));counts();}catch(e){$('#derr').innerHTML=err(e);}}
 async function rmFile(k){if(!confirm(L('ลบไฟล์นี้?','Remove this file?')))return;
